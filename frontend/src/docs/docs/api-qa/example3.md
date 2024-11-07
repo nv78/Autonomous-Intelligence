@@ -1,4 +1,3 @@
-
 # Example 3: Building Teams of Agents
 
 Sometimes multiple Agents need to work together. Here’s how you form a Crew.

@@ -1,0 +1,581 @@
+
+<!DOCTYPE html>
+
+<html class="no-js" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<link href="https://docs.Anote.ai/prompting/questionanswering.html" rel="canonical"/>
+<link href="../assets/logo.png" rel="icon"/>
+<meta content="mkdocs-1.4.3, mkdocs-material-9.1.15" name="generator"/>
+<title>Active Prompting using AI: Question and Answering - Private Chatbot</title>
+<link href="../assets/stylesheets/main.26e3688c.min.css" rel="stylesheet"/>
+<link href="../assets/stylesheets/palette.ecc896b0.min.css" rel="stylesheet"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback" rel="stylesheet"/>
+<style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+<link href="../assets/_mkdocstrings.css" rel="stylesheet"/>
+<script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+</head>
+<body data-md-color-accent="light-blue" data-md-color-primary="black" data-md-color-scheme="default" dir="ltr">
+<script>var palette=__md_get("__palette");if(palette&&"object"==typeof palette.color)for(var key of Object.keys(palette.color))document.body.setAttribute("data-md-color-"+key,palette.color[key])</script>
+<input autocomplete="off" class="md-toggle" data-md-toggle="drawer" id="__drawer" type="checkbox"/>
+<input autocomplete="off" class="md-toggle" data-md-toggle="search" id="__search" type="checkbox"/>
+<label class="md-overlay" for="__drawer"></label>
+<div data-md-component="skip">
+<a class="md-skip" href="#active-prompting-using-ai-question-and-answering">
+          Skip to content
+        </a>
+</div>
+<div data-md-component="announce">
+</div>
+<header class="md-header md-header--shadow" data-md-component="header">
+<nav aria-label="Header" class="md-header__inner md-grid">
+<a aria-label="Private Chatbot" class="md-header__button md-logo" data-md-component="logo" href="https://anote.ai" title="Private Chatbot">
+<img alt="logo" src="../assets/logo.png"/>
+</a>
+<label class="md-header__button md-icon" for="__drawer">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"></path></svg>
+</label>
+<div class="md-header__title" data-md-component="header-title">
+<div class="md-header__ellipsis">
+<div class="md-header__topic">
+<span class="md-ellipsis">
+            Private Chatbot
+          </span>
+</div>
+<div class="md-header__topic" data-md-component="header-topic">
+<span class="md-ellipsis">
+            
+              Active Prompting using AI: Question and Answering
+            
+          </span>
+</div>
+</div>
+</div>
+<form class="md-header__option" data-md-component="palette">
+<input aria-label="Switch to dark mode" class="md-option" data-md-color-accent="light-blue" data-md-color-media="" data-md-color-primary="black" data-md-color-scheme="default" id="__palette_1" name="__palette" type="radio"/>
+<label class="md-header__button md-icon" for="__palette_2" hidden="" title="Switch to dark mode">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17 6H7c-3.31 0-6 2.69-6 6s2.69 6 6 6h10c3.31 0 6-2.69 6-6s-2.69-6-6-6zm0 10H7c-2.21 0-4-1.79-4-4s1.79-4 4-4h10c2.21 0 4 1.79 4 4s-1.79 4-4 4zM7 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"></path></svg>
+</label>
+<input aria-label="Switch to light mode" class="md-option" data-md-color-accent="light-blue" data-md-color-media="" data-md-color-primary="black" data-md-color-scheme="slate" id="__palette_2" name="__palette" type="radio"/>
+<label class="md-header__button md-icon" for="__palette_1" hidden="" title="Switch to light mode">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17 7H7a5 5 0 0 0-5 5 5 5 0 0 0 5 5h10a5 5 0 0 0 5-5 5 5 0 0 0-5-5m0 8a3 3 0 0 1-3-3 3 3 0 0 1 3-3 3 3 0 0 1 3 3 3 3 0 0 1-3 3Z"></path></svg>
+</label>
+</form>
+<label class="md-header__button md-icon" for="__search">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"></path></svg>
+</label>
+<div class="md-search" data-md-component="search" role="dialog">
+<label class="md-search__overlay" for="__search"></label>
+<div class="md-search__inner" role="search">
+<form class="md-search__form" name="search">
+<input aria-label="Search" autocapitalize="off" autocomplete="off" autocorrect="off" class="md-search__input" data-md-component="search-query" name="query" placeholder="Search" required="" spellcheck="false" type="text"/>
+<label class="md-search__icon md-icon" for="__search">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"></path></svg>
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"></path></svg>
+</label>
+<nav aria-label="Search" class="md-search__options">
+<button aria-label="Clear" class="md-search__icon md-icon" tabindex="-1" title="Clear" type="reset">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"></path></svg>
+</button>
+</nav>
+<div class="md-search__suggest" data-md-component="search-suggest"></div>
+</form>
+<div class="md-search__output">
+<div class="md-search__scrollwrap" data-md-scrollfix="">
+<div class="md-search-result" data-md-component="search-result">
+<div class="md-search-result__meta">
+            Initializing search
+          </div>
+<ol class="md-search-result__list" role="presentation"></ol>
+</div>
+</div>
+</div>
+</div>
+</div>
+</nav>
+</header>
+<div class="md-container" data-md-component="container">
+<main class="md-main" data-md-component="main">
+<div class="md-main__inner md-grid">
+<div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+<div class="md-sidebar__scrollwrap">
+<div class="md-sidebar__inner">
+<nav aria-label="Navigation" class="md-nav md-nav--primary" data-md-level="0">
+<label class="md-nav__title" for="__drawer">
+<a aria-label="Private Chatbot" class="md-nav__button md-logo" data-md-component="logo" href="https://anote.ai" title="Private Chatbot">
+<img alt="logo" src="../assets/logo.png"/>
+</a>
+    Private Chatbot
+  </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../privategpt/privategpt.html">
+        Home
+      </a>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle" id="__nav_2" type="checkbox"/>
+<label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+          Anote SDK
+          <span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_2_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_2">
+<span class="md-nav__icon md-icon"></span>
+          Anote SDK
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle" id="__nav_2_1" type="checkbox"/>
+<label class="md-nav__link" for="__nav_2_1" id="__nav_2_1_label" tabindex="0">
+          Getting Started
+          <span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_2_1_label" class="md-nav" data-md-level="2">
+<label class="md-nav__title" for="__nav_2_1">
+<span class="md-nav__icon md-icon"></span>
+          Getting Started
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-overview/setup.html">
+        Overview
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../privategpt/installation.html">
+        Installation (Private)
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-overview/upload.html">
+        Upload
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-overview/upload-private.html">
+        Upload (Private)
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-overview/finetune.html">
+        Fine Tune
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-overview/chat.html">
+        Chat
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-overview/predict.html">
+        Predict
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-overview/evaluate.html">
+        Evaluate
+      </a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle" id="__nav_2_2" type="checkbox"/>
+<label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+          Capabilities
+          <span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_2_2_label" class="md-nav" data-md-level="2">
+<label class="md-nav__title" for="__nav_2_2">
+<span class="md-nav__icon md-icon"></span>
+          Capabilities
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-qa/example1.html">
+        Q&amp;A from Edgar
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-qa/example2.html">
+        Q&amp;A from Uploaded Files
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-qa/example3.html">
+        Q&amp;A in Multiple Languages
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-qa/example4.html">
+        Q&amp;A with websites
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-qa/example5.html">
+        Q&amp;A with fine tuning
+      </a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle" id="__nav_3" type="checkbox"/>
+<label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+          Anote 10-Ks
+          <span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_3_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_3">
+<span class="md-nav__icon md-icon"></span>
+          Anote 10-Ks
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../10-ks/10ksbackground.html">
+        10-Ks Background
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../10-ks/10ksquestions.html">
+        10-Ks Questions
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../10-ks/10ksdecomposition.html">
+        10-Ks Decomposition
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../10-ks/10ksfeedback.html">
+        10-Ks Feedback
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../10-ks/10kssolution.html">
+        10-Ks Solution
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../10-ks/10ksimpact.html">
+        10-Ks Impact
+      </a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle" id="__nav_4" type="checkbox"/>
+<label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+          Anote Fine Tuning
+          <span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_4_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_4">
+<span class="md-nav__icon md-icon"></span>
+          Anote Fine Tuning
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-prompting/overview.html">
+        Overview
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-prompting/example1.html">
+        Baseline Models
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-prompting/example2.html">
+        Supervised
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-prompting/example3.html">
+        Supervised Methods
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-prompting/example4.html">
+        Unsupervised
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-prompting/example5.html">
+        RLHF
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-prompting/example6.html">
+        Traditional RAG
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-prompting/example7.html">
+        Enhanced RAG
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-prompting/example8.html">
+        Evaluation
+      </a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</div>
+<div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+<div class="md-sidebar__scrollwrap">
+<div class="md-sidebar__inner">
+<nav aria-label="Table of contents" class="md-nav md-nav--secondary">
+<label class="md-nav__title" for="__toc">
+<span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+<ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#qa-prompting">
+    Q&amp;A Prompting
+  </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#steps-involved">
+    Steps Involved
+  </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#improving-the-large-language-model-with-human-feedback">
+    Improving the Large Language Model with Human Feedback
+  </a>
+<nav aria-label="Improving the Large Language Model with Human Feedback" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#user-feedback-loop">
+    User Feedback Loop
+  </a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#download-result">
+    Download Result
+  </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#summary">
+    Summary
+  </a>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</div>
+<div class="md-content" data-md-component="content">
+<article class="md-content__inner md-typeset">
+<h1 id="active-prompting-using-ai-question-and-answering">Active Prompting using AI: Question and Answering</h1>
+<p>Question and Answering (Q&amp;A) prompting is a powerful technique that leverages AI to extract specific information from text documents by posing questions. This documentation provides a step-by-step guide to Q&amp;A prompting, including an example, a flowchart to visualize the process, and a table to demonstrate the data format.</p>
+<h2 id="qa-prompting">Q&amp;A Prompting</h2>
+<p>Using <strong>Anote</strong>, you can correct the answers generated by the language model based on your domain knowledge. This means that if you are working with legal documents, precision and accuracy are of utmost importance. With the interactive capability of the system, you can engage in a conversation with the documents and correct any inaccuracies or incorrect answers provided by the model.</p>
+<p><img alt="tweets" src="../assets/buildyourowngptsimple.png"/></p>
+<p>As you actively correct the model's responses and provide the correct answers, the system learns from your inputs. The feedback you provide helps the model understand the nuances of the domain and improve its performance over time. With each interaction and correction you make, the model becomes better at returning accurate and relevant answers. This iterative process ensures that the model adapts and improves, leading to increased accuracy and enhanced performance in answering questions related to your specific domain.</p>
+<p><img alt="tweets" src="../assets/buildyourowngpt.png"/></p>
+<h2 id="steps-involved">Steps Involved</h2>
+<p>After the successful loading of documents, the model proceeds with several steps that operate in the background to facilitate the Q&amp;A prompting process. These steps are designed to handle the text documents effectively and extract the necessary information to generate accurate responses. The flowchart below presents a visual representation of the steps involved in Q&amp;A prompting:</p>
+<p><img alt="tweets" src="../assets/singlefile.png"/></p>
+<p>The steps involved are as follows:</p>
+<ol>
+<li>
+<p><strong>Text Chunking</strong>: Initially, the text document is broken down into smaller, more manageable chunks. By decomposing the text, it becomes easier to analyze and match the content with specific prompts.</p>
+</li>
+<li>
+<p><strong>Chunk Embedding</strong>: Each chunk of text is transformed into a numerical representation, typically using embedding techniques such as word embeddings or sentence embeddings. These representations capture the semantic meaning and context of the text chunks.</p>
+</li>
+<li>
+<p><strong>Prompt Embedding</strong>: The user's question, known as the prompt, is also transformed into a numerical representation using the same embedding techniques employed in step 2. This enables a meaningful comparison between the prompt and the text chunks.</p>
+</li>
+<li>
+<p><strong>Similarity Matching</strong>: The embedded prompt is compared to the embedded text chunks to identify the most similar chunk. This comparison is usually done by calculating a similarity score based on the embeddings. The aim is to find the chunk that best matches the intent of the user's question.</p>
+</li>
+<li>
+<p><strong>Answer Generation</strong>: Once the most similar chunk is identified, the AI model generates an answer based on the content associated with that chunk. This can be achieved through a chatbot-like mechanism or by employing predefined responses associated with the matched chunk.</p>
+</li>
+</ol>
+<p>If there is multiple files, the decomposition structure can be very different. Each filetype and specific file should be decomposed and handled in a distinct way, and then will be merged to a singular text embedding. If the number of files or number of rows of text data becomes large, it is recommended to store the embeddings of text in a vector database such as pinecone or weaviate for cloud based offerings, or chroma for local on prem solutions, that way the queries can run efficiently on large corpuses of data at scale.</p>
+<p><img alt="tweets" src="../assets/multifileupdated.png"/></p>
+<p>Once the language model is loaded and trained, you can engage in a conversation with documents using Anote. This interactive capability allows you to interact with text documents and obtain specific information through a question-and-answer format. The model can process various types of documents, including financial documents, legal contracts, research papers, and more.</p>
+<p>To illustrate the functionality of Q&amp;A prompting, consider the following example. The picture showcases an example of using Anote to analyze a financial document consisting of 150 pages.</p>
+<p><center>
+<img alt="Q&amp;A Example" src="../assets/qa_example_response.png" width="400px"/>
+</center></p>
+<p>The image presents a snapshot of the system's response to a specific query related to the financial document. The generated answer provides valuable insights and information extracted from the document, demonstrating the AI-powered capability of Anote in extracting relevant details from large volumes of text.</p>
+<p>One thing to note is that the LLM contains information and context outside of your document as well, pretrained on entire corpus of data to offer diverse perspectives. While the question and answering interface is tailored / fine tuned to your data, you can also ask questions that fall outside of the realm, as seen in the image below.</p>
+<p><img alt="tweets" src="../assets/chatgpt.png"/></p>
+<p>By leveraging Q&amp;A prompting, you can navigate through lengthy documents efficiently, pose specific questions, and receive targeted responses that assist in understanding and analyzing the document's content. This interactive and conversational approach enhances the effectiveness and productivity of document analysis tasks.</p>
+<h2 id="improving-the-large-language-model-with-human-feedback">Improving the Large Language Model with Human Feedback</h2>
+<p>While the Q&amp;A prompting approach aims to provide precise answers, it is important to acknowledge that there may be instances where the generated response is incorrect or lacks accuracy. This is where <strong>Anote</strong> truly excels. With the power of <strong>Anote</strong>, you have the ability to improve the overall accuracy by seamlessly integrating human feedback into the process. If the generated answer is identified as incorrect, you are presented with an opportunity to modify it based on your own knowledge and expertise. This iterative feedback loop not only refines the model's responses but also drives continuous improvement, ultimately boosting its performance and ensuring a higher level of accuracy.</p>
+<p>At <strong>Anote</strong>, we employ several techniques to enhance the accuracy of the large language model using human feedback. Once you prompt the model, it generates an answer based on the steps mentioned above. However, if the generated answer is incorrect or inaccurate, you have the option to provide your own answer in the dedicated feedback window.</p>
+<p>As you continue to correct the model's answers over time, the model learns from this feedback and adjusts its responses accordingly. Through incorporating human feedback, we continuously refine and enhance the large language model, ensuring that it becomes more accurate, reliable, and aligned with human knowledge and expertise. The goal is to reach a point where the model's predicted answer aligns with the human feedback you provide.</p>
+<h3 id="user-feedback-loop">User Feedback Loop</h3>
+<p>User feedback plays a significant role in improving the question answering capabilities of language models. By analyzing the user's feedback and comparing it with the generated answers, we can enhance the model's performance and accuracy over time.</p>
+<ul>
+<li>
+<p><strong>Comparison with User Answers</strong>: By comparing the generated answer with the user's answer or expected answer, we can identify discrepancies and areas for improvement.</p>
+</li>
+<li>
+<p><strong>Feedback Integration</strong>: Incorporating user feedback into the training process helps the model learn from its mistakes and refine its understanding of questions and answers.</p>
+</li>
+<li>
+<p><strong>Adjustment of Prompts</strong>: Based on user feedback, we can adjust the prompts or questions given to the language model to guide it towards more accurate and relevant answers.</p>
+</li>
+<li>
+<p><strong>Fine-tuning and Retraining</strong>: By including user-generated question-answer pairs in the training data, we can fine-tune and retrain the model to improve its performance in question answering tasks.</p>
+</li>
+</ul>
+<h2 id="download-result">Download Result</h2>
+<p>Once the model incorporates human feedback and achieves a satisfactory level of accuracy, users have the opportunity to download the report of the Q&amp;A process in a convenient table format. This report provides a structured overview of the questions posed, the model's predictions, and the actual human feedback for each question.</p>
+<p>The table format organizes the information in a tabular manner, allowing for easy readability and analysis. The report typically includes the following columns:</p>
+<ul>
+<li><strong>Document</strong>: Represents the document or text from which the model is extracting information and generating responses. It can be a PDF, text file, or any other source of information.</li>
+<li><strong>Question</strong>: Refers to the user-inputted question or prompt. It is the specific query or inquiry that the user wants the model to answer based on the given document.</li>
+<li><strong>Response</strong>: Represents the model's predicted answer or response to the question. It is generated by the language model based on its understanding of the document and the provided question.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Document</th>
+<th>Question</th>
+<th>Pred</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Financial Management and Real Options</td>
+<td>What is financial management?</td>
+<td>Financial management is the process of managing money and other financial resources in order to achieve an organization's goals. It involves planning, organizing, controlling, and monitoring the financial activities of an organization.</td>
+</tr>
+<tr>
+<td>Financial Management and Real Options</td>
+<td>Can you explain the significance of cautiousness in financial management?</td>
+<td>Cautiousness is an important concept in financial management because it involves making decisions that are both financially sound and ethical. Cautiousness requires financial managers to consider the long-term consequences of their decisions and to act in the best interests of their organization.</td>
+</tr>
+<tr>
+<td>Financial Management and Real Options</td>
+<td>How does cautiousness contribute to risk management?</td>
+<td>Cautiousness contributes to risk management by ensuring that financial managers make decisions that are well-informed and carefully considered.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="summary">Summary</h2>
+<p>Q&amp;A prompting using AI offers an effective and interactive way to extract specific information from text documents. By following the steps of text chunking, embedding, similarity matching, and answer generation, users can obtain precise answers to their questions. The iterative process of incorporating human feedback ensures continuous improvement, allowing the model to provide more accurate and reliable responses.</p>
+</article>
+</div>
+<script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var tab,labels=set.querySelector(".tabbed-labels");for(tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+</div>
+</main>
+<footer class="md-footer">
+<div class="md-footer-meta md-typeset">
+<div class="md-footer-meta__inner md-grid">
+<div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" rel="noopener" target="_blank">
+      Material for MkDocs
+    </a>
+</div>
+<div class="md-social">
+<a class="md-social__link" href="https://www.linkedin.com/company/anote-ai/" rel="noopener" target="_blank" title="www.linkedin.com">
+<svg viewbox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 6.4.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3zM135.4 416H69V202.2h66.5V416zm-33.2-243c-21.3 0-38.5-17.3-38.5-38.5S80.9 96 102.2 96c21.2 0 38.5 17.3 38.5 38.5 0 21.3-17.2 38.5-38.5 38.5zm282.1 243h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9V416z"></path></svg>
+</a>
+<a class="md-social__link" href="https://anote-ai.medium.com/" rel="noopener" target="_blank" title="anote-ai.medium.com">
+<svg viewbox="0 0 640 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 6.4.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M180.5 74.262C80.813 74.262 0 155.633 0 256s80.819 181.738 180.5 181.738S361 356.373 361 256 280.191 74.262 180.5 74.262Zm288.25 10.646c-49.845 0-90.245 76.619-90.245 171.095s40.406 171.1 90.251 171.1 90.251-76.619 90.251-171.1H559c0-94.503-40.4-171.095-90.248-171.095Zm139.506 17.821c-17.526 0-31.735 68.628-31.735 153.274s14.2 153.274 31.735 153.274S640 340.631 640 256c0-84.649-14.215-153.271-31.742-153.271Z"></path></svg>
+</a>
+</div>
+</div>
+</div>
+</footer>
+</div>
+<div class="md-dialog" data-md-component="dialog">
+<div class="md-dialog__inner md-typeset"></div>
+</div>
+<script id="__config" type="application/json">{"base": "..", "features": ["search.suggest", "search.highlight", "content.tabs.link", "content.code.copy", "content.code.annotation"], "search": "../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+<script src="../assets/javascripts/bundle.b4d07000.min.js"></script>
+<script>document$.subscribe(() => {
+            window.update_swagger_ui_iframe_height = function (id) {
+                var iFrameID = document.getElementById(id);
+                if (iFrameID) {
+                    full_height = (iFrameID.contentWindow.document.body.scrollHeight + 80) + "px";
+                    iFrameID.height = full_height;
+                    iFrameID.style.height = full_height;
+                }
+            }
+        
+            let iframe_id_list = []
+            var iframes = document.getElementsByClassName("swagger-ui-iframe");
+            for (var i = 0; i < iframes.length; i++) { 
+                iframe_id_list.push(iframes[i].getAttribute("id"))
+            }
+        
+            let ticking = true;
+            
+            document.addEventListener('scroll', function(e) {
+                if (!ticking) {
+                    window.requestAnimationFrame(()=> {
+                        let half_vh = window.innerHeight/2;
+                        for(var i = 0; i < iframe_id_list.length; i++) {
+                            let element = document.getElementById(iframe_id_list[i])
+                            if(element==null){
+                                return
+                            }
+                            let diff = element.getBoundingClientRect().top
+                            if(element.contentWindow.update_top_val){
+                                element.contentWindow.update_top_val(half_vh - diff)
+                            }
+                        }
+                        ticking = false;
+                    });
+                    ticking = true;
+                }
+            });
+        
+            const dark_scheme_name = "slate"
+            
+            window.scheme = document.body.getAttribute("data-md-color-scheme")
+            const options = {
+                attributeFilter: ['data-md-color-scheme'],
+            };
+            function color_scheme_callback(mutations) {
+                for (let mutation of mutations) {
+                    if (mutation.attributeName === "data-md-color-scheme") {
+                        scheme = document.body.getAttribute("data-md-color-scheme")
+                        var iframe_list = document.getElementsByClassName("swagger-ui-iframe")
+                        for(var i = 0; i < iframe_list.length; i++) {
+                            var ele = iframe_list.item(i);
+                            if (ele) {
+                                if (scheme === dark_scheme_name) {
+                                    ele.contentWindow.enable_dark_mode();
+                                } else {
+                                    ele.contentWindow.disable_dark_mode();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            observer = new MutationObserver(color_scheme_callback);
+            observer.observe(document.body, options);
+            })</script></body>
+</html>

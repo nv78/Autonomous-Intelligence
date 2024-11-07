@@ -26,10 +26,11 @@ To use the Anote Python library, you need to have Python installed. To ensure yo
 
 - Windows: **Open Command Prompt:** You can find it by searching "cmd" in the start menu.
 
-Next, enter ```python3 --version``` and then press enter, to ensure you see a python version >3.7.
+Next, enter `python3 --version` and then press enter, to ensure you see a python version >3.7.
 
 To install the Private Chatbot Python library from the terminal / command line, run:
-``` py
+
+```py
 pip install -U anoteagents
 ```
 
@@ -38,16 +39,18 @@ pip install -U anoteagents
 After you have Python configured and set up an API key, the final step is to send a request to the Anote API using the Python library. To do this, create a file named anote-test.py using the terminal or an IDE.
 
 Inside the file, copy and paste the example below:
-``` python
+
+```python
 from anote-agents import Anote
 
 api_key = 'INSERT_API_KEY_HERE'
 ```
+
 You should obtain an agent object.
 
-
 ### Bringing It All Together
-``` python
+
+```python
 from anote-agents import Agent, Task, Crew, Workflow, Tools
 
 api_key = 'INSERT_API_KEY_HERE'
@@ -85,6 +88,7 @@ my_workflow = {
 }
 # In practice, you'd integrate this workflow config into the Crew logic.
 ```
+
 Key Points: A Tool is typically implemented in Python, but from the Agent’s perspective it’s just a string reference.
 
 ```
@@ -100,4 +104,3 @@ Task Result: {
 }
 Crew Execution Completed. All tasks processed.
 ```
-

@@ -1,0 +1,595 @@
+
+<!DOCTYPE html>
+
+<html class="no-js" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<link href="https://docs.Anote.ai/10-ks/10ksfeedback.html" rel="canonical"/>
+<link href="10ksdecomposition.html" rel="prev"/>
+<link href="10kssolution.html" rel="next"/>
+<link href="../assets/logo.png" rel="icon"/>
+<meta content="mkdocs-1.4.3, mkdocs-material-9.1.15" name="generator"/>
+<title>10-Ks Feedback - Private Chatbot</title>
+<link href="../assets/stylesheets/main.26e3688c.min.css" rel="stylesheet"/>
+<link href="../assets/stylesheets/palette.ecc896b0.min.css" rel="stylesheet"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback" rel="stylesheet"/>
+<style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+<link href="../assets/_mkdocstrings.css" rel="stylesheet"/>
+<script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+</head>
+<body data-md-color-accent="light-blue" data-md-color-primary="black" data-md-color-scheme="default" dir="ltr">
+<script>var palette=__md_get("__palette");if(palette&&"object"==typeof palette.color)for(var key of Object.keys(palette.color))document.body.setAttribute("data-md-color-"+key,palette.color[key])</script>
+<input autocomplete="off" class="md-toggle" data-md-toggle="drawer" id="__drawer" type="checkbox"/>
+<input autocomplete="off" class="md-toggle" data-md-toggle="search" id="__search" type="checkbox"/>
+<label class="md-overlay" for="__drawer"></label>
+<div data-md-component="skip">
+<a class="md-skip" href="#prompt-inventory-and-human-adjustment">
+          Skip to content
+        </a>
+</div>
+<div data-md-component="announce">
+</div>
+<header class="md-header md-header--shadow" data-md-component="header">
+<nav aria-label="Header" class="md-header__inner md-grid">
+<a aria-label="Private Chatbot" class="md-header__button md-logo" data-md-component="logo" href="https://anote.ai" title="Private Chatbot">
+<img alt="logo" src="../assets/logo.png"/>
+</a>
+<label class="md-header__button md-icon" for="__drawer">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"></path></svg>
+</label>
+<div class="md-header__title" data-md-component="header-title">
+<div class="md-header__ellipsis">
+<div class="md-header__topic">
+<span class="md-ellipsis">
+            Private Chatbot
+          </span>
+</div>
+<div class="md-header__topic" data-md-component="header-topic">
+<span class="md-ellipsis">
+            
+              10-Ks Feedback
+            
+          </span>
+</div>
+</div>
+</div>
+<form class="md-header__option" data-md-component="palette">
+<input aria-label="Switch to dark mode" class="md-option" data-md-color-accent="light-blue" data-md-color-media="" data-md-color-primary="black" data-md-color-scheme="default" id="__palette_1" name="__palette" type="radio"/>
+<label class="md-header__button md-icon" for="__palette_2" hidden="" title="Switch to dark mode">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17 6H7c-3.31 0-6 2.69-6 6s2.69 6 6 6h10c3.31 0 6-2.69 6-6s-2.69-6-6-6zm0 10H7c-2.21 0-4-1.79-4-4s1.79-4 4-4h10c2.21 0 4 1.79 4 4s-1.79 4-4 4zM7 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"></path></svg>
+</label>
+<input aria-label="Switch to light mode" class="md-option" data-md-color-accent="light-blue" data-md-color-media="" data-md-color-primary="black" data-md-color-scheme="slate" id="__palette_2" name="__palette" type="radio"/>
+<label class="md-header__button md-icon" for="__palette_1" hidden="" title="Switch to light mode">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17 7H7a5 5 0 0 0-5 5 5 5 0 0 0 5 5h10a5 5 0 0 0 5-5 5 5 0 0 0-5-5m0 8a3 3 0 0 1-3-3 3 3 0 0 1 3-3 3 3 0 0 1 3 3 3 3 0 0 1-3 3Z"></path></svg>
+</label>
+</form>
+<label class="md-header__button md-icon" for="__search">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"></path></svg>
+</label>
+<div class="md-search" data-md-component="search" role="dialog">
+<label class="md-search__overlay" for="__search"></label>
+<div class="md-search__inner" role="search">
+<form class="md-search__form" name="search">
+<input aria-label="Search" autocapitalize="off" autocomplete="off" autocorrect="off" class="md-search__input" data-md-component="search-query" name="query" placeholder="Search" required="" spellcheck="false" type="text"/>
+<label class="md-search__icon md-icon" for="__search">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"></path></svg>
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"></path></svg>
+</label>
+<nav aria-label="Search" class="md-search__options">
+<button aria-label="Clear" class="md-search__icon md-icon" tabindex="-1" title="Clear" type="reset">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"></path></svg>
+</button>
+</nav>
+<div class="md-search__suggest" data-md-component="search-suggest"></div>
+</form>
+<div class="md-search__output">
+<div class="md-search__scrollwrap" data-md-scrollfix="">
+<div class="md-search-result" data-md-component="search-result">
+<div class="md-search-result__meta">
+            Initializing search
+          </div>
+<ol class="md-search-result__list" role="presentation"></ol>
+</div>
+</div>
+</div>
+</div>
+</div>
+</nav>
+</header>
+<div class="md-container" data-md-component="container">
+<main class="md-main" data-md-component="main">
+<div class="md-main__inner md-grid">
+<div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+<div class="md-sidebar__scrollwrap">
+<div class="md-sidebar__inner">
+<nav aria-label="Navigation" class="md-nav md-nav--primary" data-md-level="0">
+<label class="md-nav__title" for="__drawer">
+<a aria-label="Private Chatbot" class="md-nav__button md-logo" data-md-component="logo" href="https://anote.ai" title="Private Chatbot">
+<img alt="logo" src="../assets/logo.png"/>
+</a>
+    Private Chatbot
+  </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../privategpt/privategpt.html">
+        Home
+      </a>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle" id="__nav_2" type="checkbox"/>
+<label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+          Anote SDK
+          <span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_2_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_2">
+<span class="md-nav__icon md-icon"></span>
+          Anote SDK
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle" id="__nav_2_1" type="checkbox"/>
+<label class="md-nav__link" for="__nav_2_1" id="__nav_2_1_label" tabindex="0">
+          Getting Started
+          <span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_2_1_label" class="md-nav" data-md-level="2">
+<label class="md-nav__title" for="__nav_2_1">
+<span class="md-nav__icon md-icon"></span>
+          Getting Started
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-overview/setup.html">
+        Overview
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../privategpt/installation.html">
+        Installation (Private)
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-overview/upload.html">
+        Upload
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-overview/upload-private.html">
+        Upload (Private)
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-overview/finetune.html">
+        Fine Tune
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-overview/chat.html">
+        Chat
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-overview/predict.html">
+        Predict
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-overview/evaluate.html">
+        Evaluate
+      </a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle" id="__nav_2_2" type="checkbox"/>
+<label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+          Capabilities
+          <span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_2_2_label" class="md-nav" data-md-level="2">
+<label class="md-nav__title" for="__nav_2_2">
+<span class="md-nav__icon md-icon"></span>
+          Capabilities
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-qa/example1.html">
+        Q&amp;A from Edgar
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-qa/example2.html">
+        Q&amp;A from Uploaded Files
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-qa/example3.html">
+        Q&amp;A in Multiple Languages
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-qa/example4.html">
+        Q&amp;A with websites
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-qa/example5.html">
+        Q&amp;A with fine tuning
+      </a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--active md-nav__item--nested">
+<input checked="" class="md-nav__toggle md-toggle" id="__nav_3" type="checkbox"/>
+<label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+          Anote 10-Ks
+          <span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="true" aria-labelledby="__nav_3_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_3">
+<span class="md-nav__icon md-icon"></span>
+          Anote 10-Ks
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="10ksbackground.html">
+        10-Ks Background
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="10ksquestions.html">
+        10-Ks Questions
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="10ksdecomposition.html">
+        10-Ks Decomposition
+      </a>
+</li>
+<li class="md-nav__item md-nav__item--active">
+<input class="md-nav__toggle md-toggle" id="__toc" type="checkbox"/>
+<label class="md-nav__link md-nav__link--active" for="__toc">
+          10-Ks Feedback
+          <span class="md-nav__icon md-icon"></span>
+</label>
+<a class="md-nav__link md-nav__link--active" href="10ksfeedback.html">
+        10-Ks Feedback
+      </a>
+<nav aria-label="Table of contents" class="md-nav md-nav--secondary">
+<label class="md-nav__title" for="__toc">
+<span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+<ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#prompt-inventory-and-human-adjustment">
+    Prompt Inventory and Human Adjustment
+  </a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="10kssolution.html">
+        10-Ks Solution
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="10ksimpact.html">
+        10-Ks Impact
+      </a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle" id="__nav_4" type="checkbox"/>
+<label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+          Anote Fine Tuning
+          <span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_4_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_4">
+<span class="md-nav__icon md-icon"></span>
+          Anote Fine Tuning
+        </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-prompting/overview.html">
+        Overview
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-prompting/example1.html">
+        Baseline Models
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-prompting/example2.html">
+        Supervised
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-prompting/example3.html">
+        Supervised Methods
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-prompting/example4.html">
+        Unsupervised
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-prompting/example5.html">
+        RLHF
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-prompting/example6.html">
+        Traditional RAG
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-prompting/example7.html">
+        Enhanced RAG
+      </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../api-prompting/example8.html">
+        Evaluation
+      </a>
+</li>
+</ul>
+</nav>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</div>
+<div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+<div class="md-sidebar__scrollwrap">
+<div class="md-sidebar__inner">
+<nav aria-label="Table of contents" class="md-nav md-nav--secondary">
+<label class="md-nav__title" for="__toc">
+<span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+<ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#prompt-inventory-and-human-adjustment">
+    Prompt Inventory and Human Adjustment
+  </a>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</div>
+<div class="md-content" data-md-component="content">
+<article class="md-content__inner md-typeset">
+<h1>10-Ks Feedback</h1>
+<!-- For this example, we'll refer to John, a financial analyst tasked with analyzing 10-K documents for a major corporation. John's goal was to extract key insights from these documents to assess the company's financial health and make informed investment recommendation. To tackle this project, John needed to develop a system that could automatically process and extract relevant information from a large number (millions) of 10-K documents. Let's say John's first financial document is Apple's 10-K.
+
+<center>
+<img src="../assets/private_gpt_interface_2.png" alt="Q&A Example" width="700px" />
+</center>
+
+John can initiate a chat session with the document, using his own set of questions or a predefined template. In this example, he will utilize a set of essential questions typically asked when analyzing financial documents. -->
+<h2 id="prompt-inventory-and-human-adjustment">Prompt Inventory and Human Adjustment</h2>
+<p>When dealing with domain-specific documents, such as financial statements, the language model may sometimes provide incorrect or inaccurate answers for specific questions. For instance, when you ask about the major drivers of revenue and profit growth or decline, you may find the model's response to be too general, lacking specific information from the company's financial statements.</p>
+<p><center>
+<img src="../assets/10K_example_1.png" width="700px">
+</img></center></p>
+<p>To address this issue and improve the accuracy of responses, we offer user-specific prompt inventories. This means that you can create and store all the relevant questions related to financial documents in your own inventories. For example, you can modify the query to be more specific, such as asking about the major drivers of revenue and profit growth or decline for a particular company. This approach helps to enhance the precision and relevance of the model's responses, enabling you to obtain more specific and insightful information from the financial statements.</p>
+<p>Let's revise this question and add more content specific prompt: What are the major drivers of revenue and profit growth or decline of <strong>this company</strong>?</p>
+<p><center>
+<img alt="Q&amp;A Example" src="../assets/user_prompting_inventory.jpg" width="700px">
+</img></center></p>
+<p>As we can see, the revised response provides more direct and relevant information tailored to the specific company.</p>
+<table>
+<thead>
+<tr>
+<th>Query</th>
+<th>Response</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>What are the major drivers of revenue and profit growth or decline of <strong>this company</strong>?</td>
+<td>Major drivers of revenue and profit growth or decline of this company include seasonal holiday demand, new product and service introductions, demand for a single product, competitive global markets, economic conditions, and product pricing pressures.</td>
+</tr>
+</tbody>
+</table>
+<p>Once you have a prompt that returns the best answer, you can update, delete, or add new prompts to your prompt inventories. This functionality allows you to conveniently manage and organize your prompt inventories, making it easy to access relevant materials and quickly retrieve queries that yield the best results. These capabilities save time and increase productivity in analyzing domain-specific documents.</p>
+<p>As you refine your prompt inventories, you can now apply your best prompts to completely new documents. In the following examples, you apply your improved prompt inventories to analyze Apple's financial document using enhanced prompts:</p>
+<table>
+<thead>
+<tr>
+<th>Query</th>
+<th>Response</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>How does the company generate its revenue? What are its main products or services?</td>
+<td>The Company generates its revenue by selling its own products and services, as well as reselling third-party products, directly to consumers, small and mid-sized businesses, and education, enterprise and government customers through its retail and online stores and its direct sales force. Its main products and services include electronic devices and media content.</td>
+</tr>
+<tr>
+<td>Does the company operate in multiple geographic regions or industries?</td>
+<td>Yes, the company operates in multiple geographic regions, including the Americas, Europe, Greater China, Japan, and Rest of Asia Pacific.</td>
+</tr>
+<tr>
+<td>Are there any significant changes or developments in the company's business model, strategy, or competitive landscape?</td>
+<td>Yes, the company is subject to rapid change and the development of new business models and the entry of new and well-funded competitors.</td>
+</tr>
+<tr>
+<td>What were the company's revenues and net income for the past few years, and how have they changed over time?</td>
+<td>The company's revenues for 2020, 2021, and 2022 were $48.7 billion, $67.1 billion, and $48.7 billion respectively. The company's net income for 2020, 2021, and 2022 were $91.2 million, $108.9 million, and $119.4 million respectively. The company's revenues and net income have increased over time.</td>
+</tr>
+<tr>
+<td>What are the major drivers of revenue and profit growth or decline of this company?</td>
+<td>Major drivers of revenue and profit growth or decline of this company include seasonal holiday demand, new product and service introductions, demand for a single product, competitive global markets, economic conditions, and product pricing pressures.</td>
+</tr>
+<tr>
+<td>Are there any significant trends or patterns in the company's financial statements?</td>
+<td>It is not possible to answer this question without reviewing the financial statements.</td>
+</tr>
+<tr>
+<td>Who are the company's key executives and board members? What is their experience and track record?</td>
+<td>The company's key executives and board members are Jeffrey P. Bezos (Executive Chair), Andrew R. Jassy (President and Chief Executive Officer), Douglas J. Herrington (CEO Worldwide Amazon Stores), Keith B. Alexander (CEO, President, and Chair of IronNet, Inc.), Edith W. Cooper (Former Executive Vice President, Goldman Sachs Group, Inc.), Jamie S. Gorelick (Partner, Wilmer Cutler Pickering Hale and Dorr LLP), Daniel P. Huttenlocher (Dean, MIT Schwarzman College of Computing), Judith A. McGrath (Former Chair and CEO, MTV Networks), Indra K. Nooyi (Former Chief Executive Officer, PepsiCo, Inc.), Jonathan J. Rubinstein (Former co-CEO, Bridgewater Associates, LP), Patricia Q. Stonesifer (Former President and Chief Executive Officer, Martha's Table), and Wendell P. Weeks (Chief Executive Officer, Corning Incorporated). Their experience and track record can be found in the company's SEC filings.</td>
+</tr>
+<tr>
+<td>Are there any related-party transactions or potential conflicts of interest?</td>
+<td>No, there are no related-party transactions or potential conflicts of interest mentioned in the context.</td>
+</tr>
+<tr>
+<td>Does the company have effective internal controls and risk management procedures in place?</td>
+<td>It is not possible to answer this question definitively based on the given context. The context indicates that the company has internal controls and risk management procedures in place, but it is not clear if they are effective.</td>
+</tr>
+<tr>
+<td>What is the company's overall financial health, including its liquidity, solvency, and capital structure?</td>
+<td>It is difficult to say without more information. The context provided suggests that the company is exposed to a variety of risks that could affect its financial health, including changes in liquidity, credit deterioration, market and economic conditions, political risk, sovereign risk, and interest rate fluctuations. Additionally, the company has been adversely affected by the COVID-19 pandemic, which could have further impacts on its business, results of operations, financial condition, and stock price.</td>
+</tr>
+<tr>
+<td>How much debt does the company have, and what are the terms and conditions?</td>
+<td>The company has outstanding fixed-rate notes with varying maturities for an aggregate principal amount of 67,651 as of September 24, 2022, and 72,968 as of September 25, 2021. The notes are senior unsecured obligations and interest is payable in arrears.</td>
+</tr>
+<tr>
+<td>Are there any contingent liabilities or off-balance-sheet arrangements that could impact the company's financial position?</td>
+<td>Yes, there are commitments and contingencies mentioned in the context that could impact the company's financial position.</td>
+</tr>
+</tbody>
+</table>
+<p>Once you're finished, you can easily download the resulting CSV file. Here's an excerpt of the actual result from the Apple Financial Statement chat. Please note that the displayed content has been truncated for brevity, but it provides a glimpse of the valuable information available to you.</p>
+<table>
+<thead>
+<tr>
+<th>Query</th>
+<th>Response</th>
+<th>Source Document</th>
+<th>Source Content</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>How does the company generate its revenue? What are its main products or services?</td>
+<td>The Company generates its revenue by selling its own products and services, as well as reselling third-party products, directly to consumers, small and mid-sized businesses, and education, ...</td>
+<td>source_documents\aapl-10-k.pdf</td>
+<td>"The Company distributes its products and certain of its services through cellular network carriers, wholesalers, retailers and resellers, many of which distribute products and services from competitors ... "</td>
+</tr>
+<tr>
+<td>Does the company operate in multiple geographic regions or industries?</td>
+<td>Yes, the company operates in multiple geographic regions, including the Americas, Europe, Greater China, Japan, and Rest of Asia Pacific.</td>
+<td>source_documents\aapl-10-k.pdf</td>
+<td>"The Company manages its business primarily on a geographic basis. The Company's reportable segments consist of the Americas, Europe, Greater China, Japan and Rest of Asia Pacific. Americas includes both North and South America. Europe includes European countries ..."</td>
+</tr>
+</tbody>
+</table>
+</article>
+</div>
+<script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var tab,labels=set.querySelector(".tabbed-labels");for(tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+</div>
+</main>
+<footer class="md-footer">
+<div class="md-footer-meta md-typeset">
+<div class="md-footer-meta__inner md-grid">
+<div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" rel="noopener" target="_blank">
+      Material for MkDocs
+    </a>
+</div>
+<div class="md-social">
+<a class="md-social__link" href="https://www.linkedin.com/company/anote-ai/" rel="noopener" target="_blank" title="www.linkedin.com">
+<svg viewbox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 6.4.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3zM135.4 416H69V202.2h66.5V416zm-33.2-243c-21.3 0-38.5-17.3-38.5-38.5S80.9 96 102.2 96c21.2 0 38.5 17.3 38.5 38.5 0 21.3-17.2 38.5-38.5 38.5zm282.1 243h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9V416z"></path></svg>
+</a>
+<a class="md-social__link" href="https://anote-ai.medium.com/" rel="noopener" target="_blank" title="anote-ai.medium.com">
+<svg viewbox="0 0 640 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 6.4.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M180.5 74.262C80.813 74.262 0 155.633 0 256s80.819 181.738 180.5 181.738S361 356.373 361 256 280.191 74.262 180.5 74.262Zm288.25 10.646c-49.845 0-90.245 76.619-90.245 171.095s40.406 171.1 90.251 171.1 90.251-76.619 90.251-171.1H559c0-94.503-40.4-171.095-90.248-171.095Zm139.506 17.821c-17.526 0-31.735 68.628-31.735 153.274s14.2 153.274 31.735 153.274S640 340.631 640 256c0-84.649-14.215-153.271-31.742-153.271Z"></path></svg>
+</a>
+</div>
+</div>
+</div>
+</footer>
+</div>
+<div class="md-dialog" data-md-component="dialog">
+<div class="md-dialog__inner md-typeset"></div>
+</div>
+<script id="__config" type="application/json">{"base": "..", "features": ["search.suggest", "search.highlight", "content.tabs.link", "content.code.copy", "content.code.annotation"], "search": "../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+<script src="../assets/javascripts/bundle.b4d07000.min.js"></script>
+<script>document$.subscribe(() => {
+            window.update_swagger_ui_iframe_height = function (id) {
+                var iFrameID = document.getElementById(id);
+                if (iFrameID) {
+                    full_height = (iFrameID.contentWindow.document.body.scrollHeight + 80) + "px";
+                    iFrameID.height = full_height;
+                    iFrameID.style.height = full_height;
+                }
+            }
+        
+            let iframe_id_list = []
+            var iframes = document.getElementsByClassName("swagger-ui-iframe");
+            for (var i = 0; i < iframes.length; i++) { 
+                iframe_id_list.push(iframes[i].getAttribute("id"))
+            }
+        
+            let ticking = true;
+            
+            document.addEventListener('scroll', function(e) {
+                if (!ticking) {
+                    window.requestAnimationFrame(()=> {
+                        let half_vh = window.innerHeight/2;
+                        for(var i = 0; i < iframe_id_list.length; i++) {
+                            let element = document.getElementById(iframe_id_list[i])
+                            if(element==null){
+                                return
+                            }
+                            let diff = element.getBoundingClientRect().top
+                            if(element.contentWindow.update_top_val){
+                                element.contentWindow.update_top_val(half_vh - diff)
+                            }
+                        }
+                        ticking = false;
+                    });
+                    ticking = true;
+                }
+            });
+        
+            const dark_scheme_name = "slate"
+            
+            window.scheme = document.body.getAttribute("data-md-color-scheme")
+            const options = {
+                attributeFilter: ['data-md-color-scheme'],
+            };
+            function color_scheme_callback(mutations) {
+                for (let mutation of mutations) {
+                    if (mutation.attributeName === "data-md-color-scheme") {
+                        scheme = document.body.getAttribute("data-md-color-scheme")
+                        var iframe_list = document.getElementsByClassName("swagger-ui-iframe")
+                        for(var i = 0; i < iframe_list.length; i++) {
+                            var ele = iframe_list.item(i);
+                            if (ele) {
+                                if (scheme === dark_scheme_name) {
+                                    ele.contentWindow.enable_dark_mode();
+                                } else {
+                                    ele.contentWindow.disable_dark_mode();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            observer = new MutationObserver(color_scheme_callback);
+            observer.observe(document.body, options);
+            })</script></body>
+</html>
