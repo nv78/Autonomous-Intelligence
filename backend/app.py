@@ -74,7 +74,7 @@ from api_endpoints.financeGPT.chatbot_endpoints import add_prompt_to_workflow_db
     retrieve_chats_from_db, delete_chat_from_db, retrieve_message_from_db, retrieve_docs_from_db, add_sources_to_db, delete_doc_from_db, reset_chat_db, \
     change_chat_mode_db, update_chat_name_db, find_most_recent_chat_from_db, process_prompt_answer, \
     ensure_SDK_user_exists, get_chat_info, ensure_demo_user_exists, get_message_info, get_text_from_url, \
-    add_organization_to_db, get_organization_from_db
+    add_organization_to_db, get_organization_from_db, create_agent
 
 from datetime import datetime
 
@@ -798,6 +798,21 @@ def delete_doc():
     delete_doc_from_db(doc_id, user_email)
 
     return "success"
+
+
+
+@app.route('/create-agent', methods=['POST'])
+def createAgent():
+    agent_id = request.json.get('agent_id')
+    try:
+        user_email = extractUserEmailFromRequest(request)
+    except InvalidTokenError:
+    # If the JWT is invalid, return an error
+        return jsonify({"error": "Invalid JWT"}), 401
+
+    agent = create_agent(agent_id, user_email)
+
+    return jsonify(agent=agent)
 
 @app.route('/change-chat-mode', methods=['POST'])
 def change_chat_mode_and_reset_chat():
