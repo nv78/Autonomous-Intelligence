@@ -688,3 +688,38 @@ def create_agent(agent_id):
         "created": time,
         "last_used": None
     }
+
+def list_agents():
+    conn, cursor = get_db_connection()
+
+    # Fetch all agents from the agents table
+    cursor.execute('SELECT id, created, agent_name, model_name FROM agents')
+    agentsDb = cursor.fetchall()
+
+    # Format the agents' data
+    agents = []
+    for agentDb in agentsDb:
+        agents.append({
+            "id": agentDb["id"],
+            "created": agentDb["created"],
+            "agent_name": agentDb["agent_name"],
+            "model_name": agentDb["model_name"]
+        })
+
+    conn.close()
+
+    return agents
+
+def delete_agent(agent_id):
+    conn, cursor = get_db_connection()
+
+    # Delete the agent from the agents table based on the provided agent ID
+    cursor.execute('DELETE FROM agents WHERE id = %s', (agent_id,))
+
+    conn.commit()
+    conn.close()
+    
+    return {
+        "agent_id": agent_id,
+        "status": "deleted"
+    }
