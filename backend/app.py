@@ -18,6 +18,7 @@ import json
 import jwt
 import requests
 from database.db_auth import api_key_access_invalid
+from database.db import get_db_connection
 from flask_jwt_extended import jwt_required, create_access_token, create_refresh_token, decode_token, JWTManager
 from flask_mail import Mail
 from jwt import InvalidTokenError
