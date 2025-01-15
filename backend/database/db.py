@@ -672,3 +672,19 @@ def get_api_keys(email):
     return {
         "keys": keys
     }
+
+
+def create_agent(agent_id):
+    conn, cursor = get_db_connection()
+    # Insert the generated API key into the apiKeys table
+    cursor.execute('INSERT INTO apiKeys (user_id, api_key, created) VALUES (%s, %s, %s)', (userIdStr, api_key, time))
+    cursor.execute('SELECT LAST_INSERT_ID()')
+    keyId = cursor.fetchone()["LAST_INSERT_ID()"]
+    conn.commit()
+    conn.close()
+    return {
+        "id": keyId,
+        "key": api_key,
+        "created": time,
+        "last_used": None
+    }
