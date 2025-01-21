@@ -672,3 +672,43 @@ def get_api_keys(email):
     return {
         "keys": keys
     }
+
+
+def create_agent(agent_id):
+    conn, cursor = get_db_connection()
+    # Insert the generated API key into the apiKeys table
+    cursor.execute('INSERT INTO apiKeys (user_id, api_key, created) VALUES (%s, %s, %s)', (userIdStr, api_key, time))
+    cursor.execute('SELECT LAST_INSERT_ID()')
+    keyId = cursor.fetchone()["LAST_INSERT_ID()"]
+    conn.commit()
+    conn.close()
+    return {
+        "id": keyId,
+        "key": api_key,
+        "created": time,
+        "last_used": None
+    }
+
+def delete_agent(agent_id):
+
+    #Deletes an agent (API key) from the apiKeys table
+
+    conn, cursor = get_db_connection()
+
+    # Check if the agent exists
+    cursor.execute("SELECT * FROM apiKeys WHERE id = %s", [agent_id])
+    agent = cursor.fetchone()
+    if not agent:
+        conn.close()
+        raise Exception(f"Agent with id {agent_id} does not exist")
+
+    # Delete the agent (API key) from the database
+    cursor.execute("DELETE FROM apiKeys WHERE id = %s", [agent_id])
+
+    # Commit the transaction and close the connection
+    conn.commit()
+    conn.close()
+
+    return {
+        "message": f"Agent with id {agent_id} has been successfully deleted."
+    }
