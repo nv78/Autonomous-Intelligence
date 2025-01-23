@@ -688,27 +688,3 @@ def create_agent(agent_id):
         "created": time,
         "last_used": None
     }
-
-def delete_agent(agent_id):
-
-    #Deletes an agent (API key) from the apiKeys table
-
-    conn, cursor = get_db_connection()
-
-    # Check if the agent exists
-    cursor.execute("SELECT * FROM apiKeys WHERE id = %s", [agent_id])
-    agent = cursor.fetchone()
-    if not agent:
-        conn.close()
-        raise Exception(f"Agent with id {agent_id} does not exist")
-
-    # Delete the agent (API key) from the database
-    cursor.execute("DELETE FROM apiKeys WHERE id = %s", [agent_id])
-
-    # Commit the transaction and close the connection
-    conn.commit()
-    conn.close()
-
-    return {
-        "message": f"Agent with id {agent_id} has been successfully deleted."
-    }

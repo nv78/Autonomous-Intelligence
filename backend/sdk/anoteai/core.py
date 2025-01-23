@@ -80,6 +80,12 @@ class PrivateChatbot:
                 return {"error": "Model type is not valid. Please enter a valid model type"}
             return upload_private(task_type, model_type, ticker, file_paths)
 
+    def create_agent(self, agent_id):
+        """
+        daslkdjkaflkjakljf
+        """
+        return
+
     def train(self, model_name, fine_tuning_type, x_train_csv, y_train_csv, document_files, model_type = ModelType.FTGPT, is_private=False):
         """
         Train or Fine Tune a model via supervised or unsupervised fine tuning

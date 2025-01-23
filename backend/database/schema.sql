@@ -167,6 +167,84 @@ CREATE TABLE apiKeys (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
+CREATE TABLE agents (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    agent_name VARCHAR(255) NOT NULL,
+    model_name VARCHAR(255),
+    system_prompt TEXT,
+    verbose BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+CREATE TABLE tasks (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    task_name VARCHAR(255) NOT NULL,
+    instructions TEXT NOT NULL,
+    files_uploaded TEXT,
+    examples TEXT,
+    expected_output TEXT,
+    agent_id INTEGER NOT NULL,
+    tools TEXT,
+    FOREIGN KEY (agent_id) REFERENCES agents(id)
+);
+
+CREATE TABLE tools (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    tool_name VARCHAR(255) NOT NULL,
+    config TEXT
+);
+
+CREATE TABLE environment (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    feedback_loop TEXT,
+    reward_metrics TEXT,
+    fine_tuning_methods TEXT,
+    evaluation_criteria TEXT,
+    unclear_points TEXT
+);
+
+CREATE TABLE agent_tasks (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    agent_id INTEGER NOT NULL,
+    task_id INTEGER NOT NULL,
+    FOREIGN KEY (agent_id) REFERENCES agents(id),
+    FOREIGN KEY (task_id) REFERENCES tasks(id)
+);
+
+CREATE TABLE task_tools (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    task_id INTEGER NOT NULL,
+    tool_id INTEGER NOT NULL,
+    FOREIGN KEY (task_id) REFERENCES tasks(id),
+    FOREIGN KEY (tool_id) REFERENCES tools(id)
+);
+
+CREATE TABLE crews (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    crew_name VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE crew_agents (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    crew_id INTEGER NOT NULL,
+    agent_id INTEGER NOT NULL,
+    FOREIGN KEY (crew_id) REFERENCES crews(id),
+    FOREIGN KEY (agent_id) REFERENCES agents(id)
+);
+
+CREATE TABLE workflows_tasks (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    workflow_id INTEGER NOT NULL,
+    task_id INTEGER NOT NULL,
+    FOREIGN KEY (workflow_id) REFERENCES workflows(id),
+    FOREIGN KEY (task_id) REFERENCES tasks(id)
+);
+
+
 
 CREATE UNIQUE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_chats_user_id ON chats(user_id);
