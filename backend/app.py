@@ -56,13 +56,13 @@ import anthropic
 from anthropic import Anthropic, HUMAN_PROMPT, AI_PROMPT
 from datasets import Dataset
 import re
-import ragas
-from ragas.metrics import (
-    faithfulness,
-    answer_relevancy,
-    context_recall,
-    context_precision,
-)
+# import ragas
+# from ragas.metrics import (
+#     faithfulness,
+#     answer_relevancy,
+#     context_recall,
+#     context_precision,
+# )
 from bs4 import BeautifulSoup
 
 from api_endpoints.financeGPT.chatbot_endpoints import add_prompt_to_workflow_db, add_workflow_to_db, \
@@ -1504,41 +1504,41 @@ def public_ingest_pdf():
 
     return jsonify(message_id=message_id, answer=answer, sources=sources_swapped) #can modify the sources here if we don't want to return the sources
 
-@app.route('/public/evaluate', methods = ['POST'])
-@valid_api_key_required
-def evaluate():
-    message_id = request.json['message_id']
-    user_email = USER_EMAIL_API
+# @app.route('/public/evaluate', methods = ['POST'])
+# @valid_api_key_required
+# def evaluate():
+#     message_id = request.json['message_id']
+#     user_email = USER_EMAIL_API
 
-    question_json, answer_json = get_message_info(message_id, user_email)
+#     question_json, answer_json = get_message_info(message_id, user_email)
 
-    question = question_json['message_text']
-    answer = answer_json['message_text']
-    context = answer_json['relevant_chunks']
+#     question = question_json['message_text']
+#     answer = answer_json['message_text']
+#     context = answer_json['relevant_chunks']
 
-    #get it in the corret data format to put in ragas
-    if not isinstance(context, list):
-        context = [context]
+#     #get it in the corret data format to put in ragas
+#     if not isinstance(context, list):
+#         context = [context]
 
-    contexts = [context]
+#     contexts = [context]
 
-    data = {
-        "question": [question],
-        "answer": [answer],
-        "contexts": contexts
-    }
+#     data = {
+#         "question": [question],
+#         "answer": [answer],
+#         "contexts": contexts
+#     }
 
-    dataset = Dataset.from_dict(data)
+#     dataset = Dataset.from_dict(data)
 
-    result = ragas.evaluate(
-        dataset = dataset,
-        metrics=[
-            faithfulness,
-            answer_relevancy,
-        ],
-    )
+#     result = ragas.evaluate(
+#         dataset = dataset,
+#         metrics=[
+#             faithfulness,
+#             answer_relevancy,
+#         ],
+#     )
 
-    return result
+#     return result
 
 
 if __name__ == '__main__':

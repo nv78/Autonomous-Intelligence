@@ -14,6 +14,7 @@ connection = mysql.connector.connect(
     database=dbName,
 )
 
+
 # Create a cursor
 cur = connection.cursor()
 

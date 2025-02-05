@@ -1,5 +1,5 @@
 import os
-import mysql.connector
+# import mysql.connector
 from flask import jsonify
 from datetime import datetime, timedelta
 from constants.global_constants import kSessionTokenExpirationTime, kPasswordResetExpirationTime, planToCredits
@@ -9,33 +9,35 @@ from constants.global_constants import chatgptLimit
 from constants.global_constants import dbName, dbHost, dbUser, dbPassword
 import socket
 import secrets
+import pymysql
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def get_db_connection():
     if ('.local' in socket.gethostname() or '.lan' in socket.gethostname() or 'Shadow' in socket.gethostname()) or ('APP_ENV' in os.environ and os.environ['APP_ENV'] == 'local'):
-        if ('BL' in os.environ and os.environ['BL'] == 'bl'):
-            conn = mysql.connector.connect(
+        # if ('BL' in os.environ and os.environ['BL'] == 'bl'):
+            conn = pymysql.connect(
                 user='root',
-                password='1165205407',
+                password='',
                 host='localhost',
                 port=3306,
                 database=dbName
             )
-        else:
-            conn = mysql.connector.connect(
-                user='root',
-                unix_socket='/tmp/mysql.sock',
-                database=dbName,
-            )
+        # else:
+        #     conn = mysql.connector.connect(
+        #         user='root',
+        #         unix_socket='/tmp/mysql.sock',
+        #         database=dbName,
+        #     )
     else:
         conn = mysql.connector.connect(
             host=dbHost,
             user=dbUser,
             password=dbPassword,
             database=dbName,
+            port=3306
         )
-    return conn, conn.cursor(dictionary=True)
+    return conn, conn.cursor(pymysql.cursors.DictCursor)
 
 def create_7_day_free_trial(user_id):
     conn, cursor = get_db_connection()

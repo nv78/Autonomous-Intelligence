@@ -2,7 +2,7 @@ import time
 from anoteai import PrivateChatbot
 
 if __name__ == "__main__":
-    api_key = '085532bd27b51787f0ab39e786811046'
+    api_key = '3a414ee04e3efc1bf4cb3b1fc6e5b20b'
     privategpt = PrivateChatbot(api_key)
 
 
