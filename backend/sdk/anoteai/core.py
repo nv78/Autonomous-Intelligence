@@ -3,8 +3,23 @@ import json
 import os
 import re
 import csv
-from handlers.public_handlers import *
-from handlers.private_handlers import *
+import sys
+# from handlers.public_handlers import *
+# from handlers.private_handlers import *
+#sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../api_endpoints/agents/")))
+from datetime import datetime
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
+from google.auth.transport.requests import Request
+
+#from api_endpoints.agents.handler import CalendarAgent, WeatherAgent
+from api_endpoints.agents.handler import CalendarAgent, WeatherAgent
+import api_endpoints.agents.handler as handler_ai_agents
+
+#from handler import CalendarAgent, WeatherAgent
+from google.oauth2.credentials import Credentials
+from flask import session, jsonify
+
+
 
 class ModelType(IntEnum):
     FTGPT = 0
@@ -239,3 +254,65 @@ class PrivateChatbot:
             return response.json()
         else:
             return evaluate_private(message_id)
+        
+# def process_meeting_notes(text, credentials_dict):
+#     """
+#     Extracts meeting details, checks weather, and schedules events.
+#     """
+#     meetings = handler_ai_agents.extract_meeting_details(text)
+
+#     if not meetings:
+#         return {"message": "No valid meetings found in the document."}
+
+#     if not credentials_dict:
+#         return {"error": "User not authenticated. Please log in."}
+
+#     creds = Credentials.from_authorized_user_info(credentials_dict)
+
+#     # ✅ Refresh token if expired
+#     if creds.expired and creds.refresh_token:
+#         try:
+#             creds.refresh(Request())
+#             session["google_credentials"] = credentials_to_dict(creds)  # ✅ Store refreshed credentials
+#             session.modified = True
+#             print("🔄 Credentials refreshed and saved!")
+#         except Exception as e:
+#             return {"error": f"Failed to refresh credentials: {str(e)}"}
+
+#     calendar_agent = CalendarAgent(creds)
+#     weather_agent = WeatherAgent()
+
+#     scheduled_meetings = []
+#     for meeting in meetings:
+#         meeting_date = datetime.fromisoformat(meeting["start_time"]).strftime("%Y-%m-%d")
+#         location = "New York"  # Hardcoded location
+
+#         # ✅ Check weather before scheduling
+#         weather_info = weather_agent.fetch_weather(meeting_date)
+
+#         if "rain" in weather_info["condition"].lower() or "storm" in weather_info["condition"].lower():
+#             print(f"⚠️ Bad weather detected for {meeting_date}: {weather_info['condition']}")
+#             suggested_location = "Indoor Conference Room"
+#             meeting["title"] += f" (Moved to {suggested_location})"
+
+#         # ✅ Schedule meeting
+#         result = calendar_agent.schedule_event(
+#             meeting["title"],
+#             meeting["start_time"],
+#             1,  
+#             "UTC"
+#         )
+#         scheduled_meetings.append({"meeting": meeting, "weather": weather_info, "calendar_result": result})
+
+#     return {"message": f"{len(scheduled_meetings)} meetings scheduled.", "meetings": scheduled_meetings}
+
+# def credentials_to_dict(credentials):
+#     """Converts credentials object to a dictionary."""
+#     return {
+#         "token": credentials.token,
+#         "refresh_token": credentials.refresh_token,
+#         "token_uri": credentials.token_uri,
+#         "client_id": credentials.client_id,
+#         "client_secret": credentials.client_secret,
+#         "scopes": credentials.scopes,
+#     }

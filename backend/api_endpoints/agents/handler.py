@@ -13,6 +13,7 @@ import requests
 import os
 from dotenv import load_dotenv
 import re
+from google.oauth2.credentials import Credentials
 
 
 load_dotenv()
@@ -84,60 +85,69 @@ def extract_meeting_details(text):
 #             return {"message": f"Scheduled event: {task_description}", "eventDetails": event}
 #         except Exception as e:
 #             return {"error": f"Failed to schedule event: {str(e)}"}
+# class CalendarAgent:
+#     def __init__(self):
+#         """Initialize the Google Calendar API Client."""
+#         self.service = None
+#         self.load_credentials()
+
+#     # def load_credentials(self):
+#     #     """Loads credentials from session (for authenticated users)."""
+#     #     credentials_dict = session.get("google_credentials")
+#     #     if credentials_dict:
+#     #         creds = Credentials.from_authorized_user_info(credentials_dict)
+#     #         self.service = build("calendar", "v3", credentials=creds)
+#     def load_credentials(self):
+    
+#         credentials_dict = session.get("google_credentials")
+        
+#         # Debugging: Check if credentials exist
+#         print("🔍 Stored session credentials:", credentials_dict)
+        
+#         if credentials_dict:
+#             creds = Credentials.from_authorized_user_info(credentials_dict)
+#             self.service = build("calendar", "v3", credentials=creds)
+
+#     def schedule_event(self, task_description, start_time, duration_hours, time_zone):
+#         """Schedules an event in the authenticated user's Google Calendar."""
+#         if not self.service:
+#             return {"error": "User is not authenticated. Please login first."}
+
+#         try:
+#             end_time = (datetime.fromisoformat(start_time) + timedelta(hours=duration_hours)).isoformat()
+#             event_details = {
+#                 "summary": task_description,
+#                 "start": {"dateTime": start_time, "timeZone": time_zone},
+#                 "end": {"dateTime": end_time, "timeZone": time_zone},
+#             }
+#             event = self.service.events().insert(calendarId="primary", body=event_details).execute()
+#             return {"message": f"Scheduled event: {task_description}", "eventDetails": event}
+#         except Exception as e:
+#             return {"error": f"Failed to schedule event: {str(e)}"}
+
 class CalendarAgent:
-    SCOPES = ['https://www.googleapis.com/auth/calendar']
+    def __init__(self, credentials=None):
+        """Initialize the Google Calendar API Client."""
+        if credentials:
+            self.credentials = credentials
+        else:
+            self.credentials = None  # Will be assigned later
+        
+        self.service = self.load_credentials()
 
-    def __init__(self, credentials_file='client_secret_new.json', token_file='token.json'):
-        """
-        Initializes the CalendarAgent and authenticates with Google Calendar API.
-        """
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        self.credentials_file = os.path.join(base_dir, credentials_file)
-        self.token_file = os.path.join(base_dir, token_file)
-        self.credentials = self.authenticate()
-        self.service = build("calendar", "v3", credentials=self.credentials)
-
-    def authenticate(self):
-        """
-        Handles authentication with Google Calendar API.
-        - If token.json exists and is valid, uses it.
-        - Otherwise, triggers the OAuth flow to generate a new token.json.
-        """
-        creds = None
-
-        # Load existing token if available
-        if os.path.exists(self.token_file):
-            with open(self.token_file, 'rb') as token:
-                creds = pickle.load(token)
-
-        # If there are no (valid) credentials, ask the user to authenticate
-        if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            else:
-                webbrowser.register('chrome', None, webbrowser.BackgroundBrowser('/usr/bin/google-chrome'))
-                flow = InstalledAppFlow.from_client_secrets_file(self.credentials_file, self.SCOPES)
-                creds = flow.run_local_server(port=0)
-
-            # Save the credentials for future use
-            with open(self.token_file, 'wb') as token:
-                pickle.dump(creds, token)
-
-        return creds
+    def load_credentials(self):
+        """Loads credentials (either from session or stored instance)."""
+        if self.credentials:
+            return build("calendar", "v3", credentials=self.credentials)
+        else:
+            print("⚠️ No credentials found!")
+            return None
 
     def schedule_event(self, task_description, start_time, duration_hours, time_zone):
-        """
-        Schedules an event in Google Calendar.
+        """Schedules an event in the authenticated user's Google Calendar."""
+        if not self.service:
+            return {"error": "User is not authenticated. Please login first."}
 
-        Args:
-        - task_description (str): Description of the event.
-        - start_time (str): ISO 8601 start time (e.g., "2025-03-12T09:00:00").
-        - duration_hours (int): Duration of the event in hours.
-        - time_zone (str): Time zone of the event.
-
-        Returns:
-        - dict: Confirmation message and event ID.
-        """
         try:
             end_time = (datetime.fromisoformat(start_time) + timedelta(hours=duration_hours)).isoformat()
             event_details = {
@@ -145,30 +155,130 @@ class CalendarAgent:
                 "start": {"dateTime": start_time, "timeZone": time_zone},
                 "end": {"dateTime": end_time, "timeZone": time_zone},
             }
-
-            # Call Google Calendar API
             event = self.service.events().insert(calendarId="primary", body=event_details).execute()
-            print(f"Google Calendar API called with: {event_details}")
-            return {"message": f"Scheduled event: {task_description}", "eventDetails": event_details}
+            return {"message": f"Scheduled event: {task_description}", "eventDetails": event}
         except Exception as e:
             return {"error": f"Failed to schedule event: {str(e)}"}
 
+# class CalendarAgent:
+#     SCOPES = ['https://www.googleapis.com/auth/calendar']
+
+#     def __init__(self, credentials_file='client_secret_new.json', token_file='token.json'):
+#         """
+#         Initializes the CalendarAgent and authenticates with Google Calendar API.
+#         """
+#         base_dir = os.path.dirname(os.path.abspath(__file__))
+#         self.credentials_file = os.path.join(base_dir, credentials_file)
+#         self.token_file = os.path.join(base_dir, token_file)
+#         self.credentials = self.authenticate()
+#         self.service = build("calendar", "v3", credentials=self.credentials)
+
+#     def authenticate(self):
+#         """
+#         Handles authentication with Google Calendar API.
+#         - If token.json exists and is valid, uses it.
+#         - Otherwise, triggers the OAuth flow to generate a new token.json.
+#         """
+#         creds = None
+
+#         # Load existing token if available
+#         if os.path.exists(self.token_file):
+#             with open(self.token_file, 'rb') as token:
+#                 creds = pickle.load(token)
+
+#         # If there are no (valid) credentials, ask the user to authenticate
+#         if not creds or not creds.valid:
+#             if creds and creds.expired and creds.refresh_token:
+#                 creds.refresh(Request())
+#             else:
+#                 webbrowser.register('chrome', None, webbrowser.BackgroundBrowser('/usr/bin/google-chrome'))
+#                 flow = InstalledAppFlow.from_client_secrets_file(self.credentials_file, self.SCOPES)
+#                 creds = flow.run_local_server(port=0)
+
+#             # Save the credentials for future use
+#             with open(self.token_file, 'wb') as token:
+#                 pickle.dump(creds, token)
+
+#         return creds
+
+#     def schedule_event(self, task_description, start_time, duration_hours, time_zone):
+#         """
+#         Schedules an event in Google Calendar.
+
+#         Args:
+#         - task_description (str): Description of the event.
+#         - start_time (str): ISO 8601 start time (e.g., "2025-03-12T09:00:00").
+#         - duration_hours (int): Duration of the event in hours.
+#         - time_zone (str): Time zone of the event.
+
+#         Returns:
+#         - dict: Confirmation message and event ID.
+#         """
+#         try:
+#             end_time = (datetime.fromisoformat(start_time) + timedelta(hours=duration_hours)).isoformat()
+#             event_details = {
+#                 "summary": task_description,
+#                 "start": {"dateTime": start_time, "timeZone": time_zone},
+#                 "end": {"dateTime": end_time, "timeZone": time_zone},
+#             }
+
+#             # Call Google Calendar API
+#             event = self.service.events().insert(calendarId="primary", body=event_details).execute()
+#             print(f"Google Calendar API called with: {event_details}")
+#             return {"message": f"Scheduled event: {task_description}", "eventDetails": event_details}
+#         except Exception as e:
+#             return {"error": f"Failed to schedule event: {str(e)}"}
+
+# class WeatherAgent:
+#     def __init__(self):
+#         # Get the API key from environment variables (recommended)
+#         self.api_key = os.getenv("WEATHER_API_KEY")  # Replace with actual key if needed
+#         self.base_url = "https://api.openweathermap.org/data/2.5/weather"
+
+#     def fetch_weather(self, location):
+#         """
+#         Fetches real-time weather information for a location using OpenWeatherMap API.
+#         """
+#         #print("lol", self.api_key)
+#         if not self.api_key:
+#             return {"error": "Weather API key is missing. Please set WEATHER_API_KEY."}
+
+        
+#         url = f"{self.base_url}?q={location}&appid={self.api_key}&units=metric"
+#         try:
+#             response = requests.get(url)
+#             data = response.json()
+
+#             if response.status_code != 200:
+#                 return {"error": data.get("message", "Failed to fetch weather data.")}
+
+#             weather_info = {
+#                 "location": data["name"],
+#                 "temperature": f"{data['main']['temp']}°C",
+#                 "condition": data["weather"][0]["description"].capitalize()
+#             }
+
+#             return weather_info
+
+#         except requests.RequestException as e:
+#             return {"error": f"Request failed: {str(e)}"}
+
 class WeatherAgent:
     def __init__(self):
-        # Get the API key from environment variables (recommended)
-        self.api_key = os.getenv("WEATHER_API_KEY")  # Replace with actual key if needed
-        self.base_url = "https://api.openweathermap.org/data/2.5/weather"
+        """Initialize the Weather Agent."""
+        self.api_key = os.getenv("WEATHER_API_KEY")
+        self.base_url = "https://api.openweathermap.org/data/2.5/forecast"  # ✅ Forecast API
+        self.default_location = "New York"  # ✅ Hardcoded location
 
-    def fetch_weather(self, location):
+    def fetch_weather(self, date):
         """
-        Fetches real-time weather information for a location using OpenWeatherMap API.
+        Fetches the weather forecast for the hardcoded location (New York) and date.
         """
-        #print("lol", self.api_key)
         if not self.api_key:
             return {"error": "Weather API key is missing. Please set WEATHER_API_KEY."}
 
-        
-        url = f"{self.base_url}?q={location}&appid={self.api_key}&units=metric"
+        url = f"{self.base_url}?q={self.default_location}&appid={self.api_key}&units=metric"
+
         try:
             response = requests.get(url)
             data = response.json()
@@ -176,18 +286,34 @@ class WeatherAgent:
             if response.status_code != 200:
                 return {"error": data.get("message", "Failed to fetch weather data.")}
 
-            weather_info = {
-                "location": data["name"],
-                "temperature": f"{data['main']['temp']}°C",
-                "condition": data["weather"][0]["description"].capitalize()
-            }
+            # Convert date to YYYY-MM-DD
+            target_date = datetime.strptime(date, "%Y-%m-%d").date()
 
-            return weather_info
+            # Find the closest weather forecast for that date
+            forecast_data = data.get("list", [])
+            closest_forecast = None
+            for forecast in forecast_data:
+                forecast_date = datetime.fromtimestamp(forecast["dt"]).date()
+                if forecast_date == target_date:
+                    closest_forecast = forecast
+                    break
+
+            if not closest_forecast:
+                return {"error": "No forecast data available for this date."}
+
+            # Extract weather details
+            weather_condition = closest_forecast["weather"][0]["description"].capitalize()
+            temperature = closest_forecast["main"]["temp"]
+
+            return {
+                "location": self.default_location,
+                "date": date,
+                "temperature": f"{temperature}°C",
+                "condition": weather_condition
+            }
 
         except requests.RequestException as e:
             return {"error": f"Request failed: {str(e)}"}
-
-
 
 
 class StockMarketAgent:

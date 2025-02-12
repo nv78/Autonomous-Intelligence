@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify, abort, redirect, send_file, session, url_for
+from flask_session import Session
 from flask_cors import CORS, cross_origin
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -60,6 +61,7 @@ import anthropic
 from anthropic import Anthropic, HUMAN_PROMPT, AI_PROMPT
 from datasets import Dataset
 import re
+#import sdk.anoteai.core as core
 # import ragas
 # from ragas.metrics import (
 #     faithfulness,
@@ -68,6 +70,8 @@ import re
 #     context_precision,
 # )
 from bs4 import BeautifulSoup
+from database.db import get_db_connection
+
 
 from api_endpoints.financeGPT.chatbot_endpoints import add_prompt_to_workflow_db, add_workflow_to_db, \
     add_chat_to_db, add_message_to_db, chunk_document, get_text_from_single_file, add_document_to_db, get_relevant_chunks,  \
@@ -83,6 +87,9 @@ from api_endpoints.financeGPT.chatbot_endpoints import add_prompt_to_workflow_db
 from datetime import datetime
 from flask import request, jsonify
 from api_endpoints.agents.handler import CalendarAgent
+import pickle
+
+
 
 load_dotenv(override=True)
 
@@ -102,31 +109,43 @@ config = {
   ],
 }
 CORS(app, resources={ r'/*': {'origins': config['ORIGINS']}}, supports_credentials=True)
-
-app.secret_key = '6cac159dd02c902f822635ee0a6c3078'
+app.config["SECRET_KEY"] = '6cac159dd02c902f822635ee0a6c3078'
+#app.secret_key = '6cac159dd02c902f822635ee0a6c3078'
 app.config['SESSION_TYPE'] = 'filesystem'
-app.config['SESSION_COOKIE_HTTPONLY'] = False
-app.config["JWT_SECRET_KEY"] = "6cac159dd02c902f822635ee0a6c3078"
-app.config["JWT_REFRESH_TOKEN_EXPIRES"] = kSessionTokenExpirationTime
-app.config["JWT_TOKEN_LOCATION"] = "headers"
-app.config.from_object(__name__)
+app.config["SESSION_PERMANENT"] = True  # ✅ Keep session active across requests
+app.config["SESSION_FILE_DIR"] = "./flask_session"  # ✅ Define storage directory
+app.config["SESSION_USE_SIGNER"] = True
+# app.config["SESSION_PERMANENT"] = False 
+# app.config["SESSION_FILE_DIR"] = "./flask_sessions"
 
-jwt_manager = JWTManager(app)
-app.jwt_manager = jwt_manager
+# app.config["SESSION_USE_SIGNER"] = True
 
-# Configure Flask-Mail
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'vidranatan@gmail.com'
-app.config['MAIL_PASSWORD'] = 'fhytlgpsjyzutlnm'
-app.config['MAIL_DEFAULT_SENDER'] = 'vidranatan@gmail.com'
-mail = Mail(app)
 
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+
+# app.config['SESSION_COOKIE_HTTPONLY'] = False
+# app.config["JWT_SECRET_KEY"] = "6cac159dd02c902f822635ee0a6c3078"
+# app.config["JWT_REFRESH_TOKEN_EXPIRES"] = kSessionTokenExpirationTime
+# app.config["JWT_TOKEN_LOCATION"] = "headers"
+# app.config.from_object(__name__)
+
+# jwt_manager = JWTManager(app)
+# app.jwt_manager = jwt_manager
+
+# # Configure Flask-Mail
+# app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+# app.config['MAIL_PORT'] = 587
+# app.config['MAIL_USE_TLS'] = True
+# app.config['MAIL_USERNAME'] = 'vidranatan@gmail.com'
+# app.config['MAIL_PASSWORD'] = 'fhytlgpsjyzutlnm'
+# app.config['MAIL_DEFAULT_SENDER'] = 'vidranatan@gmail.com'
+# mail = Mail(app)
+
+# stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
+Session(app)
+SESSION_FILE = "session.pkl"
 
 def valid_api_key_required(fn):
   @wraps(fn)
@@ -181,7 +200,7 @@ def health_check():
 # Auth
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"  #this is to set our environment to https because OAuth 2.0 only supports https environments
 
-GOOGLE_CLIENT_ID = "261908856206-fff63nag7j793tkbapd3hugthbcp8kfn.apps.googleusercontent.com"  #enter your client id you got from Google console
+#GOOGLE_CLIENT_ID = "261908856206-fff63nag7j793tkbapd3hugthbcp8kfn.apps.googleusercontent.com"  #enter your client id you got from Google console
 client_secrets_file = os.path.join(pathlib.Path(__file__).parent, "client_secret.json")  #set the path to where the .json file you got Google console is
 
 flow = Flow.from_client_secrets_file(  #Flow is OAuth 2.0 a class that stores all the information on how we want to authorize our users
@@ -493,24 +512,24 @@ def get_organization():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route('/<organization_name>')
-def chat_with_organization(organization_name):
-    organization = get_organization_from_db_by_name(organization_name)
-    if organization:
-        return jsonify({
-            'name': organization['name'],
-            'website_url': organization['website_url'],
-            'organization_type': organization['organization_type']
-        })
-    else:
-        return jsonify({'error': 'Organization not found'}), 404
+# @app.route('/<organization_name>')
+# def chat_with_organization(organization_name):
+#     organization = get_organization_from_db_by_name(organization_name)
+#     if organization:
+#         return jsonify({
+#             'name': organization['name'],
+#             'website_url': organization['website_url'],
+#             'organization_type': organization['organization_type']
+#         })
+#     else:
+#         return jsonify({'error': 'Organization not found'}), 404
 
-def get_organization_from_db_by_name(organization_name):
-    conn, cursor = get_db_connection()
-    cursor.execute('SELECT * FROM organizations WHERE name = %s', [organization_name])
-    organization = cursor.fetchone()
-    conn.close()
-    return organization
+# def get_organization_from_db_by_name(organization_name):
+#     conn, cursor = get_db_connection()
+#     cursor.execute('SELECT * FROM organizations WHERE name = %s', [organization_name])
+#     organization = cursor.fetchone()
+#     conn.close()
+#     return organization
 
 ## CHATBOT SECTION
 output_document_path = 'output_document'
@@ -1586,27 +1605,65 @@ class Agent:
         
     def __repr__(self):
         return f"Agent(name={self.name}, model={self.model}, system_prompt={self.system_prompt}, task={self.task}, tools={self.tools}, verbose={self.verbose})"
+def save_session():
+    """Saves session data persistently."""
+    with open(SESSION_FILE, "wb") as f:
+        pickle.dump(dict(session), f)  # Convert ImmutableDict to regular dict
 
-# @app.route("/google-login")
-# def google_login():
-#     """Starts Google OAuth flow."""
-#     flow = Flow.from_client_config(
-#         client_config={
-#             "web": {
-#                 "client_id": GOOGLE_CLIENT_ID,
-#                 "client_secret": GOOGLE_CLIENT_SECRET,
-#                 "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-#                 "token_uri": "https://oauth2.googleapis.com/token",
-#                 "redirect_uris": ["http://localhost:5000/googlecallback"],
-#             }
-#         },
-#         scopes=SCOPES,
-#     )
-#     flow.redirect_uri = url_for("google_callback", _external=True)
-#     auth_url, state = flow.authorization_url(prompt="consent")
+def load_session():
+    """Loads session data if available."""
+    try:
+        with open(SESSION_FILE, "rb") as f:
+            return pickle.load(f)
+    except (FileNotFoundError, EOFError):
+        return {}
+def delete_session():
+    """Deletes the saved session file and clears in-memory session."""
+    global session  # Ensure we modify the global session object
 
-#     session["state"] = state
-#     return redirect(auth_url)
+    # Clear the in-memory session
+    session.clear()
+
+    # Remove the saved session file if it exists
+    try:
+        os.remove(SESSION_FILE)
+        print("Session file deleted successfully!")
+    except FileNotFoundError:
+        print("No session file found to delete.")
+    except Exception as e:
+        print(f"Error deleting session file: {e}")
+
+
+@app.before_request
+def before_request():
+    """Load session before handling requests."""
+    session_data = load_session()
+    session.update(session_data) 
+@app.route("/google-login")
+def google_login():
+    """Starts Google OAuth flow."""
+    # session.pop("state", None)
+    # session.clear()
+    delete_session()
+    
+    flow = Flow.from_client_config(
+        client_config={
+            "web": {
+                "client_id": GOOGLE_CLIENT_ID,
+                "client_secret": GOOGLE_CLIENT_SECRET,
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "redirect_uris": ["http://localhost:5000/googlecallback"],
+            }
+        },
+        scopes=SCOPES,
+    )
+    flow.redirect_uri = url_for("google_callback", _external=True)
+    auth_url, state = flow.authorization_url(prompt="consent")
+
+    session["state"] = state
+    session.modified = True
+    return redirect(auth_url)
 
 # @app.route("/googlecallback")
 # def google_callback():
@@ -1638,27 +1695,147 @@ class Agent:
 #         return jsonify({"message": "Login successful!"})
 #     except Exception as e:
 #         return jsonify({"error": f"Authentication failed: {str(e)}"})
+# def save_session():
+#     with open("session.pkl", "wb") as f:
+#         pickle.dump(session, f)
 
-# def credentials_to_dict(credentials):
-#     """Converts credentials object to a dictionary."""
-#     return {
-#         "token": credentials.token,
-#         "refresh_token": credentials.refresh_token,
-#         "token_uri": credentials.token_uri,
-#         "client_id": credentials.client_id,
-#         "client_secret": credentials.client_secret,
-#         "scopes": credentials.scopes,
-#     }
-# def save_credentials(credentials):
-#     """Saves credentials to a file instead of session-only storage."""
-#     with open("google_credentials.json", "w") as f:
-#         json.dump(credentials, f)
+@app.route("/googlecallback")
+def google_callback():
+    """Handles OAuth callback and stores credentials in session."""
+    state = session.get("state")
+    received_state = request.args.get("state")
+    if not state:
+        return jsonify({"error": "Invalid state parameter"}), 400
+    print(f"✅ Stored State: {state}")
+    print(f"✅ Received State: {received_state}")
 
-# @app.route("/google-logout")
-# def logout():
-#     """Logs out user by clearing session credentials."""
-#     session.pop("google_credentials", None)
-#     return jsonify({"message": "Logged out successfully!"})
+    if state != received_state:
+        return jsonify({"error": "CSRF Warning! State mismatch detected."}), 400
+
+    flow = Flow.from_client_config(
+        client_config={
+            "web": {
+                "client_id": GOOGLE_CLIENT_ID,
+                "client_secret": GOOGLE_CLIENT_SECRET,
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "redirect_uris": ["http://localhost:5000/googlecallback"],
+            }
+        },
+        scopes=SCOPES,
+        state=state,
+    )
+    flow.redirect_uri = url_for("google_callback", _external=True)
+
+    try:
+        flow.fetch_token(authorization_response=request.url)
+        credentials = flow.credentials
+
+        # ✅ Save credentials correctly
+        credentials_dict = credentials_to_dict(credentials)
+        print(f"✅ Session BEFORE storing credentials: {session}")
+        session["google_credentials"] = credentials_dict  # 🔥 Ensure session stores credentials
+        session.modified = True
+        save_session()
+        print(f"🔍 Session AFTER storing credentials: {session}")
+        # 🔍 Debugging: Print stored credentials
+        print("✅ Google Login Success! Stored credentials:", session["google_credentials"])
+
+        return jsonify({"message": "Login successful!"})
+    except Exception as e:
+        return jsonify({"error": f"Authentication failed: {str(e)}"})
+@app.route("/check-session")
+def check_session():
+    #creds = session.get("google_credentials")
+    saved_session = load_session()
+    return jsonify({"session_contents": saved_session if saved_session else "Session is empty!"})
+@app.route('/ingest-meeting-notes', methods=['POST'])
+def ingest_meeting_notes():
+    """
+    Extracts meeting information from a file and schedules meetings using CalendarAgent.
+    """
+    if 'file' not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+
+    file = request.files['file']
+    filename = file.filename
+
+    # Read the file content
+    text = file.read().decode("utf-8")
+
+    # Extract meeting details
+    meetings = handler_ai_agents.extract_meeting_details(text)
+
+    if not meetings:
+        return jsonify({"message": "No valid meetings found in the document."})
+
+    # ✅ Load credentials from session and pass them to CalendarAgent
+    credentials_dict = session.get("google_credentials")
+    if not credentials_dict:
+        return jsonify({"error": "User not authenticated. Please log in."}), 401
+
+    creds = Credentials.from_authorized_user_info(credentials_dict)
+    calendar_agent = CalendarAgent(creds)  # ✅ Pass credentials to CalendarAgent
+
+    # Schedule all extracted meetings
+    scheduled_meetings = []
+    for meeting in meetings:
+        result = calendar_agent.schedule_event(
+            meeting['title'],
+            meeting['start_time'],
+            1,  # Default duration = 1 hour
+            "UTC"  # Default timezone
+        )
+        scheduled_meetings.append(result)
+
+    return jsonify({"message": f"{len(scheduled_meetings)} meetings scheduled.", "meetings": scheduled_meetings})
+# @app.route('/ingest-meeting-notes', methods=['POST'])
+# def ingest_meeting_notes():
+#     """
+#     Extracts meeting information from a file and schedules meetings using CalendarAgent + WeatherAgent.
+#     """
+#     if 'file' not in request.files:
+#         return jsonify({"error": "No file provided"}), 400
+
+#     file = request.files['file']
+#     filename = file.filename
+
+#     # Read the file content
+#     text = file.read().decode("utf-8")
+
+#     # ✅ Load credentials from session
+#     credentials_dict = session.get("google_credentials")
+#     if not credentials_dict:
+#         return jsonify({"error": "User not authenticated. Please log in."}), 401
+
+#     # ✅ Call the function from core.py
+#     result = core.process_meeting_notes(text, credentials_dict)
+
+#     return jsonify(result)
+def credentials_to_dict(credentials):
+    """Converts credentials object to a dictionary."""
+    return {
+        "token": credentials.token,
+        "refresh_token": credentials.refresh_token,
+        "token_uri": credentials.token_uri,
+        "client_id": credentials.client_id,
+        "client_secret": credentials.client_secret,
+        "scopes": credentials.scopes,
+    }
+def save_credentials(credentials):
+    """Saves credentials to a file instead of session-only storage."""
+    with open("google_credentials.json", "w") as f:
+        json.dump(credentials, f)
+
+@app.route("/google-logout")
+def logout():
+    """Logs out user by clearing session credentials."""
+    # session.pop("google_credentials", None)
+    # session.pop("state", None)  # ✅ Remove stored OAuth state
+    delete_session()
+    session.modified = True  # ✅ Ensure session updates are saved
+    return jsonify({"message": "Logged out successfully! State cleared."})
+    #return jsonify({"message": "Logged out successfully!"})
 # @app.route("/refresh-token")
 # def refresh_token():
 #     """Refreshes the Google access token if expired."""
@@ -1771,41 +1948,42 @@ def execute_task():
     db.store_agent_task(agent_name, task_description, result)
     return jsonify(result), 200
 
-@app.route('/ingest-meeting-notes', methods=['POST'])
-def ingest_meeting_notes():
-    """
-    Extracts meeting information from a file and schedules meetings using CalendarAgent.
-    """
-    if 'file' not in request.files:
-        return jsonify({"error": "No file provided"}), 400
+# @app.route('/ingest-meeting-notes', methods=['POST'])
+# def ingest_meeting_notes():
+#     """
+#     Extracts meeting information from a file and schedules meetings using CalendarAgent.
+#     """
+#     if 'file' not in request.files:
+#         return jsonify({"error": "No file provided"}), 400
 
-    file = request.files['file']
-    filename = file.filename
+#     file = request.files['file']
+#     filename = file.filename
 
-    # Read the file content
-    text = file.read().decode("utf-8")
+#     # Read the file content
+#     text = file.read().decode("utf-8")
 
-    # Extract meeting details
-    meetings = handler_ai_agents.extract_meeting_details(text)
+#     # Extract meeting details
+#     meetings = handler_ai_agents.extract_meeting_details(text)
 
-    if not meetings:
-        return jsonify({"message": "No valid meetings found in the document."})
+#     if not meetings:
+#         return jsonify({"message": "No valid meetings found in the document."})
 
-    # Initialize Calendar Agent
-    calendar_agent = CalendarAgent()
+#     # Initialize Calendar Agent
+#     calendar_agent = CalendarAgent()
 
-    # Schedule all extracted meetings
-    scheduled_meetings = []
-    for meeting in meetings:
-        result = calendar_agent.schedule_event(
-            meeting['title'],
-            meeting['start_time'],
-            1,  # Default duration = 1 hour
-            "UTC"  # Default timezone
-        )
-        scheduled_meetings.append(result)
+#     # Schedule all extracted meetings
+#     scheduled_meetings = []
+#     for meeting in meetings:
+#         result = calendar_agent.schedule_event(
+#             meeting['title'],
+#             meeting['start_time'],
+#             1,  # Default duration = 1 hour
+#             "UTC"  # Default timezone
+#         )
+#         scheduled_meetings.append(result)
 
-    return jsonify({"message": f"{len(scheduled_meetings)} meetings scheduled.", "meetings": scheduled_meetings})
+#     return jsonify({"message": f"{len(scheduled_meetings)} meetings scheduled.", "meetings": scheduled_meetings})
+
 
 
 if __name__ == '__main__':

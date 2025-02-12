@@ -18,7 +18,9 @@ __pycache__
 */__pycache__/
 
 **/*.json
-
+flask_session/
+flask_sessions/
+session.pkl
 
 
 .env
