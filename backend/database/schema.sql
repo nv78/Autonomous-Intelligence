@@ -166,6 +166,23 @@ CREATE TABLE apiKeys (
     key_name VARCHAR(255),
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
+CREATE TABLE IF NOT EXISTS ai_agents (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) UNIQUE NOT NULL,
+    model VARCHAR(255) NOT NULL,
+    system_prompt TEXT NOT NULL,
+    task TEXT,
+    tools JSON DEFAULT NULL,  -- Use JSON instead of TEXT[]
+    verbose BOOLEAN DEFAULT FALSE
+);
+CREATE TABLE IF NOT EXISTS agent_tasks (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    agent_name VARCHAR(255) NOT NULL,
+    task_description TEXT NOT NULL,
+    result JSON NOT NULL,
+    executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 
 
 CREATE UNIQUE INDEX idx_users_email ON users(email);

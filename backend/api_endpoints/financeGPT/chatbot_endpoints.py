@@ -498,114 +498,286 @@ def knn(x, y):
 
     return results
 
+# def get_relevant_chunks(k, question, chat_id, user_email):
+#     conn, cursor = get_db_connection()
+
+#     query = """
+#     SELECT c.start_index, c.end_index, c.embedding_vector, c.document_id, c.page_number, d.document_name
+#     FROM chunks c
+#     JOIN documents d ON c.document_id = d.id
+#     JOIN chats ch ON d.chat_id = ch.id
+#     JOIN users u ON ch.user_id = u.id
+#     WHERE u.email = %s AND ch.id = %s
+#     """
+
+#     cursor.execute(query, (user_email, chat_id))
+#     rows = cursor.fetchall()
+
+#     embeddings = []
+#     for row in rows:
+#         embeddingVectorBlob = row["embedding_vector"]
+#         embeddingVector = np.frombuffer(embeddingVectorBlob)
+#         embeddings.append(embeddingVector)
+
+#     if (len(embeddings) == 0):
+#         res_list = []
+#         for i in range(k):
+#             res_list.append("No text found")
+#         return res_list
+
+#     embeddings = np.array(embeddings)
+
+#     embeddingVector = openai.embeddings.create(input=question, model="text-embedding-ada-002").data[0].embedding
+#     embeddingVector = np.array(embeddingVector)
+
+#     res = knn(embeddingVector, embeddings)
+#     num_results = min(k, len(res))
+
+#     #Get the k most relevant chunks
+#     source_chunks = []
+#     for i in range(num_results):
+#         source_id = res[i]['index']
+
+#         document_id = rows[source_id]['document_id']
+#         #page_number = rows[source_id]['page_number']
+#         document_name = rows[source_id]['document_name']
+
+
+#         cursor.execute('SELECT document_text FROM documents WHERE id = %s', [document_id])
+#         doc_text = cursor.fetchone()['document_text']
+
+#         source_chunk = doc_text[rows[source_id]['start_index']:rows[source_id]['end_index']]
+#         source_chunks.append((source_chunk, document_name))
+#         #source_chunks.append(source_chunk)
+
+#     return source_chunks
+
+# def get_relevant_chunks(k, question, chat_id, user_email):
+#     conn, cursor = get_db_connection()
+
+#     query = """
+#     SELECT c.start_index, c.end_index, c.embedding_vector, c.document_id, c.page_number, d.document_name
+#     FROM chunks c
+#     JOIN documents d ON c.document_id = d.id
+#     JOIN chats ch ON d.chat_id = ch.id
+#     JOIN users u ON ch.user_id = u.id
+#     WHERE u.email = %s AND ch.id = %s
+#     """
+
+#     cursor.execute(query, (user_email, chat_id))
+#     rows = cursor.fetchall()
+
+#     # Debugging print statement
+#     print(f"Retrieved {len(rows)} rows from chunks table for chat_id {chat_id}")
+
+#     embeddings = []
+#     for row in rows:
+#         embeddingVectorBlob = row["embedding_vector"]
+#         embeddingVector = np.frombuffer(embeddingVectorBlob)
+#         embeddings.append(embeddingVector)
+
+#     if len(embeddings) == 0:
+#         print("⚠️ No embeddings found in the database for this chat_id.")
+#         return ["No text found"] * k
+
+#     print("✅ Found embeddings, proceeding with KNN search.")
+
+#     embeddings = np.array(embeddings)
+
+#     embeddingVector = openai.embeddings.create(input=question, model="text-embedding-ada-002").data[0].embedding
+#     embeddingVector = np.array(embeddingVector)
+
+#     res = knn(embeddingVector, embeddings)
+#     num_results = min(k, len(res))
+
+#     source_chunks = []
+#     for i in range(num_results):
+#         source_id = res[i]['index']
+
+#         document_id = rows[source_id]['document_id']
+#         document_name = rows[source_id]['document_name']
+
+#         cursor.execute('SELECT document_text FROM documents WHERE id = %s', [document_id])
+#         doc_text = cursor.fetchone()['document_text']
+
+#         source_chunk = doc_text[rows[source_id]['start_index']:rows[source_id]['end_index']]
+#         source_chunks.append((source_chunk, document_name))
+
+#     print(f"✅ Returning {len(source_chunks)} relevant chunks.")
+#     return source_chunks
+
 def get_relevant_chunks(k, question, chat_id, user_email):
     conn, cursor = get_db_connection()
 
+    # 🔍 Step 1: Fetch all chunks for this chat_id
     query = """
-    SELECT c.start_index, c.end_index, c.embedding_vector, c.document_id, c.page_number, d.document_name
+    SELECT c.start_index, c.end_index, c.embedding_vector, c.document_id, c.page_number, d.document_name, d.document_text
     FROM chunks c
     JOIN documents d ON c.document_id = d.id
     JOIN chats ch ON d.chat_id = ch.id
     JOIN users u ON ch.user_id = u.id
     WHERE u.email = %s AND ch.id = %s
     """
-
     cursor.execute(query, (user_email, chat_id))
     rows = cursor.fetchall()
 
+    # 🚨 Step 2: If no chunks exist, process document and generate chunks
+    if len(rows) == 0:
+        print(f"⚠️ No chunks found for chat_id {chat_id}. Processing document...")
+
+        # Fetch the document from the documents table
+        cursor.execute("SELECT id, document_text FROM documents WHERE chat_id = %s", (chat_id,))
+        document = cursor.fetchone()
+
+        if not document:
+            print(f"🚨 No document found for chat_id {chat_id}.")
+            return ["No text found"] * k  # Return placeholder text
+
+        document_id, document_text = document["id"], document["document_text"]
+        process_and_store_chunks(document_text, document_id)  # 🔄 Process document into chunks
+
+        # 🔄 Re-run query to get newly created chunks
+        cursor.execute(query, (user_email, chat_id))
+        rows = cursor.fetchall()
+
+        if len(rows) == 0:
+            print("⚠️ Even after processing, no chunks found. Something went wrong.")
+            return ["No text found"] * k
+
+    print(f"✅ Retrieved {len(rows)} chunks from database for chat_id {chat_id}.")
+
+    # Extract embeddings
     embeddings = []
     for row in rows:
         embeddingVectorBlob = row["embedding_vector"]
         embeddingVector = np.frombuffer(embeddingVectorBlob)
         embeddings.append(embeddingVector)
 
-    if (len(embeddings) == 0):
-        res_list = []
-        for i in range(k):
-            res_list.append("No text found")
-        return res_list
+    # If still no embeddings, return a warning message
+    if len(embeddings) == 0:
+        print("⚠️ No embeddings found in the database for this chat_id.")
+        return ["No text found"] * k
 
+    # ✅ Perform KNN search to find the most relevant chunks
+    print("🔍 Running KNN search to find relevant text sections.")
     embeddings = np.array(embeddings)
-
     embeddingVector = openai.embeddings.create(input=question, model="text-embedding-ada-002").data[0].embedding
     embeddingVector = np.array(embeddingVector)
 
     res = knn(embeddingVector, embeddings)
     num_results = min(k, len(res))
 
-    #Get the k most relevant chunks
+    # Retrieve relevant text sections
     source_chunks = []
     for i in range(num_results):
         source_id = res[i]['index']
-
         document_id = rows[source_id]['document_id']
-        #page_number = rows[source_id]['page_number']
         document_name = rows[source_id]['document_name']
-
 
         cursor.execute('SELECT document_text FROM documents WHERE id = %s', [document_id])
         doc_text = cursor.fetchone()['document_text']
 
         source_chunk = doc_text[rows[source_id]['start_index']:rows[source_id]['end_index']]
         source_chunks.append((source_chunk, document_name))
-        #source_chunks.append(source_chunk)
 
+    print(f"✅ Returning {len(source_chunks)} relevant chunks.")
     return source_chunks
 
-
-def get_relevant_chunks_wf(k, question, worflow_id, user_email):
+def process_and_store_chunks(document_text, document_id, chunk_size=512):
+    """
+    Splits document text into chunks, generates embeddings, and stores them in the database.
+    """
     conn, cursor = get_db_connection()
 
-    query = """
-    SELECT c.start_index, c.end_index, c.embedding_vector, c.document_id, c.page_number, d.document_name
-    FROM chunks c
-    JOIN documents d ON c.document_id = d.id
-    JOIN workflows w ON d.workflow_id = ch.id
-    JOIN users u ON ch.user_id = u.id
-    WHERE u.email = %s AND w.id = %s
-    """
+    # ✅ Normalize text: Replace newlines with spaces to ensure even chunking
+    document_text = document_text.replace("\n", " ")
 
-    cursor.execute(query, (user_email, workflow_id))
-    rows = cursor.fetchall()
+    # ✅ Split document into overlapping chunks
+    chunks = []
+    step_size = chunk_size // 2  # 50% overlap for better context retention
 
-    embeddings = []
-    for row in rows:
-        embeddingVectorBlob = row["embedding_vector"]
-        embeddingVector = np.frombuffer(embeddingVectorBlob)
-        embeddings.append(embeddingVector)
+    for i in range(0, len(document_text), step_size):
+        chunk = document_text[i:i + chunk_size]
+        if len(chunk) < 100:  # Ignore very small chunks
+            break
+        chunks.append((i, i + len(chunk), chunk))
 
-    if (len(embeddings) == 0):
-        res_list = []
-        for i in range(k):
-            res_list.append("No text found")
-        return res_list
+    print(f"🔹 Splitting document {document_id} into {len(chunks)} chunks...")
 
-    embeddings = np.array(embeddings)
+    for start_index, end_index, chunk_text in chunks:
+        print(f"🟢 Processing chunk {start_index} - {end_index}")
 
-    embeddingVector = openai.embeddings.create(input=question, model="text-embedding-ada-002").data[0].embedding
-    embeddingVector = np.array(embeddingVector)
+        # ✅ Generate embedding for each chunk
+        embedding_vector = openai.embeddings.create(
+            input=chunk_text,
+            model="text-embedding-ada-002"
+        ).data[0].embedding
+        embedding_vector_blob = np.array(embedding_vector).tobytes()
 
-    res = knn(embeddingVector, embeddings)
-    num_results = min(k, len(res))
+        # ✅ Insert chunk into database
+        cursor.execute("""
+            INSERT INTO chunks (document_id, start_index, end_index, embedding_vector)
+            VALUES (%s, %s, %s, %s)
+        """, (document_id, start_index, end_index, embedding_vector_blob))
 
-    #Get the k most relevant chunks
-    source_chunks = []
-    for i in range(num_results):
-        source_id = res[i]['index']
+    conn.commit()
+    cursor.close()
+    conn.close()
+    print(f"✅ {len(chunks)} chunks created and stored for document {document_id}.")
 
-        document_id = rows[source_id]['document_id']
-        #page_number = rows[source_id]['page_number']
-        document_name = rows[source_id]['document_name']
+# def get_relevant_chunks_wf(k, question, worflow_id, user_email):
+#     conn, cursor = get_db_connection()
+
+#     query = """
+#     SELECT c.start_index, c.end_index, c.embedding_vector, c.document_id, c.page_number, d.document_name
+#     FROM chunks c
+#     JOIN documents d ON c.document_id = d.id
+#     JOIN workflows w ON d.workflow_id = ch.id
+#     JOIN users u ON ch.user_id = u.id
+#     WHERE u.email = %s AND w.id = %s
+#     """
+
+#     cursor.execute(query, (user_email, workflow_id))
+#     rows = cursor.fetchall()
+
+#     embeddings = []
+#     for row in rows:
+#         embeddingVectorBlob = row["embedding_vector"]
+#         embeddingVector = np.frombuffer(embeddingVectorBlob)
+#         embeddings.append(embeddingVector)
+
+#     if (len(embeddings) == 0):
+#         res_list = []
+#         for i in range(k):
+#             res_list.append("No text found")
+#         return res_list
+
+#     embeddings = np.array(embeddings)
+
+#     embeddingVector = openai.embeddings.create(input=question, model="text-embedding-ada-002").data[0].embedding
+#     embeddingVector = np.array(embeddingVector)
+
+#     res = knn(embeddingVector, embeddings)
+#     num_results = min(k, len(res))
+
+#     #Get the k most relevant chunks
+#     source_chunks = []
+#     for i in range(num_results):
+#         source_id = res[i]['index']
+
+#         document_id = rows[source_id]['document_id']
+#         #page_number = rows[source_id]['page_number']
+#         document_name = rows[source_id]['document_name']
 
 
-        cursor.execute('SELECT document_text FROM documents WHERE id = %s', [document_id])
-        doc_text = cursor.fetchone()['document_text']
+#         cursor.execute('SELECT document_text FROM documents WHERE id = %s', [document_id])
+#         doc_text = cursor.fetchone()['document_text']
 
-        source_chunk = doc_text[rows[source_id]['start_index']:rows[source_id]['end_index']]
-        source_chunks.append((source_chunk, document_name))
-        #source_chunks.append(source_chunk)
+#         source_chunk = doc_text[rows[source_id]['start_index']:rows[source_id]['end_index']]
+#         source_chunks.append((source_chunk, document_name))
+#         #source_chunks.append(source_chunk)
 
-    return source_chunks
+#     return source_chunks
 
 
 def add_sources_to_db(message_id, sources):

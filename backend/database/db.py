@@ -10,6 +10,7 @@ from constants.global_constants import dbName, dbHost, dbUser, dbPassword
 import socket
 import secrets
 import pymysql
+import json
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -674,3 +675,106 @@ def get_api_keys(email):
     return {
         "keys": keys
     }
+
+
+
+
+def create_agent(name, model, system_prompt, task=None, tools=None, verbose=False):
+    """Inserts a new agent into the MySQL database."""
+    conn, cursor = get_db_connection()
+    
+    # Convert tools to JSON format for MySQL storage
+    tools_json = json.dumps(tools if tools is not None else [])
+  
+
+    cursor.execute("""
+        INSERT INTO ai_agents (name, model, system_prompt, task, tools, verbose) 
+        VALUES (%s, %s, %s, %s, %s, %s)
+    """, (name, model, system_prompt, task, tools_json, verbose))
+    
+    conn.commit()
+    conn.close()
+
+def get_agents():
+    """Fetch all agents from the database."""
+    conn, cur = get_db_connection()
+      
+    cur.execute("SELECT * FROM ai_agents;")
+    agents = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    # Convert tools JSON strings to Python lists
+    for agent in agents:
+        agent["tools"] = json.loads(agent["tools"]) if agent["tools"] else []
+
+    return agents
+
+def get_agent(name):
+    """Fetch a single agent by name."""
+    conn, cur = get_db_connection()  # ✅ Consistent with other methods
+    
+    cur.execute("SELECT * FROM ai_agents WHERE name = %s;", (name,))
+    agent = cur.fetchone()
+    
+    cur.close()
+    conn.close()
+
+    if agent:
+        agent["tools"] = json.loads(agent["tools"]) if agent["tools"] else []
+
+    return agent
+def update_agent(name, model=None, system_prompt=None, task=None, tools=None, verbose=None):
+    """Updates an agent's attributes in the database."""
+    conn, cur = get_db_connection()  # ✅ Consistent with other methods
+
+    query_parts = []
+    values = []
+
+    if model:
+        query_parts.append("model = %s")
+        values.append(model)
+    if system_prompt:
+        query_parts.append("system_prompt = %s")
+        values.append(system_prompt)
+    if task:
+        query_parts.append("task = %s")
+        values.append(task)
+    if tools is not None:
+        query_parts.append("tools = %s")
+        values.append(json.dumps(tools))  # Store tools as JSON
+    if verbose is not None:
+        query_parts.append("verbose = %s")
+        values.append(verbose)
+
+    if not query_parts:
+        return  # No updates to be made
+
+    values.append(name)
+    query = f"UPDATE ai_agents SET {', '.join(query_parts)} WHERE name = %s;"
+    cur.execute(query, tuple(values))
+    conn.commit()
+
+    cur.close()
+    conn.close()
+
+def delete_agent(name):
+    """Delete an agent by name."""
+    conn, cur = get_db_connection()
+    
+    cur.execute("DELETE FROM ai_agents WHERE name = %s;", (name,))
+    conn.commit()
+    cur.close()
+    conn.close()
+def store_agent_task(agent_name, task_description, result):
+    """
+    Logs the execution of an agent task in the database.
+    """
+    conn, cursor = get_db_connection()
+    cursor.execute("""
+        INSERT INTO agent_tasks (agent_name, task_description, result) 
+        VALUES (%s, %s, %s)
+    """, (agent_name, task_description, json.dumps(result)))
+    conn.commit()
+    cursor.close()
+    conn.close()

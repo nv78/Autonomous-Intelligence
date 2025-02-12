@@ -1,12 +1,15 @@
-from flask import Flask, request, jsonify, abort, redirect, send_file
+from flask import Flask, request, jsonify, abort, redirect, send_file, session, url_for
 from flask_cors import CORS, cross_origin
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from google.auth.transport.requests import Request
+
 import numpy as np
 import pandas as pd
 from opensearchpy import OpenSearch, RequestsHttpConnection, AWSV4SignerAuth
 import boto3
 from api_endpoints.login.handler import LoginHandler, SignUpHandler, ForgotPasswordHandler, ResetPasswordHandler
+import api_endpoints.agents.handler as handler_ai_agents
 import os
 import pathlib
 from google_auth_oauthlib.flow import Flow
@@ -23,6 +26,7 @@ from flask_mail import Mail
 from jwt import InvalidTokenError
 from urllib.parse import urlparse
 from database.db import create_user_if_does_not_exist
+import database.db as db
 from constants.global_constants import kSessionTokenExpirationTime
 from database.db_auth import extractUserEmailFromRequest, is_session_token_valid, is_api_key_valid, user_id_for_email, verifyAuthForPaymentsTrustedTesters, verifyAuthForCheckoutSession, verifyAuthForPortalSession
 from functools import wraps
@@ -77,6 +81,8 @@ from api_endpoints.financeGPT.chatbot_endpoints import add_prompt_to_workflow_db
     add_organization_to_db, get_organization_from_db
 
 from datetime import datetime
+from flask import request, jsonify
+from api_endpoints.agents.handler import CalendarAgent
 
 load_dotenv(override=True)
 
@@ -118,7 +124,9 @@ app.config['MAIL_DEFAULT_SENDER'] = 'vidranatan@gmail.com'
 mail = Mail(app)
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
-
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+SCOPES = ["https://www.googleapis.com/auth/calendar"]
 
 def valid_api_key_required(fn):
   @wraps(fn)
@@ -1539,6 +1547,265 @@ def public_ingest_pdf():
 #     )
 
 #     return result
+# agent boiler plate code 
+# agent boiler plate code 
+agents = {}
+
+class Agent:
+    def __init__(self, name, model, system_prompt, task=None, tools=None, verbose=False):
+        self.name = name
+        self.model = model
+        self.system_prompt = system_prompt
+        self.task = task
+        self.tools = tools if tools else []
+        self.verbose = verbose
+        self.messages = []
+
+        if self.system_prompt:
+            self.messages.append({"role": "system", "content": self.system_prompt})
+
+    def __call__(self, message):
+        self.messages.append({"role": "user", "content": message})
+        result = self.execute()
+        self.messages.append({"role": "assistant", "content": result})
+        return result
+
+    def execute(self):
+        client = openai.OpenAI()  
+        try:
+            completion = client.chat.completions.create(
+                model=self.model,
+                temperature=0,
+                messages=self.messages
+            )
+
+            response = completion.choices[0].message.content  
+            return response
+        except openai.OpenAIError as e:
+            return f"OpenAI API Error: {str(e)}"
+        
+    def __repr__(self):
+        return f"Agent(name={self.name}, model={self.model}, system_prompt={self.system_prompt}, task={self.task}, tools={self.tools}, verbose={self.verbose})"
+
+# @app.route("/google-login")
+# def google_login():
+#     """Starts Google OAuth flow."""
+#     flow = Flow.from_client_config(
+#         client_config={
+#             "web": {
+#                 "client_id": GOOGLE_CLIENT_ID,
+#                 "client_secret": GOOGLE_CLIENT_SECRET,
+#                 "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+#                 "token_uri": "https://oauth2.googleapis.com/token",
+#                 "redirect_uris": ["http://localhost:5000/googlecallback"],
+#             }
+#         },
+#         scopes=SCOPES,
+#     )
+#     flow.redirect_uri = url_for("google_callback", _external=True)
+#     auth_url, state = flow.authorization_url(prompt="consent")
+
+#     session["state"] = state
+#     return redirect(auth_url)
+
+# @app.route("/googlecallback")
+# def google_callback():
+#     """Handles OAuth callback and stores credentials in session."""
+#     state = session.get("state")
+#     if not state:
+#         return jsonify({"error": "Invalid state parameter"}), 400
+#     flow = Flow.from_client_config(
+#         client_config={
+#             "web": {
+#                 "client_id": GOOGLE_CLIENT_ID,
+#                 "client_secret": GOOGLE_CLIENT_SECRET,
+#                 "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+#                 "token_uri": "https://oauth2.googleapis.com/token",
+#                 "redirect_uris": ["http://localhost:5000/googlecallback"],
+#             }
+#         },
+#         scopes=SCOPES,
+#         state=state,
+#     )
+#     flow.redirect_uri = url_for("google_callback", _external=True)
+
+#     try:
+#         flow.fetch_token(authorization_response=request.url)
+#         credentials = flow.credentials
+#         credentials_dict = credentials_to_dict(credentials)
+#         save_credentials(credentials_dict)  # ✅ Store credentials
+#         session["google_credentials"] = credentials_dict
+#         return jsonify({"message": "Login successful!"})
+#     except Exception as e:
+#         return jsonify({"error": f"Authentication failed: {str(e)}"})
+
+# def credentials_to_dict(credentials):
+#     """Converts credentials object to a dictionary."""
+#     return {
+#         "token": credentials.token,
+#         "refresh_token": credentials.refresh_token,
+#         "token_uri": credentials.token_uri,
+#         "client_id": credentials.client_id,
+#         "client_secret": credentials.client_secret,
+#         "scopes": credentials.scopes,
+#     }
+# def save_credentials(credentials):
+#     """Saves credentials to a file instead of session-only storage."""
+#     with open("google_credentials.json", "w") as f:
+#         json.dump(credentials, f)
+
+# @app.route("/google-logout")
+# def logout():
+#     """Logs out user by clearing session credentials."""
+#     session.pop("google_credentials", None)
+#     return jsonify({"message": "Logged out successfully!"})
+# @app.route("/refresh-token")
+# def refresh_token():
+#     """Refreshes the Google access token if expired."""
+#     if "google_credentials" not in session:
+#         return jsonify({"error": "User not logged in"}), 401
+
+#     creds_dict = session["google_credentials"]
+#     creds = Credentials.from_authorized_user_info(creds_dict)
+
+#     if creds.expired and creds.refresh_token:
+#         creds.refresh(Request())
+#         session["google_credentials"] = credentials_to_dict(creds)
+#         return jsonify({"message": "Token refreshed successfully!", "token": creds.token})
+    
+#     return jsonify({"message": "Token is still valid"}), 200
+
+@app.route('/create-agent', methods=['POST'])
+def create_agent_route():
+    """Creates a new agent and stores it in the database."""
+    data = request.json
+    if not data.get('name') or not data.get('model') or not data.get('system_prompt'):
+        return jsonify({"error": "Missing required fields"}), 400
+
+    db.create_agent(
+        name=data['name'],
+        model=data['model'],
+        system_prompt=data['system_prompt'],
+        task=data.get('task'),
+        tools=data.get('tools', []),  # Ensure tools is a list
+        verbose=data.get('verbose', False)
+    )
+
+    return jsonify({"message": f"Agent '{data['name']}' created"}), 201
+
+# Get all agents
+@app.route('/get-agents', methods=['GET'])
+def get_agents_route():
+    """Returns a list of all agents from the database."""
+    agents = db.get_agents()
+    return jsonify(agents), 200
+
+# Get a single agent
+@app.route('/agents/<string:agent_name>', methods=['GET'])
+def get_agent_route(agent_name):
+    """Fetch a single agent by name."""
+    agent = db.get_agent(agent_name)
+    if not agent:
+        return jsonify({"error": "Agent not found"}), 404
+    return jsonify(agent), 200
+
+# Update an agent by name
+@app.route('/update-agent', methods=['PUT'])
+def update_agent_route():
+    """Updates an agent's attributes in the database."""
+    data = request.json
+    agent_name = data.get('name')
+    if not agent_name or not db.get_agent(agent_name):
+        return jsonify({"error": "Agent not found"}), 404
+
+    db.update_agent(
+        name=agent_name,
+        model=data.get('model'),
+        system_prompt=data.get('system_prompt'),
+        task=data.get('task'),
+        tools=data.get('tools'),
+        verbose=data.get('verbose')
+    )
+
+    return jsonify({"message": f"Agent '{agent_name}' updated"}), 200
+
+# Delete an agent by name
+@app.route('/delete-agent', methods=['DELETE'])
+def delete_agent_route():
+    """Deletes an agent by name."""
+    agent_name = request.args.get('agent_name')  # Extract from query params
+    if not agent_name or not db.get_agent(agent_name):
+        return jsonify({"error": "Agent not found"}), 404
+
+    db.delete_agent(agent_name)
+    return jsonify({"message": f"Agent '{agent_name}' deleted successfully"}), 200
+
+@app.route('/execute-task', methods=['POST'])
+def execute_task():
+    """
+    Executes a task assigned to an agent.
+    """
+    data = request.json
+    agent_name = data.get('agent_name')
+    task_description = data.get('task_description')
+    start_time = data.get('start_time')
+    duration_hours = data.get('duration_hours')
+    time_zone = data.get('time_zone')
+    company_symbol = data.get('company_symbol')
+    location = data.get('location')
+
+
+    if not agent_name or not task_description:
+        return jsonify({"error": "Missing required fields"}), 400
+
+    agent = db.get_agent(agent_name)
+    if not agent:
+        return jsonify({"error": "Agent not found"}), 404
+    
+
+    # Debugging log
+    print(f"Executing task for agent: {agent_name}, task: {task_description}, location: {location}")
+
+    # Pass task execution to API logic
+    result = handler_ai_agents.execute_task(agent, task_description, start_time, location, company_symbol, duration_hours, time_zone)
+    db.store_agent_task(agent_name, task_description, result)
+    return jsonify(result), 200
+
+@app.route('/ingest-meeting-notes', methods=['POST'])
+def ingest_meeting_notes():
+    """
+    Extracts meeting information from a file and schedules meetings using CalendarAgent.
+    """
+    if 'file' not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+
+    file = request.files['file']
+    filename = file.filename
+
+    # Read the file content
+    text = file.read().decode("utf-8")
+
+    # Extract meeting details
+    meetings = handler_ai_agents.extract_meeting_details(text)
+
+    if not meetings:
+        return jsonify({"message": "No valid meetings found in the document."})
+
+    # Initialize Calendar Agent
+    calendar_agent = CalendarAgent()
+
+    # Schedule all extracted meetings
+    scheduled_meetings = []
+    for meeting in meetings:
+        result = calendar_agent.schedule_event(
+            meeting['title'],
+            meeting['start_time'],
+            1,  # Default duration = 1 hour
+            "UTC"  # Default timezone
+        )
+        scheduled_meetings.append(result)
+
+    return jsonify({"message": f"{len(scheduled_meetings)} meetings scheduled.", "meetings": scheduled_meetings})
 
 
 if __name__ == '__main__':
