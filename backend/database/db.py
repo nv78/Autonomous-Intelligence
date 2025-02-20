@@ -672,3 +672,91 @@ def get_api_keys(email):
     return {
         "keys": keys
     }
+
+
+def create_agentsdata_table_if_not_exists():
+    conn, cursor = get_db_connection()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS agentsdata (
+            id INTEGER PRIMARY KEY AUTO_INCREMENT,
+            name TEXT NOT NULL,
+            model TEXT NOT NULL,
+            system_prompt TEXT NOT NULL,
+            task TEXT,
+            tools TEXT,
+            verbose BOOLEAN NOT NULL
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+# Call the function to create the table if it doesn't exist
+print(create_agentsdata_table_if_not_exists())
+
+
+
+def insert_agent_info(name, model, system_prompt, task=None, tools=None, verbose=False):
+    print('db has been successfully populated')
+    conn, cursor = get_db_connection()
+    
+    tools_str = ','.join(tools) if tools else None
+    
+    sql = '''
+        INSERT INTO agentsdata (name, model, system_prompt, task, tools, verbose)
+        VALUES (%s, %s, %s, %s, %s, %s)
+    '''
+    params = (name, model, system_prompt, task, tools_str, verbose)
+    print("SQL:", sql)
+    print("Params:", params)
+    
+    cursor.execute(sql, params)
+    conn.commit()
+    conn.close()
+
+
+def get_agent_info():
+    conn, cursor = get_db_connection()
+    cursor.execute('SELECT * FROM agentsdata')
+    agents = cursor.fetchall()
+    conn.close()
+    return agents
+
+
+def update_agent_info(name, model=None, system_prompt=None, task=None, tools=None, verbose=None):
+    conn, cursor = get_db_connection()
+    update_fields = []
+    update_values = []
+
+    if model is not None:
+        update_fields.append("model = ?")
+        update_values.append(model)
+    if system_prompt is not None:
+        update_fields.append("system_prompt = ?")
+        update_values.append(system_prompt)
+    if task is not None:
+        update_fields.append("task = ?")
+        update_values.append(task)
+    if tools is not None:
+        update_fields.append("tools = ?")
+        update_values.append(tools)
+    if verbose is not None:
+        update_fields.append("verbose = ?")
+        update_values.append(verbose)
+
+    update_values.append(name)
+    cursor.execute(f'''
+        UPDATE agentsdata
+        SET {', '.join(update_fields)}
+        WHERE name = ?
+    ''', update_values)
+    conn.commit()
+    conn.close()
+
+
+def delete_agent_info(name):
+    conn, cursor = get_db_connection()
+    cursor.execute('DELETE FROM agentsdata WHERE name = ?', (name,))
+    conn.commit()
+    conn.close()
+
+

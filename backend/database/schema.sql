@@ -167,6 +167,17 @@ CREATE TABLE apiKeys (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
+CREATE TABLE agentsdata (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    name TEXT NOT NULL,
+    model TEXT NOT NULL,
+    system_prompt TEXT NOT NULL,
+    task TEXT,
+    tools TEXT,
+    verbose BOOLEAN NOT NULL
+);
+
+
 
 CREATE UNIQUE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_chats_user_id ON chats(user_id);
