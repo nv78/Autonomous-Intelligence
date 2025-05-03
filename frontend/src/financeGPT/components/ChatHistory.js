@@ -287,6 +287,7 @@ function ChatHistory(props) {
                 handleRenameChat(chat.id);
               }}
               className="p-2 rounded-full "
+              style={{ backgroundColor: 'lightgreen' }}
             >
               <FontAwesomeIcon icon={faPen} />
             </button>
@@ -296,6 +297,7 @@ function ChatHistory(props) {
                 handleDeleteChat(chat.id);
               }}
               className="p-2 rounded-full"
+              style={{ backgroundColor: 'lightgreen' }}
             >
               <FontAwesomeIcon icon={faTrashCan} />
             </button>
