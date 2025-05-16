@@ -252,8 +252,10 @@ const Chatbot = (props) => {
 
   return (
     <>
-      <div className="min-h-[50vh] h-[85vh] mt-2 relative bg-[#141414]
- p-4 w-full rounded-2xl border-[#9B9B9B] border-2">
+      <div
+        className="min-h-[50vh] h-[85vh] mt-2 relative bg-[#141414]
+ p-4 w-full rounded-2xl border-[#9B9B9B] border-2"
+      >
         {props.currChatName ? (
           <>
             <div className="flex flex-row justify-between">
@@ -276,8 +278,9 @@ const Chatbot = (props) => {
               {messages.map((msg, index) => (
                 <div
                   key={index}
-                  className={`message ${msg.direction === "incoming" ? "incoming" : "outgoing"
-                    }`}
+                  className={`message ${
+                    msg.direction === "incoming" ? "incoming" : "outgoing"
+                  }`}
                 >
                   <div className="message-content">
                     <div
@@ -335,7 +338,7 @@ const Chatbot = (props) => {
               <div ref={messagesEndRef} /> {/* Empty div for scrolling */}
             </div>
             <div className="absolute bottom-7 flex items-center w-[95%] mx-auto ">
-              <div className="mr-4 bg-gradient-to-r from-[#28b2fb] to-[#28b2fb] rounded-xl p-2 cursor-pointer text-black">
+              <div className="mr-4 bg-gradient-to-r from-green-200 to-green-200 rounded-xl p-2 cursor-pointer text-black">
                 <PDFUploader
                   className=""
                   chat_id={props.selectedChatId}
@@ -359,7 +362,7 @@ const Chatbot = (props) => {
                 }}
               />
               <div
-                className="text-white bg-[#28b2fb] p-2 rounded-xl ml-4 cursor-pointer"
+                className="text-white  bg-green-200 p-2 rounded-xl ml-4 cursor-pointer"
                 onClick={() => {
                   const text = inputRef.current.value; // Get the input value
                   handleTryMessage(text, props.selectedChatId, props.isPrivate);
@@ -370,9 +373,7 @@ const Chatbot = (props) => {
             </div>
           </>
         ) : (
-          <div className="text-white">
-            Create a new chat from left sidebar
-          </div>
+          <div className="text-white">Create a new chat from left sidebar</div>
         )}
       </div>
     </>
