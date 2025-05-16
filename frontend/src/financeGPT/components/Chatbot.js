@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from "react";
-import axios from "axios";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import PDFUploader from "./PdfUploader";
 import {
@@ -10,6 +9,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import "../styles/Chatbot.css";
 import fetcher from "../../http/RequestConfig";
+import SuggestionBox from "./SuggestionBox";
 
 const Chatbot = (props) => {
   const [messages, setMessages] = useState([]);
@@ -26,11 +26,13 @@ const Chatbot = (props) => {
     setIsFirstMessageSent(false);
     setMessages([
       {
-        message: "Hello, I am your Panacea, your agentic AI assistant. What can I do to help?",
+        message:
+          "Hello, I am your Panacea, your agentic AI assistant. What can I do to help?",
         sentTime: "just now",
         direction: "incoming",
       },
     ]);
+ 
   }, []);
 
   useEffect(() => {
@@ -273,6 +275,7 @@ const Chatbot = (props) => {
                 />
               </div>
             </div>
+
             <hr />
             <div className="flex flex-col mt-4 space-y-2 h-[70vh] overflow-y-scroll relative">
               {messages.map((msg, index) => (
@@ -337,7 +340,8 @@ const Chatbot = (props) => {
               ))}
               <div ref={messagesEndRef} /> {/* Empty div for scrolling */}
             </div>
-            <div className="absolute bottom-7 flex items-center w-[95%] mx-auto ">
+            <SuggestionBox isPrivate={props.isPrivate} selectedChatId={props.selectedChatId} handleTryMessage={handleTryMessage} />
+            <div className="absolute bottom-12 flex items-center w-[95%] mx-auto ">
               <div className="mr-4 bg-gradient-to-r from-green-200 to-green-200 rounded-xl p-2 cursor-pointer text-black">
                 <PDFUploader
                   className=""
@@ -350,7 +354,7 @@ const Chatbot = (props) => {
                 type="text"
                 placeholder="Ask your document a question"
                 ref={inputRef} // Assign the input ref
-                onKeyPress={(e) => {
+                onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     const text = e.target.value;
                     handleTryMessage(
