@@ -23,6 +23,8 @@ from flask_mail import Mail
 from jwt import InvalidTokenError
 from urllib.parse import urlparse
 from database.db import create_user_if_does_not_exist
+#NEW
+from database.db import get_db_connection
 from constants.global_constants import kSessionTokenExpirationTime
 from database.db_auth import extractUserEmailFromRequest, is_session_token_valid, is_api_key_valid, user_id_for_email, verifyAuthForPaymentsTrustedTesters, verifyAuthForCheckoutSession, verifyAuthForPortalSession
 from functools import wraps
@@ -491,11 +493,12 @@ def chat_with_organization(organization_name):
     if organization:
         return jsonify({
             'name': organization['name'],
-            'website_url': organization['website_url'],
+           'website_url': organization['website_url'],
             'organization_type': organization['organization_type']
         })
     else:
         return jsonify({'error': 'Organization not found'}), 404
+
 
 def get_organization_from_db_by_name(organization_name):
     conn, cursor = get_db_connection()
