@@ -1,21 +1,73 @@
+# import mysql.connector
+
+# from subprocess import Popen, PIPE
+
+# dbName = "agents"
+
+# # (Old block, commented out)
+# # process = Popen(['mysql', dbName, '-u', 'root'],
+# #                 stdout=PIPE, stdin=PIPE)
+# # output = process.communicate(b'source ' + b'schema.sql')[0]
+# # connection = mysql.connector.connect(
+# #     user='root',
+# #     unix_socket='/tmp/mysql.sock',
+# #     database=dbName,
+# # )
+
+# # (New block, using TCP connection via Docker service 'db')
+# connection = mysql.connector.connect(
+#     host="db",  # Use the Docker service name (db) for TCP connection
+#     port=3306,  # (Optional) specify the port if not default
+#     user="root",
+#     # (Removed password parameter so that no password is passed, as in the commented block)
+#     database=dbName,
+# )
+
+# # Create a cursor
+# cur = connection.cursor()
+
+# # Close the connection
+# connection.close()
+
 import mysql.connector
+import os
+from dotenv import load_dotenv
 
-from subprocess import Popen, PIPE
+# Load environment variables from .env file
+load_dotenv()
 
-dbName = "agents"
+# Connect to MySQL using Docker service 'db'
+print("Connecting to MySQL database...")
 
-process = Popen(['mysql', dbName, '-u', 'root'],
-                stdout=PIPE, stdin=PIPE)
-output = process.communicate(b'source ' + b'schema.sql')[0]
+options = {
+    "host": os.getenv("DB_HOST", "db"),
+    "user": os.getenv("DB_USER", "root"),
+    "password": os.getenv("DB_PASSWORD", "").strip('"') or None,
+    "database": os.getenv("DB_NAME", "agents"),
+    "port": int(os.getenv("DB_PORT", 3306)),
+}
 
 connection = mysql.connector.connect(
-    user='root',
-    unix_socket='/tmp/mysql.sock',
-    database=dbName,
+    host=options["host"],
+    user=options["user"],
+    password=options["password"],
+    database=options["database"],
+    port=options["port"],
 )
 
-# Create a cursor
 cur = connection.cursor()
 
-# Close the connection
+# Read and execute schema
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+schema_path = os.path.join(project_root, "database", "schema.sql")
+
+with open(schema_path, encoding='utf8') as f:
+    sql_script = f.read()
+    for result in cur.execute(sql_script, multi=True):
+        pass  # Optionally log result
+
+connection.commit()
+cur.close()
 connection.close()
+
+print("Database initialized successfully.")

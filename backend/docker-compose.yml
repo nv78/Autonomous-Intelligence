@@ -5,6 +5,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: anote-backend
+    restart: unless-stopped
     ports:
       - "8000:5000"
     volumes:
@@ -13,26 +15,32 @@ services:
       - ./models:/app/models
     env_file:
       - .env
-    environment:
-      - DATABASE_URL=mysql://root:root@db:3306/autonomous_intelligence
     depends_on:
       - db
-    restart: unless-stopped
+    networks:
+      - anote-network
     shm_size: '2.44gb'
 
   db:
     image: mysql:8.0
+    container_name: anote-db
+    restart: unless-stopped
     ports:
       - "3306:3306"
     environment:
-      - MYSQL_ROOT_PASSWORD=root
-      - MYSQL_DATABASE=autonomous_intelligence
-      - MYSQL_USER=autonomous_user
-      - MYSQL_PASSWORD=autonomous_password
+      - MYSQL_ALLOW_EMPTY_PASSWORD=true
+      - MYSQL_DATABASE=agents
+      - MYSQL_ROOT_PASSWORD=""
     volumes:
-      - mysql_data:/var/lib/mysql
+      - mysql-data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     command: --default-authentication-plugin=mysql_native_password
-    restart: unless-stopped
+    networks:
+      - anote-network
+
+networks:
+  anote-network:
+    driver: bridge
 
 volumes:
-  mysql_data: 
+  mysql-data:
