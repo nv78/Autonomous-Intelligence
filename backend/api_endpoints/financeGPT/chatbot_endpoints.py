@@ -1,8 +1,8 @@
-from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.llms import OpenAI
-from langchain.vectorstores import Chroma
+from langchain_community.llms import OpenAI
+from langchain_community.vectorstores import Chroma
 from langchain.docstore.document import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_openai import OpenAIEmbeddings
 from dotenv import load_dotenv
 import ray
 import openai
@@ -39,7 +39,7 @@ from tika import parser as p
 
 load_dotenv()
 API_KEY = os.getenv('OPENAI_API_KEY')
-embeddings = OpenAIEmbeddings(openai_api_key= API_KEY)
+embeddings = OpenAIEmbeddings(api_key=API_KEY)
 sec_api_key = os.getenv('SEC_API_KEY')
 
 MAX_CHUNK_SIZE = 1000
