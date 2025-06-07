@@ -33,10 +33,10 @@ planToSearches = {
 
 chatgptLimit = 10000
 
-dbName = "privategpt"
-dbHost = "privategpt-db.c5mm8qi8kytk.us-east-1.rds.amazonaws.com"
-dbPassword = "f33FFD221H8tvvLogdr4df"
-dbUser = "admin"
+dbName = "agents"
+dbHost = "db"  # Docker service name for the database container
+dbPassword = ""
+dbUser = "root"
 
 # TODO: COMMENT OUT WHEN DEPLOY TO PROD
-dbName = "agents"
+# dbName = "agents"
