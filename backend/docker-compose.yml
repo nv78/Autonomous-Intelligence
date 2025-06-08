@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   backend:
     build:
@@ -8,18 +6,34 @@ services:
     container_name: anote-backend
     restart: unless-stopped
     ports:
-      - "8000:5000"
+      - "8000:5000"  # Map container's 5000 to host's 8000
+      - "6379:6379"  # Ray
+      - "9998:9998"  # Tika
     volumes:
       - ./:/app
       - ./db:/app/db
       - ./models:/app/models
+      - tika-data:/tmp  # Persist Tika server data
     env_file:
       - .env
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - anote-network
     shm_size: '2.44gb'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   db:
     image: mysql:8.0
@@ -30,13 +44,19 @@ services:
     environment:
       - MYSQL_ALLOW_EMPTY_PASSWORD=true
       - MYSQL_DATABASE=agents
-      - MYSQL_ROOT_PASSWORD=""
+      - MYSQL_ROOT_PASSWORD=
     volumes:
       - mysql-data:/var/lib/mysql
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/init.sql
     command: --default-authentication-plugin=mysql_native_password
     networks:
       - anote-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
 networks:
   anote-network:
@@ -44,3 +64,4 @@ networks:
 
 volumes:
   mysql-data:
+  tika-data:  # Volume for Tika server data
