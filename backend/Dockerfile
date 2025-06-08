@@ -1,13 +1,16 @@
-# Build stage
-FROM python:3.8-slim as builder
 
-# Install build dependencies
+# Development stage
+FROM python:3.8-slim
+
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
-    software-properties-common \
     git \
-    && rm -rf /var/lib/apt/lists/*
+    default-jdk \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
 # Create and activate virtual environment
 RUN python -m venv /opt/venv
@@ -16,50 +19,31 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Upgrade pip and install wheel
 RUN pip install --no-cache-dir --upgrade pip wheel setuptools
 
-# Install tokenizers first
-RUN pip install --no-cache-dir tokenizers==0.13.3
-
-# Install anthropic separately
-RUN pip install --no-cache-dir anthropic==0.7.4
-
-# Copy and install requirements
-WORKDIR /build
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt || (cat requirements.txt && exit 1)
-
-# Final stage
-FROM python:3.8-slim
-
-# Install runtime dependencies only
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    default-jdk \
-    libssl-dev \
-    default-mysql-client \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
-
-# Copy virtual environment from builder
-COPY --from=builder /opt/venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-
-# Create non-root user
-RUN useradd -m -u 1000 appuser
+# Install tokenizers and anthropic separately
+RUN pip install --no-cache-dir tokenizers==0.13.3 anthropic==0.7.4
 
 # Set up application directory
 WORKDIR /app
-COPY --chown=appuser:appuser . .
 
-# Switch to non-root user
-USER appuser
+# Copy requirements first for better caching
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Set environment variables
+# Copy the rest of the application
+COPY . .
+
+# Make start script executable
+RUN chmod +x /app/start.sh
+
+# Set environment variables for development
 ENV FLASK_APP=app.py \
-    FLASK_ENV=production \
+    FLASK_ENV=development \
+    FLASK_DEBUG=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
-# Expose port
-EXPOSE 5000
+# Expose ports
+EXPOSE 5000 6379 9998
 
-# Run the application
-CMD ["flask", "run", "--host=0.0.0.0"]
+# Use the start script as the entrypoint
+ENTRYPOINT ["/bin/bash", "/app/start.sh"]
