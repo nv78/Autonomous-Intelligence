@@ -25,6 +25,8 @@ RUN pip install --no-cache-dir tokenizers==0.13.3 anthropic==0.7.4
 # Set up application directory
 WORKDIR /app
 
+COPY ./database/schema.sql /docker-entrypoint-initdb.d/init.sql
+
 # Copy requirements first for better caching
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
