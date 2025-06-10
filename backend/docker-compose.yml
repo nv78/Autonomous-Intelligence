@@ -14,6 +14,7 @@ services:
       - ./db:/app/db
       - ./models:/app/models
       - tika-data:/tmp  # Persist Tika server data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/init.sql
     env_file:
       - .env
     environment:

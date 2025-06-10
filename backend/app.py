@@ -194,12 +194,11 @@ def login():
       o = urlparse(request.base_url)
       netloc = o.netloc
       scheme = "https"
-      if netloc == "localhost:5000" or netloc == "127.0.0.1:5000":
+      if "localhost" in netloc:
         scheme = "http"
-      else:
-        netloc = "api.privatechatbot.ai"
+    
       flow.redirect_uri = f'{scheme}://{netloc}/callback'
-      # flow.redirect_uri = f'https://upreachapi.upreach.ai/callback'
+    #   flow.redirect_uri = f'https://upreachapi.upreach.ai/callback'
 
       state_dict = {
         "redirect_uri": flow.redirect_uri
