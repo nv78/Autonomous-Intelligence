@@ -10,7 +10,7 @@ function Registry() {
       title: "Auto Follow-Up Buddy",
       subtitle: "Never forget to send a follow-up email again",
       description: "Upload your last email or meeting notes and this agent drafts a personalized, thoughtful follow-up. Suggests optimal timing and subject lines, integrates with Gmail for seamless sending. Great for networking, job hunting, and client management.",
-      websiteLink: "https://lutra.ai",
+      websiteLink: "https://lutra.ai/shared/XBxkC18Mnwo",
       metrics: [
         "Follow-up email open rate",
         "Reply rate (%)",
@@ -251,123 +251,102 @@ function Registry() {
     setSelectedAgent(agent);
     setIsModalOpen(true);
   };
-  
+
   const closeModal = () => {
     setSelectedAgent(null);
     setIsModalOpen(false);
   };
-  
+
   const handleTryAgent = (e, websiteLink) => {
     e.stopPropagation();
     window.open(websiteLink, '_blank', 'noopener,noreferrer');
   };
-  
+
   const handleMoreInfo = (e, agent) => {
     e.stopPropagation();
     openModal(agent);
   };
-  
+
   return (
-    <div className="mx-5 lg:mx-24 mt-24">
-      <div className="text-3xl sm:text-4xl lg:text-5xl my-10 text-center font-medium lg:font-bold text-white">
-        Agent Registry
-      </div>
-  
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 px-8">
+    <div className="min-h-screen bg-gradient-to-b from-black via-[#141414] to-[#1a1a1a] px-5 lg:px-32 py-24">
+      <h1 className="text-center text-5xl font-extrabold text-white mb-20 tracking-tight">Agent Registry</h1>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-12">
         {agents.map((agent, index) => (
           <div
             key={index}
-            className="bg-[#1a1a1a] rounded-lg shadow-lg overflow-hidden flex flex-col items-center text-center text-white transition-transform transform hover:scale-105 cursor-pointer relative group"
+            className="bg-[#161616] border border-[#2a2a2a] rounded-3xl shadow-lg overflow-hidden transform transition-transform hover:-translate-y-3 hover:shadow-xl cursor-pointer group"
             onClick={() => window.open(agent.websiteLink, '_blank', 'noopener,noreferrer')}
           >
-            {/* Image Container with Hover Effect */}
-            <div className="relative w-full h-40 overflow-hidden">
-              <img 
-                src={agent.image} 
-                alt={agent.title} 
-                className="w-full h-full object-cover object-center transition-opacity duration-300 group-hover:opacity-30" 
+            <div className="relative w-full h-56 overflow-hidden">
+              <img
+                src={agent.image}
+                alt={agent.title}
+                className="w-full h-full object-cover object-center transition-opacity duration-300 group-hover:opacity-30"
               />
-              
-              {/* Hover Buttons */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 space-y-2">
+              <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 space-y-3">
                 <button
                   onClick={(e) => handleTryAgent(e, agent.websiteLink)}
-                  className="bg-gradient-to-r from-[#EDDC8F] to-[#F1CA57] text-black px-3 py-1 rounded-md font-semibold text-sm hover:scale-105 transition-transform"
+                  className="bg-gradient-to-r from-[#EDDC8F] to-[#F1CA57] text-black px-5 py-2 rounded-full font-medium text-sm hover:scale-105 transition-transform"
                 >
-                  Try It
+                  Try Agent
                 </button>
                 <button
                   onClick={(e) => handleMoreInfo(e, agent)}
-                  className="bg-white text-black px-3 py-1 rounded-md font-semibold text-sm hover:scale-105 transition-transform"
+                  className="bg-white text-black px-5 py-2 rounded-full font-medium text-sm hover:scale-105 transition-transform"
                 >
                   More Info
                 </button>
               </div>
             </div>
-  
-            <div className="p-3">
-              <h3 className="text-lg font-semibold mb-2 line-clamp-2">{agent.title}</h3>
-              <p className="text-sm text-gray-400 line-clamp-2">{agent.subtitle}</p>
+            <div className="p-5">
+              <h3 className="text-xl font-bold text-white mb-1">{agent.title}</h3>
+              <p className="text-sm text-gray-400">{agent.subtitle}</p>
             </div>
           </div>
         ))}
       </div>
-  
-      {/* Modal */}
+
       {isModalOpen && selectedAgent && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75 z-50">
-          <div className="bg-[#1a1a1a] w-11/12 md:w-3/4 lg:w-1/2 rounded-lg p-8 text-white relative max-h-screen overflow-y-auto">
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50 backdrop-blur-md">
+          <div className="bg-[#161616] w-11/12 md:w-3/4 lg:w-1/2 rounded-3xl p-10 text-white relative max-h-[90vh] overflow-y-auto border border-[#2a2a2a] shadow-2xl">
             <button
-              className="absolute top-2 right-2 text-2xl font-bold hover:text-gray-300"
+              className="absolute top-5 right-5 text-3xl font-bold text-gray-400 hover:text-white transition"
               onClick={closeModal}
             >
               &times;
             </button>
-            <h1 className="mx-auto mb-4 text-4xl font-bold">{selectedAgent.title}</h1>
-            <p className="text-xl text-gray-300 mb-4 text-center">{selectedAgent.subtitle}</p>
-            <hr className="h-px mb-4 bg-white border-0 mx-auto" />
-  
-            <h2 className="text-2xl font-bold mb-4 bg-gradient-to-r from-[#EDDC8F] to-[#F1CA57] bg-clip-text text-transparent">About</h2>
-            <p className="text-lg mb-6">{selectedAgent.description}</p>
-  
-            <div className="mb-6">
-              <h3 className="text-2xl font-semibold mb-2 bg-gradient-to-r from-[#EDDC8F] to-[#F1CA57] bg-clip-text text-transparent">Key Metrics</h3>
-              <ul className="list-disc list-inside text-md space-y-2">
-                {selectedAgent.metrics.map((metric, index) => (
-                  <li key={index}>{metric}</li>
-                ))}
-              </ul>
-            </div>
-  
-            <div className="mb-6">
-              <h3 className="text-2xl font-semibold mb-2 bg-gradient-to-r from-[#EDDC8F] to-[#F1CA57] bg-clip-text text-transparent">Features</h3>
-              <ul className="list-disc list-inside text-md space-y-2">
-                {selectedAgent.features.map((feature, index) => (
-                  <li key={index}>{feature}</li>
-                ))}
-              </ul>
-            </div>
-  
-            <div className="mb-6">
-              <h3 className="text-2xl font-semibold mb-2 bg-gradient-to-r from-[#EDDC8F] to-[#F1CA57] bg-clip-text text-transparent">Use Cases</h3>
-              <ul className="list-disc list-inside text-md space-y-2">
-                {selectedAgent.useCases.map((useCase, index) => (
-                  <li key={index}>{useCase}</li>
-                ))}
-              </ul>
-            </div>
-  
-            <div className="mb-8">
-              <h3 className="text-2xl font-semibold mb-2 bg-gradient-to-r from-[#EDDC8F] to-[#F1CA57] bg-clip-text text-transparent">Capabilities</h3>
+
+            <h1 className="text-center text-4xl font-bold mb-5">{selectedAgent.title}</h1>
+            <p className="text-lg text-center text-gray-300 mb-10">{selectedAgent.subtitle}</p>
+
+            <section className="mb-8">
+              <h2 className="text-2xl font-semibold mb-3 text-gradient bg-gradient-to-r from-[#EDDC8F] to-[#F1CA57] bg-clip-text text-transparent">About</h2>
+              <p className="text-md">{selectedAgent.description}</p>
+            </section>
+
+            <section className="mb-8">
+              <h3 className="text-2xl font-semibold mb-3 text-gradient bg-gradient-to-r from-[#EDDC8F] to-[#F1CA57] bg-clip-text text-transparent">Key Metrics</h3>
+              <ul className="list-disc list-inside text-md space-y-1">{selectedAgent.metrics.map((m, i) => <li key={i}>{m}</li>)}</ul>
+            </section>
+
+            <section className="mb-8">
+              <h3 className="text-2xl font-semibold mb-3 text-gradient bg-gradient-to-r from-[#EDDC8F] to-[#F1CA57] bg-clip-text text-transparent">Features</h3>
+              <ul className="list-disc list-inside text-md space-y-1">{selectedAgent.features.map((f, i) => <li key={i}>{f}</li>)}</ul>
+            </section>
+
+            <section className="mb-8">
+              <h3 className="text-2xl font-semibold mb-3 text-gradient bg-gradient-to-r from-[#EDDC8F] to-[#F1CA57] bg-clip-text text-transparent">Use Cases</h3>
+              <ul className="list-disc list-inside text-md space-y-1">{selectedAgent.useCases.map((u, i) => <li key={i}>{u}</li>)}</ul>
+            </section>
+
+            <section className="mb-10">
+              <h3 className="text-2xl font-semibold mb-3 text-gradient bg-gradient-to-r from-[#EDDC8F] to-[#F1CA57] bg-clip-text text-transparent">Capabilities</h3>
               <p className="text-md leading-relaxed">{selectedAgent.capabilities}</p>
-            </div>
-  
-            <a
-              href={selectedAgent.websiteLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block bg-gradient-to-r from-[#EDDC8F] to-[#F1CA57] text-black px-4 py-2 rounded-md font-semibold mt-4 hover:scale-105 transition-transform"
-            >
+            </section>
+
+            <a href={selectedAgent.websiteLink} target="_blank" rel="noopener noreferrer"
+              className="block w-full text-center bg-gradient-to-r from-[#EDDC8F] to-[#F1CA57] text-black px-6 py-3 rounded-full font-semibold text-lg hover:scale-105 transition-transform">
               Try Agent
             </a>
           </div>
@@ -375,7 +354,253 @@ function Registry() {
       )}
     </div>
   );
-  
-  }
-  
-  export default Registry;
+}
+
+export default Registry;
+
+
+//   const openModal = (agent) => {
+//     setSelectedAgent(agent);
+//     setIsModalOpen(true);
+//   };
+
+//   const closeModal = () => {
+//     setSelectedAgent(null);
+//     setIsModalOpen(false);
+//   };
+
+//   const handleTryAgent = (e, websiteLink) => {
+//     e.stopPropagation();
+//     window.open(websiteLink, '_blank', 'noopener,noreferrer');
+//   };
+
+//   const handleMoreInfo = (e, agent) => {
+//     e.stopPropagation();
+//     openModal(agent);
+//   };
+
+//   return (
+//     <div className="min-h-screen bg-gradient-to-b from-black via-[#141414] to-[#1a1a1a] px-5 lg:px-24 py-24">
+//       <h1 className="text-center text-5xl font-extrabold text-white mb-16">Agent Registry</h1>
+
+//       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-10">
+//         {agents.map((agent, index) => (
+//           <div
+//             key={index}
+//             className="bg-[#1a1a1a] rounded-3xl shadow-2xl overflow-hidden transform transition-transform hover:-translate-y-3 hover:shadow-3xl cursor-pointer relative group border border-[#2a2a2a]"
+//             onClick={() => window.open(agent.websiteLink, '_blank', 'noopener,noreferrer')}
+//           >
+//             <div className="relative w-full h-56 overflow-hidden">
+//               <img
+//                 src={agent.image}
+//                 alt={agent.title}
+//                 className="w-full h-full object-cover object-center transition-opacity duration-300 group-hover:opacity-40"
+//               />
+
+//               <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 space-y-2">
+//                 <button
+//                   onClick={(e) => handleTryAgent(e, agent.websiteLink)}
+//                   className="bg-gradient-to-r from-[#EDDC8F] to-[#F1CA57] text-black px-4 py-2 rounded-full font-semibold text-sm hover:scale-105 transition-transform"
+//                 >
+//                   Try It
+//                 </button>
+//                 <button
+//                   onClick={(e) => handleMoreInfo(e, agent)}
+//                   className="bg-white text-black px-4 py-2 rounded-full font-semibold text-sm hover:scale-105 transition-transform"
+//                 >
+//                   More Info
+//                 </button>
+//               </div>
+//             </div>
+
+//             <div className="p-5">
+//               <h3 className="text-xl font-bold text-white mb-2">{agent.title}</h3>
+//               <p className="text-sm text-gray-400">{agent.subtitle}</p>
+//             </div>
+//           </div>
+//         ))}
+//       </div>
+
+//       {isModalOpen && selectedAgent && (
+//         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-80 z-50 backdrop-blur-sm">
+//           <div className="bg-[#1a1a1a] w-11/12 md:w-3/4 lg:w-1/2 rounded-3xl p-10 text-white relative max-h-[90vh] overflow-y-auto border border-[#2a2a2a] shadow-2xl">
+//             <button
+//               className="absolute top-4 right-4 text-3xl font-bold text-gray-400 hover:text-white transition"
+//               onClick={closeModal}
+//             >
+//               &times;
+//             </button>
+//             <h1 className="text-center text-4xl font-bold mb-6">{selectedAgent.title}</h1>
+//             <p className="text-xl text-center text-gray-300 mb-8">{selectedAgent.subtitle}</p>
+
+//             <section className="mb-8">
+//               <h2 className="text-2xl font-bold mb-3 text-gradient">About</h2>
+//               <p className="text-lg">{selectedAgent.description}</p>
+//             </section>
+
+//             <section className="mb-8">
+//               <h3 className="text-2xl font-bold mb-3 text-gradient">Key Metrics</h3>
+//               <ul className="list-disc list-inside text-md space-y-1">{selectedAgent.metrics.map((m, i) => <li key={i}>{m}</li>)}</ul>
+//             </section>
+
+//             <section className="mb-8">
+//               <h3 className="text-2xl font-bold mb-3 text-gradient">Features</h3>
+//               <ul className="list-disc list-inside text-md space-y-1">{selectedAgent.features.map((f, i) => <li key={i}>{f}</li>)}</ul>
+//             </section>
+
+//             <section className="mb-8">
+//               <h3 className="text-2xl font-bold mb-3 text-gradient">Use Cases</h3>
+//               <ul className="list-disc list-inside text-md space-y-1">{selectedAgent.useCases.map((u, i) => <li key={i}>{u}</li>)}</ul>
+//             </section>
+
+//             <section className="mb-8">
+//               <h3 className="text-2xl font-bold mb-3 text-gradient">Capabilities</h3>
+//               <p className="text-md leading-relaxed">{selectedAgent.capabilities}</p>
+//             </section>
+
+//             <a href={selectedAgent.websiteLink} target="_blank" rel="noopener noreferrer"
+//               className="block w-full text-center bg-gradient-to-r from-[#EDDC8F] to-[#F1CA57] text-black px-6 py-3 rounded-full font-semibold text-lg hover:scale-105 transition-transform">
+//               Try Agent
+//             </a>
+//           </div>
+//         </div>
+//       )}
+//     </div>
+//   );
+// }
+
+// export default Registry;
+
+
+  // const openModal = (agent) => {
+  //   setSelectedAgent(agent);
+  //   setIsModalOpen(true);
+  // };
+
+  // const closeModal = () => {
+  //   setSelectedAgent(null);
+  //   setIsModalOpen(false);
+  // };
+
+  // const handleTryAgent = (e, websiteLink) => {
+  //   e.stopPropagation();
+  //   window.open(websiteLink, '_blank', 'noopener,noreferrer');
+  // };
+
+  // const handleMoreInfo = (e, agent) => {
+  //   e.stopPropagation();
+  //   openModal(agent);
+  // };
+
+  // return (
+  //   <div className="mx-5 lg:mx-24 mt-24">
+  //     <div className="text-3xl sm:text-4xl lg:text-5xl my-10 text-center font-medium lg:font-bold text-white">
+  //       Agent Registry
+  //     </div>
+
+  //     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 px-8">
+  //       {agents.map((agent, index) => (
+  //         <div
+  //           key={index}
+  //           className="bg-[#1a1a1a] rounded-lg shadow-lg overflow-hidden flex flex-col items-center text-center text-white transition-transform transform hover:scale-105 cursor-pointer relative group"
+  //           onClick={() => window.open(agent.websiteLink, '_blank', 'noopener,noreferrer')}
+  //         >
+  //           {/* Image Container with Hover Effect */}
+  //           <div className="relative w-full h-40 overflow-hidden">
+  //             <img
+  //               src={agent.image}
+  //               alt={agent.title}
+  //               className="w-full h-full object-cover object-center transition-opacity duration-300 group-hover:opacity-30"
+  //             />
+
+  //             {/* Hover Buttons */}
+  //             <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 space-y-2">
+  //               <button
+  //                 onClick={(e) => handleTryAgent(e, agent.websiteLink)}
+  //                 className="bg-gradient-to-r from-[#EDDC8F] to-[#F1CA57] text-black px-3 py-1 rounded-md font-semibold text-sm hover:scale-105 transition-transform"
+  //               >
+  //                 Try It
+  //               </button>
+  //               <button
+  //                 onClick={(e) => handleMoreInfo(e, agent)}
+  //                 className="bg-white text-black px-3 py-1 rounded-md font-semibold text-sm hover:scale-105 transition-transform"
+  //               >
+  //                 More Info
+  //               </button>
+  //             </div>
+  //           </div>
+
+  //           <div className="p-3">
+  //             <h3 className="text-lg font-semibold mb-2 line-clamp-2">{agent.title}</h3>
+  //             <p className="text-sm text-gray-400 line-clamp-2">{agent.subtitle}</p>
+  //           </div>
+  //         </div>
+  //       ))}
+  //     </div>
+
+  //     {/* Modal */}
+  //     {isModalOpen && selectedAgent && (
+  //       <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75 z-50">
+  //         <div className="bg-[#1a1a1a] w-11/12 md:w-3/4 lg:w-1/2 rounded-lg p-8 text-white relative max-h-screen overflow-y-auto">
+  //           <button
+  //             className="absolute top-2 right-2 text-2xl font-bold hover:text-gray-300"
+  //             onClick={closeModal}
+  //           >
+  //             &times;
+  //           </button>
+  //           <h1 className="mx-auto mb-4 text-4xl font-bold">{selectedAgent.title}</h1>
+  //           <p className="text-xl text-gray-300 mb-4 text-center">{selectedAgent.subtitle}</p>
+  //           <hr className="h-px mb-4 bg-white border-0 mx-auto" />
+
+  //           <h2 className="text-2xl font-bold mb-4 bg-gradient-to-r from-[#EDDC8F] to-[#F1CA57] bg-clip-text text-transparent">About</h2>
+  //           <p className="text-lg mb-6">{selectedAgent.description}</p>
+
+  //           <div className="mb-6">
+  //             <h3 className="text-2xl font-semibold mb-2 bg-gradient-to-r from-[#EDDC8F] to-[#F1CA57] bg-clip-text text-transparent">Key Metrics</h3>
+  //             <ul className="list-disc list-inside text-md space-y-2">
+  //               {selectedAgent.metrics.map((metric, index) => (
+  //                 <li key={index}>{metric}</li>
+  //               ))}
+  //             </ul>
+  //           </div>
+
+  //           <div className="mb-6">
+  //             <h3 className="text-2xl font-semibold mb-2 bg-gradient-to-r from-[#EDDC8F] to-[#F1CA57] bg-clip-text text-transparent">Features</h3>
+  //             <ul className="list-disc list-inside text-md space-y-2">
+  //               {selectedAgent.features.map((feature, index) => (
+  //                 <li key={index}>{feature}</li>
+  //               ))}
+  //             </ul>
+  //           </div>
+
+  //           <div className="mb-6">
+  //             <h3 className="text-2xl font-semibold mb-2 bg-gradient-to-r from-[#EDDC8F] to-[#F1CA57] bg-clip-text text-transparent">Use Cases</h3>
+  //             <ul className="list-disc list-inside text-md space-y-2">
+  //               {selectedAgent.useCases.map((useCase, index) => (
+  //                 <li key={index}>{useCase}</li>
+  //               ))}
+  //             </ul>
+  //           </div>
+
+  //           <div className="mb-8">
+  //             <h3 className="text-2xl font-semibold mb-2 bg-gradient-to-r from-[#EDDC8F] to-[#F1CA57] bg-clip-text text-transparent">Capabilities</h3>
+  //             <p className="text-md leading-relaxed">{selectedAgent.capabilities}</p>
+  //           </div>
+
+  //           <a
+  //             href={selectedAgent.websiteLink}
+  //             target="_blank"
+  //             rel="noopener noreferrer"
+  //             className="inline-block bg-gradient-to-r from-[#EDDC8F] to-[#F1CA57] text-black px-4 py-2 rounded-md font-semibold mt-4 hover:scale-105 transition-transform"
+  //           >
+  //             Try Agent
+  //           </a>
+  //         </div>
+  //       </div>
+  //     )}
+  //   </div>
+  // );
+
+  // }
+
+  // export default Registry;
