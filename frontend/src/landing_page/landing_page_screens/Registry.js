@@ -26,7 +26,7 @@ function Registry() {
       title: "LinkedIn Job Hunter Pro",
       subtitle: "Match your profile to jobs and message recruiters in one click",
       description: "Upload your resume or connect your LinkedIn. This agent scrapes job postings, tailors recruiter DMs, and even suggests edits to your profile for better keyword matches.",
-      websiteLink: "https://lutra.ai",
+      websiteLink: "https://lutra.ai/shared/S-GnnGlD7zc",
       metrics: [
         "Number of tailored job matches found",
         "Recruiter response rate",
@@ -42,7 +42,7 @@ function Registry() {
       title: "Cold Outreach Designer",
       subtitle: "Create a mini email campaign from scratch",
       description: "Describe your product and target audience, and this agent generates 2–3 cold emails with compelling hooks and CTAs. Designed for startup founders, freelancers, and B2B marketers.",
-      websiteLink: "https://lutra.ai",
+      websiteLink: "https://lutra.ai/shared/BztORfXlBUk",
       metrics: [
         "Click-through rate (CTR) of emails",
         "Open rate (%)",
@@ -58,7 +58,7 @@ function Registry() {
       title: "Instant ICP Analyzer",
       subtitle: "Find your Ideal Customer Profile based on your website or product",
       description: "Enter your startup's website, and the agent generates your likely ICPs: sectors, titles, firmographics, and even a target contact list suggestion. Ideal for new GTM teams.",
-      websiteLink: "https://agentwebsite.com/instant-icp-analyzer",
+      websiteLink: "https://lutra.ai/shared/V5SQRt8TWis",
       metrics: [
         "ICP match score (based on industry databases)",
         "Usefulness of contact suggestions",
@@ -74,7 +74,7 @@ function Registry() {
       title: "Meeting-to-Newsletter Generator",
       subtitle: "Turn Zoom notes into a polished update for your audience",
       description: "Upload meeting transcripts or bullet notes. Agent turns it into a well-structured blog, newsletter, or memo with clear formatting and editable tone. Ideal for content creators, PMs, and founders.",
-      websiteLink: "https://agentwebsite.com/meeting-to-newsletter",
+      websiteLink: "https://lutra.ai/shared/Y88uufxJGgk",
       metrics: [
         "Quality of newsletter output (LLM grammar + coherence score)",
         "Time saved per newsletter",
@@ -90,7 +90,7 @@ function Registry() {
       title: "Smart Newsletter Engine",
       subtitle: "Personalized newsletters tailored to each account",
       description: "Input your newsletter content (or let the agent generate it), and it dynamically personalizes sections based on the reader's company, industry, or behavior. Supports bulk sending with integrations for HubSpot, Mailchimp, and Gmail.",
-      websiteLink: "https://agentwebsite.com/smart-newsletter-engine",
+      websiteLink: "https://lutra.ai/shared/tCs6cw6hA-w",
       metrics: [
         "Open rate (% personalized vs generic)",
         "Click-through rate (CTR)",
@@ -106,7 +106,7 @@ function Registry() {
       title: "Lead List Email Launcher",
       subtitle: "From CSV to inbox in a single flow",
       description: "Upload a lead list or CRM export. This agent enriches missing fields (like job title or company size), drafts personalized cold emails, and sends them via Gmail. Optional integration with MCP or outreach tools.",
-      websiteLink: "https://agentwebsite.com/lead-list-email-launcher",
+      websiteLink: "https://lutra.ai/shared/3Ulu3akUl1M",
       metrics: [
         "Email delivery rate",
         "Enrichment accuracy",
@@ -122,7 +122,7 @@ function Registry() {
       title: "LinkedIn DM Sender",
       subtitle: "Ditch email — connect with leads where they live",
       description: "Paste a list of LinkedIn profiles or let the agent find them from your ICP. It crafts short, non-spammy messages, tailored to each lead's title and company. Works with tools like Sales Navigator or PhantomBuster.",
-      websiteLink: "https://agentwebsite.com/linkedin-dm-sender",
+      websiteLink: "https://lutra.ai/shared/N6_Pzzg1L1k",
       metrics: [
         "Connection acceptance rate",
         "Reply rate (% of messages)",
@@ -138,7 +138,7 @@ function Registry() {
       title: "ICP Contact Finder",
       subtitle: "Instantly generate leads that match your ideal customer profile",
       description: "Enter your company name, website, or product. This co-pilot determines your likely ICP, then finds and verifies up to 500 matching contacts from trusted databases. Filters by title, region, industry, and more.",
-      websiteLink: "https://agentwebsite.com/icp-contact-finder",
+      websiteLink: "https://lutra.ai/shared/6GH2sFS9pOg",
       metrics: [
         "ICP fit score (relevance of returned contacts)",
         "Contact accuracy (bounce rate)",
@@ -154,7 +154,7 @@ function Registry() {
       title: "One-Pager Builder Agent",
       subtitle: "Create a GTM-ready sales sheet in minutes",
       description: "Input your product description, key features, and audience. This agent auto-generates a slick, well-formatted one-pager for sales or fundraising—editable in Google Docs or Canva.",
-      websiteLink: "https://agentwebsite.com/one-pager-builder",
+      websiteLink: "https://lutra.ai/shared/pNUzcBzkf08",
       metrics: [
         "Visual and content quality (LLM + design score)",
         "Time saved per asset",
@@ -170,7 +170,7 @@ function Registry() {
       title: "Job Description Optimizer",
       subtitle: "Attract better talent with smarter listings",
       description: "Paste your draft JD or hiring goals. This agent rewrites for clarity, inclusiveness, and keyword optimization. Includes market compensation suggestions based on role and location.",
-      websiteLink: "https://agentwebsite.com/job-description-optimizer",
+      websiteLink: "https://lutra.ai/shared/o_OHINQsVIg",
       metrics: [
         "Job listing engagement (clicks + applies)",
         "Keyword density / SEO match",
@@ -186,7 +186,7 @@ function Registry() {
       title: "Zoom Background Generator",
       subtitle: "Make a custom AI-generated Zoom background to match your vibe",
       description: "Choose your mood (e.g. 'Tech Executive in Tokyo,' 'Cozy Writer in Paris,' 'Startup Jungle'), and this agent generates a stylized Zoom background you can download and use instantly.",
-      websiteLink: "https://agentwebsite.com/zoom-background-generator",
+      websiteLink: "https://lutra.ai/shared/kG1KV0a_V8c",
       metrics: [
         "Download rate",
         "Background rating",
@@ -202,7 +202,7 @@ function Registry() {
       title: "Personal Brand Advisor",
       subtitle: "Find your niche and grow your audience faster",
       description: "This agent analyzes your past tweets, LinkedIn posts, or blog content, then suggests a unique angle or content niche that fits your voice and goals. Includes post ideas, hashtags, and tone optimization.",
-      websiteLink: "https://agentwebsite.com/personal-brand-advisor",
+      websiteLink: "https://lutra.ai/shared/8rK-_uTMJtQ",
       metrics: [
         "Engagement growth rate",
         "Audience fit score (LLM niche match)",
@@ -218,7 +218,7 @@ function Registry() {
       title: "Meeting Bingo Card Maker",
       subtitle: "Turn your next meeting into a game",
       description: "Input your meeting type and common jargon or behaviors. This agent generates a Bingo card you can print or share — perfect for fighting meeting fatigue.",
-      websiteLink: "https://agentwebsite.com/meeting-bingo-maker",
+      websiteLink: "https://lutra.ai/shared/tPX6-WBi1E0",
       metrics: [
         "Usage rate",
         "Share rate",
@@ -234,7 +234,7 @@ function Registry() {
       title: "Lunch Buddy Matcher",
       subtitle: "Find your ideal lunch partner at work",
       description: "Based on interests, work style, and schedule, this agent matches you with a colleague for lunch or coffee chats.",
-      websiteLink: "https://agentwebsite.com/lunch-buddy-matcher",
+      websiteLink: "https://lutra.ai/shared/oHCKSdEV07c",
       metrics: [
         "Match success rate",
         "Meeting frequency",
