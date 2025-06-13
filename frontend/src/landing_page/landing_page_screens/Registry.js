@@ -768,21 +768,21 @@ function Registry() {
       "capabilities": "Suggests optimal meeting times based on calendar data.",
       "category": "Productivity"
     },
-    {
-      "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-s8jkGVimFuUa99GR2TeJnHVE.png?st=2025-06-13T18%3A03%3A59Z&se=2025-06-13T20%3A03%3A59Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-12T19%3A15%3A43Z&ske=2025-06-13T19%3A15%3A43Z&sks=b&skv=2024-08-04&sig=CutHTDzNU2FABfh7JegaMDaGl97FzWq5EvMmKldK7tU%3D",
-      "title": "Email Tone Checker",
-      "subtitle": "Craft emails with the right tone every time",
-      "description": "Paste your draft emails, and the agent suggests improvements for tone, politeness, clarity, and conciseness.",
-      "websiteLink": "",
-      "metrics": [
-        "Email response rate",
-        "User satisfaction",
-        "Edit frequency",
-        "Miscommunication incidents"
-      ],
-      "capabilities": "Improves email drafts for tone and clarity.",
-      "category": "Productivity"
-    },
+    // {
+    //   "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-s8jkGVimFuUa99GR2TeJnHVE.png?st=2025-06-13T18%3A03%3A59Z&se=2025-06-13T20%3A03%3A59Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-12T19%3A15%3A43Z&ske=2025-06-13T19%3A15%3A43Z&sks=b&skv=2024-08-04&sig=CutHTDzNU2FABfh7JegaMDaGl97FzWq5EvMmKldK7tU%3D",
+    //   "title": "Email Tone Checker",
+    //   "subtitle": "Craft emails with the right tone every time",
+    //   "description": "Paste your draft emails, and the agent suggests improvements for tone, politeness, clarity, and conciseness.",
+    //   "websiteLink": "",
+    //   "metrics": [
+    //     "Email response rate",
+    //     "User satisfaction",
+    //     "Edit frequency",
+    //     "Miscommunication incidents"
+    //   ],
+    //   "capabilities": "Improves email drafts for tone and clarity.",
+    //   "category": "Productivity"
+    // },
     {
       "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-7r5KYiyupQmNfzM9c5gmrxyb.png?st=2025-06-13T18%3A04%3A18Z&se=2025-06-13T20%3A04%3A18Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-13T09%3A12%3A30Z&ske=2025-06-14T09%3A12%3A30Z&sks=b&skv=2024-08-04&sig=pph1om%2BvIpTgvnMJmZpPWN/tynprvoN5svZOsiE3tks%3D",
       "title": "Focus Session Planner",
