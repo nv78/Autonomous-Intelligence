@@ -5,245 +5,245 @@ function Registry() {
   const [selectedAgent, setSelectedAgent] = useState(null);
 
   const agents = [
-    {
-      "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-JtVZYLbU3W80cCwbouJoBbA7.png?st=2025-06-13T17%3A45%3A08Z&se=2025-06-13T19%3A45%3A08Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-13T12%3A46%3A11Z&ske=2025-06-14T12%3A46%3A11Z&sks=b&skv=2024-08-04&sig=SD/marFNEbuo3GdssrzgLAtDXERDmGAtjvDXQTFcAJI%3D",
-      "title": "One-Pager Builder Agent",
-      "subtitle": "Create a GTM-ready sales sheet in minutes",
-      "description": "Input your product description, key features, and audience. This agent auto-generates a slick, well-formatted one-pager for sales or fundraising—editable in Google Docs or Canva.",
-      "websiteLink": "https://lutra.ai/shared/pNUzcBzkf08",
-      "metrics": [
-        "Visual/content quality",
-        "Time saved",
-        "Adoption rate",
-        "Edit rate"
-      ],
-      "capabilities": "Creates well-formatted one-pagers quickly for sales or fundraising.",
-      "category": "Creator"
-    },
-    {
-      "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-VXX9RZQYlo0FKyzzv6vhPGyA.png?st=2025-06-13T17%3A45%3A28Z&se=2025-06-13T19%3A45%3A28Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-13T06%3A54%3A26Z&ske=2025-06-14T06%3A54%3A26Z&sks=b&skv=2024-08-04&sig=Cg3Qy2sA8SGkRmyD7G734mk0DEMlgSpjK2GC%2BGl9yN8%3D",
-      "title": "Meeting-to-Newsletter Generator",
-      "subtitle": "Turn Zoom notes into a polished update for your audience",
-      "description": "Upload transcripts or notes. Agent structures into blog, memo, or newsletter. Ideal for content creators.",
-      "websiteLink": "https://lutra.ai/shared/Y88uufxJGgk",
-      "metrics": [
-        "Output quality",
-        "Time saved",
-        "Share rate",
-        "Edit rate"
-      ],
-      "capabilities": "Structures meeting notes into polished newsletters or blogs.",
-      "category": "Creator"
-    },
-    {
-      "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-rIVuDSiqVcWxzM5FIIPzkWrW.png?st=2025-06-13T17%3A45%3A47Z&se=2025-06-13T19%3A45%3A47Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-13T05%3A00%3A43Z&ske=2025-06-14T05%3A00%3A43Z&sks=b&skv=2024-08-04&sig=1be63zImL75hCnpytf2i1YNnoz3ivgSoxlQhSCLYgvY%3D",
-      "title": "Smart Newsletter Engine",
-      "subtitle": "Personalized newsletters tailored to each account",
-      "description": "Dynamically personalizes newsletters based on reader’s company or behavior. Integrates with HubSpot, Mailchimp.",
-      "websiteLink": "https://lutra.ai/shared/tCs6cw6hA-w",
-      "metrics": [
-        "Open/CTR rate",
-        "Time saved",
-        "Segment engagement"
-      ],
-      "capabilities": "Personalizes newsletters dynamically per account using integrations.",
-      "category": "Creator"
-    },
-    {
-      "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-5Z3ghfH0j5x89gL0CTtMwMFW.png?st=2025-06-13T17%3A46%3A08Z&se=2025-06-13T19%3A46%3A08Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-13T13%3A41%3A19Z&ske=2025-06-14T13%3A41%3A19Z&sks=b&skv=2024-08-04&sig=auWCSs76e5kZLoCbmJU6gyQp1sfuvET9tanY9IUFXms%3D",
-      "title": "Zoom Background Generator",
-      "subtitle": "Make a custom AI-generated Zoom background to match your vibe",
-      "description": "Choose a theme and get a downloadable, stylized background.",
-      "websiteLink": "https://lutra.ai/shared/kG1KV0a_V8c",
-      "metrics": [
-        "Downloads",
-        "Rating",
-        "Reuse",
-        "Virality"
-      ],
-      "capabilities": "Generates custom AI Zoom backgrounds by theme.",
-      "category": "Creator"
-    },
-    {
-      "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-xrgpfjSnd5Bd0O90ouGbOhiu.png?st=2025-06-13T17%3A46%3A30Z&se=2025-06-13T19%3A46%3A30Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-13T10%3A58%3A24Z&ske=2025-06-14T10%3A58%3A24Z&sks=b&skv=2024-08-04&sig=QENMFq7FYYQ%2BK%2BlXwtMUnyQB2zvyRYSyDLcvuy5vjfs%3D",
-      "title": "Deck Designer Agent",
-      "subtitle": "Pitch-ready slides from a prompt",
-      "description": "Input your pitch or topic, and the agent generates a full presentation deck with visuals, talking points, and speaker notes.",
-      "websiteLink": "",
-      "metrics": [
-        "Time saved",
-        "Slide design quality",
-        "Usage rate",
-        "Edit rate"
-      ],
-      "capabilities": "Generates presentation decks from prompts.",
-      "category": "Creator"
-    },
-    {
-      "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-5rxpkvSxIbecKWmuMQjVayfK.png?st=2025-06-13T17%3A47%3A08Z&se=2025-06-13T19%3A47%3A08Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-13T12%3A46%3A50Z&ske=2025-06-14T12%3A46%3A50Z&sks=b&skv=2024-08-04&sig=CBOsLxATE%2BKYUhzXwyhEoEXPMB1rmydEjdTbk1zgA5k%3D",
-      "title": "Ad Copy Brainstormer",
-      "subtitle": "Fresh ad angles in seconds",
-      "description": "Provide product and audience; receive multiple ad variants in different tones (funny, urgent, premium, etc).",
-      "websiteLink": "",
-      "metrics": [
-        "CTR improvement",
-        "Variant diversity",
-        "User preference selection",
-        "Reuse rate"
-      ],
-      "capabilities": "Generates multiple ad variants with different tones.",
-      "category": "Creator"
-    },
-    {
-      "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-Tju2bQva3MQEhN6Vjmha4u6K.png?st=2025-06-13T17%3A47%3A31Z&se=2025-06-13T19%3A47%3A31Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-13T08%3A29%3A37Z&ske=2025-06-14T08%3A29%3A37Z&sks=b&skv=2024-08-04&sig=qg5uZTiTWnyUKa5TLJg5Tig%2BNYhZ1OO1o66cxr2zfLk%3D",
-      "title": "Blog Post Outline Generator",
-      "subtitle": "From headline to structured article in seconds",
-      "description": "Enter your topic or headline, and the agent generates a coherent outline with headers, word counts, and internal link suggestions.",
-      "websiteLink": "",
-      "metrics": [
-        "Outline coherence",
-        "SEO coverage",
-        "Time saved",
-        "Edit rate"
-      ],
-      "capabilities": "Creates structured blog outlines with SEO suggestions.",
-      "category": "Creator"
-    },
-    {
-      "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-NhjZi5NQwxUxgi3q435I48Zv.png?st=2025-06-13T17%3A47%3A51Z&se=2025-06-13T19%3A47%3A51Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-13T15%3A19%3A01Z&ske=2025-06-14T15%3A19%3A01Z&sks=b&skv=2024-08-04&sig=0Ki3T2hvKfKatlP1S8ceY7qFLwxzuAK0EkpnhhJ2MnI%3D",
-      "title": "Infographic Builder",
-      "subtitle": "Data‑driven visuals without a designer",
-      "description": "Upload data or pick a template; the agent crafts a polished infographic with charts, icons, and captions.",
-      "websiteLink": "",
-      "metrics": [
-        "Visual appeal",
-        "Data accuracy",
-        "Creation time",
-        "Share rate"
-      ],
-      "capabilities": "Creates infographics from data quickly.",
-      "category": "Creator"
-    },
-    {
-      "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-iNg1cpL6tdSI15KNC5Wd7wzE.png?st=2025-06-13T17%3A48%3A09Z&se=2025-06-13T19%3A48%3A09Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-13T11%3A47%3A39Z&ske=2025-06-14T11%3A47%3A39Z&sks=b&skv=2024-08-04&sig=lpyhld46/E3tbvgdH7ia54EtTy%2B0O3hijjG10iFfihM%3D",
-      "title": "Product Naming Wizard",
-      "subtitle": "Catchy, brand‑safe names generated instantly",
-      "description": "Provide concept and audience. Agent proposes 10 names with domain availability and trademark risk flags.",
-      "websiteLink": "",
-      "metrics": [
-        "Name uniqueness",
-        "Domain availability",
-        "Selection rate",
-        "Trademark issues avoided"
-      ],
-      "capabilities": "Generates product names with domain and trademark checks.",
-      "category": "Creator"
-    },
-    {
-      "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-W1jxb6ZH8y0j6nycCa5LsbeA.png?st=2025-06-13T17%3A48%3A29Z&se=2025-06-13T19%3A48%3A29Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-13T14%3A35%3A22Z&ske=2025-06-14T14%3A35%3A22Z&sks=b&skv=2024-08-04&sig=qFUtUM1IDbCts6itDESmJ1XadbkAgvT7sXhWbk0s7JI%3D",
-      "title": "Brand Voice Style Guide Creator",
-      "subtitle": "Codify your tone in minutes",
-      "description": "Paste content samples or answer a quiz. Agent builds a concise style guide with voice principles and sample phrases.",
-      "websiteLink": "",
-      "metrics": [
-        "Guide completeness",
-        "Team adoption",
-        "Consistency improvement",
-        "Revision frequency"
-      ],
-      "capabilities": "Creates brand voice style guides quickly.",
-      "category": "Creator"
-    },
-    {
-      "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-EPW1Brn3aOYtOLddTrvmTKAl.png?st=2025-06-13T17%3A48%3A49Z&se=2025-06-13T19%3A48%3A49Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-13T01%3A37%3A55Z&ske=2025-06-14T01%3A37%3A55Z&sks=b&skv=2024-08-04&sig=cPs996Ct9ue5SBTA%2BOphKj9FIZcbCKfpP1t5%2B1BSAaU%3D",
-      "title": "Social Media Carousel Designer",
-      "subtitle": "Scroll‑stopping multi‑slide posts in one go",
-      "description": "Input message and platform; agent designs a 3‑5 slide carousel with copy, layout, and visual prompts.",
-      "websiteLink": "",
-      "metrics": [
-        "Engagement (saves/shares)",
-        "Slide clarity",
-        "Time saved",
-        "Edit rate"
-      ],
-      "capabilities": "Designs social media carousels from input messages.",
-      "category": "Creator"
-    },
-    {
-      "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-bfgL02UUBj8RbAsoIZ1druqn.png?st=2025-06-13T17%3A49%3A07Z&se=2025-06-13T19%3A49%3A07Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-13T13%3A17%3A40Z&ske=2025-06-14T13%3A17%3A40Z&sks=b&skv=2024-08-04&sig=qG9K628SpalA0nWHftkw0aw6pem5rm0GnK6/bzsbPPc%3D",
-      "title": "YouTube Title + Thumbnail Generator",
-      "subtitle": "Boost your click-throughs with compelling visuals",
-      "description": "Enter your video topic and tone, and receive 3–5 optimized titles and thumbnail ideas.",
-      "websiteLink": "",
-      "metrics": [
-        "CTR improvement",
-        "Engagement rate",
-        "Creator rating",
-        "Title relevance"
-      ],
-      "capabilities": "Generates optimized YouTube titles and thumbnails.",
-      "category": "Creator"
-    },
-    {
-      "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-QYgvZdbKTBrByl3Tzbm1riWe.png?st=2025-06-13T17%3A49%3A28Z&se=2025-06-13T19%3A49%3A28Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-13T15%3A40%3A41Z&ske=2025-06-14T15%3A40%3A41Z&sks=b&skv=2024-08-04&sig=XW/0V1Vx8Qx0AW0RGVUc5dyPSvJI2hRVLBwbZniVu%2Bg%3D",
-      "title": "TikTok Script Writer",
-      "subtitle": "Create engaging short-form scripts instantly",
-      "description": "Provide your content idea and audience; agent returns a 15–60 second hook‑based script.",
-      "websiteLink": "",
-      "metrics": [
-        "Retention time",
-        "Completion rate",
-        "Edit frequency",
-        "View count"
-      ],
-      "capabilities": "Creates engaging TikTok scripts quickly.",
-      "category": "Creator"
-    },
-    {
-      "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-i7DPJ1XJcRZVICRRoOkC7AjK.png?st=2025-06-13T17%3A49%3A52Z&se=2025-06-13T19%3A49%3A52Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-13T13%3A16%3A06Z&ske=2025-06-14T13%3A16%3A06Z&sks=b&skv=2024-08-04&sig=AL%2BhOFGh1Ln3qgjcrW9umllywNvrQKDqK48f0DCEdC4%3D",
-      "title": "E-book Formatter Agent",
-      "subtitle": "Turn long-form writing into beautiful e-books",
-      "description": "Upload a Google Doc and get a stylized, mobile-friendly ePub or PDF version.",
-      "websiteLink": "",
-      "metrics": [
-        "Design quality",
-        "Conversion success",
-        "Time saved",
-        "Reader feedback"
-      ],
-      "capabilities": "Formats documents into stylish e-books.",
-      "category": "Creator"
-    },
-    {
-      "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-e1rwEfWDCEQgMxNL56PmmEPL.png?st=2025-06-13T17%3A50%3A13Z&se=2025-06-13T19%3A50%3A13Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-12T22%3A17%3A13Z&ske=2025-06-13T22%3A17%3A13Z&sks=b&skv=2024-08-04&sig=OgrfdfksLG2NlqYaRugW7KdN/bvrlMtz0bJsyf/YvDU%3D",
-      "title": "Podcast Episode Packager",
-      "subtitle": "Turn a raw podcast into social-ready assets",
-      "description": "Upload an audio file and get a summary, title, episode description, social captions, and quote cards.",
-      "websiteLink": "",
-      "metrics": [
-        "Time saved",
-        "Engagement on assets",
-        "Download uplift",
-        "Edit rate"
-      ],
-      "capabilities": "Packages podcasts into social media assets.",
-      "category": "Creator"
-    },
-    {
-      "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-LYaozLZaHA7TUAAyDHWeS19k.png?st=2025-06-13T17%3A50%3A32Z&se=2025-06-13T19%3A50%3A32Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-12T23%3A29%3A59Z&ske=2025-06-13T23%3A29%3A59Z&sks=b&skv=2024-08-04&sig=f9tXjQ2bjWoIfp/tEheSbgREk3S1WyNMwCS6fFKnBNE%3D",
-      "title": "Outreach Follow-Up Tree Builder",
-      "subtitle": "Auto-generate a sequence of 3–5 follow-up emails based on intent",
-      "description": "Describe the outreach context, and this agent crafts a follow-up sequence with variations for no-response, soft interest, or bounce.",
-      "websiteLink": "https://lutra.ai/shared/BztORfXlBUk",
-      "metrics": [
-        "Response uplift",
-        "Sequence clarity",
-        "Personalization depth",
-        "Edit frequency"
-      ],
-      "capabilities": "Creates personalized follow-up email sequences.",
-      "category": "Creator"
-    },
+    // {
+    //   "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-JtVZYLbU3W80cCwbouJoBbA7.png?st=2025-06-13T17%3A45%3A08Z&se=2025-06-13T19%3A45%3A08Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-13T12%3A46%3A11Z&ske=2025-06-14T12%3A46%3A11Z&sks=b&skv=2024-08-04&sig=SD/marFNEbuo3GdssrzgLAtDXERDmGAtjvDXQTFcAJI%3D",
+    //   "title": "One-Pager Builder Agent",
+    //   "subtitle": "Create a GTM-ready sales sheet in minutes",
+    //   "description": "Input your product description, key features, and audience. This agent auto-generates a slick, well-formatted one-pager for sales or fundraising—editable in Google Docs or Canva.",
+    //   "websiteLink": "https://lutra.ai/shared/pNUzcBzkf08",
+    //   "metrics": [
+    //     "Visual/content quality",
+    //     "Time saved",
+    //     "Adoption rate",
+    //     "Edit rate"
+    //   ],
+    //   "capabilities": "Creates well-formatted one-pagers quickly for sales or fundraising.",
+    //   "category": "Creator"
+    // },
+    // {
+    //   "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-VXX9RZQYlo0FKyzzv6vhPGyA.png?st=2025-06-13T17%3A45%3A28Z&se=2025-06-13T19%3A45%3A28Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-13T06%3A54%3A26Z&ske=2025-06-14T06%3A54%3A26Z&sks=b&skv=2024-08-04&sig=Cg3Qy2sA8SGkRmyD7G734mk0DEMlgSpjK2GC%2BGl9yN8%3D",
+    //   "title": "Meeting-to-Newsletter Generator",
+    //   "subtitle": "Turn Zoom notes into a polished update for your audience",
+    //   "description": "Upload transcripts or notes. Agent structures into blog, memo, or newsletter. Ideal for content creators.",
+    //   "websiteLink": "https://lutra.ai/shared/Y88uufxJGgk",
+    //   "metrics": [
+    //     "Output quality",
+    //     "Time saved",
+    //     "Share rate",
+    //     "Edit rate"
+    //   ],
+    //   "capabilities": "Structures meeting notes into polished newsletters or blogs.",
+    //   "category": "Creator"
+    // },
+    // {
+    //   "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-rIVuDSiqVcWxzM5FIIPzkWrW.png?st=2025-06-13T17%3A45%3A47Z&se=2025-06-13T19%3A45%3A47Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-13T05%3A00%3A43Z&ske=2025-06-14T05%3A00%3A43Z&sks=b&skv=2024-08-04&sig=1be63zImL75hCnpytf2i1YNnoz3ivgSoxlQhSCLYgvY%3D",
+    //   "title": "Smart Newsletter Engine",
+    //   "subtitle": "Personalized newsletters tailored to each account",
+    //   "description": "Dynamically personalizes newsletters based on reader’s company or behavior. Integrates with HubSpot, Mailchimp.",
+    //   "websiteLink": "https://lutra.ai/shared/tCs6cw6hA-w",
+    //   "metrics": [
+    //     "Open/CTR rate",
+    //     "Time saved",
+    //     "Segment engagement"
+    //   ],
+    //   "capabilities": "Personalizes newsletters dynamically per account using integrations.",
+    //   "category": "Creator"
+    // },
+    // {
+    //   "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-5Z3ghfH0j5x89gL0CTtMwMFW.png?st=2025-06-13T17%3A46%3A08Z&se=2025-06-13T19%3A46%3A08Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-13T13%3A41%3A19Z&ske=2025-06-14T13%3A41%3A19Z&sks=b&skv=2024-08-04&sig=auWCSs76e5kZLoCbmJU6gyQp1sfuvET9tanY9IUFXms%3D",
+    //   "title": "Zoom Background Generator",
+    //   "subtitle": "Make a custom AI-generated Zoom background to match your vibe",
+    //   "description": "Choose a theme and get a downloadable, stylized background.",
+    //   "websiteLink": "https://lutra.ai/shared/kG1KV0a_V8c",
+    //   "metrics": [
+    //     "Downloads",
+    //     "Rating",
+    //     "Reuse",
+    //     "Virality"
+    //   ],
+    //   "capabilities": "Generates custom AI Zoom backgrounds by theme.",
+    //   "category": "Creator"
+    // },
+    // {
+    //   "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-xrgpfjSnd5Bd0O90ouGbOhiu.png?st=2025-06-13T17%3A46%3A30Z&se=2025-06-13T19%3A46%3A30Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-13T10%3A58%3A24Z&ske=2025-06-14T10%3A58%3A24Z&sks=b&skv=2024-08-04&sig=QENMFq7FYYQ%2BK%2BlXwtMUnyQB2zvyRYSyDLcvuy5vjfs%3D",
+    //   "title": "Deck Designer Agent",
+    //   "subtitle": "Pitch-ready slides from a prompt",
+    //   "description": "Input your pitch or topic, and the agent generates a full presentation deck with visuals, talking points, and speaker notes.",
+    //   "websiteLink": "",
+    //   "metrics": [
+    //     "Time saved",
+    //     "Slide design quality",
+    //     "Usage rate",
+    //     "Edit rate"
+    //   ],
+    //   "capabilities": "Generates presentation decks from prompts.",
+    //   "category": "Creator"
+    // },
+    // {
+    //   "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-5rxpkvSxIbecKWmuMQjVayfK.png?st=2025-06-13T17%3A47%3A08Z&se=2025-06-13T19%3A47%3A08Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-13T12%3A46%3A50Z&ske=2025-06-14T12%3A46%3A50Z&sks=b&skv=2024-08-04&sig=CBOsLxATE%2BKYUhzXwyhEoEXPMB1rmydEjdTbk1zgA5k%3D",
+    //   "title": "Ad Copy Brainstormer",
+    //   "subtitle": "Fresh ad angles in seconds",
+    //   "description": "Provide product and audience; receive multiple ad variants in different tones (funny, urgent, premium, etc).",
+    //   "websiteLink": "",
+    //   "metrics": [
+    //     "CTR improvement",
+    //     "Variant diversity",
+    //     "User preference selection",
+    //     "Reuse rate"
+    //   ],
+    //   "capabilities": "Generates multiple ad variants with different tones.",
+    //   "category": "Creator"
+    // },
+    // {
+    //   "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-Tju2bQva3MQEhN6Vjmha4u6K.png?st=2025-06-13T17%3A47%3A31Z&se=2025-06-13T19%3A47%3A31Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-13T08%3A29%3A37Z&ske=2025-06-14T08%3A29%3A37Z&sks=b&skv=2024-08-04&sig=qg5uZTiTWnyUKa5TLJg5Tig%2BNYhZ1OO1o66cxr2zfLk%3D",
+    //   "title": "Blog Post Outline Generator",
+    //   "subtitle": "From headline to structured article in seconds",
+    //   "description": "Enter your topic or headline, and the agent generates a coherent outline with headers, word counts, and internal link suggestions.",
+    //   "websiteLink": "",
+    //   "metrics": [
+    //     "Outline coherence",
+    //     "SEO coverage",
+    //     "Time saved",
+    //     "Edit rate"
+    //   ],
+    //   "capabilities": "Creates structured blog outlines with SEO suggestions.",
+    //   "category": "Creator"
+    // },
+    // {
+    //   "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-NhjZi5NQwxUxgi3q435I48Zv.png?st=2025-06-13T17%3A47%3A51Z&se=2025-06-13T19%3A47%3A51Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-13T15%3A19%3A01Z&ske=2025-06-14T15%3A19%3A01Z&sks=b&skv=2024-08-04&sig=0Ki3T2hvKfKatlP1S8ceY7qFLwxzuAK0EkpnhhJ2MnI%3D",
+    //   "title": "Infographic Builder",
+    //   "subtitle": "Data‑driven visuals without a designer",
+    //   "description": "Upload data or pick a template; the agent crafts a polished infographic with charts, icons, and captions.",
+    //   "websiteLink": "",
+    //   "metrics": [
+    //     "Visual appeal",
+    //     "Data accuracy",
+    //     "Creation time",
+    //     "Share rate"
+    //   ],
+    //   "capabilities": "Creates infographics from data quickly.",
+    //   "category": "Creator"
+    // },
+    // {
+    //   "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-iNg1cpL6tdSI15KNC5Wd7wzE.png?st=2025-06-13T17%3A48%3A09Z&se=2025-06-13T19%3A48%3A09Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-13T11%3A47%3A39Z&ske=2025-06-14T11%3A47%3A39Z&sks=b&skv=2024-08-04&sig=lpyhld46/E3tbvgdH7ia54EtTy%2B0O3hijjG10iFfihM%3D",
+    //   "title": "Product Naming Wizard",
+    //   "subtitle": "Catchy, brand‑safe names generated instantly",
+    //   "description": "Provide concept and audience. Agent proposes 10 names with domain availability and trademark risk flags.",
+    //   "websiteLink": "",
+    //   "metrics": [
+    //     "Name uniqueness",
+    //     "Domain availability",
+    //     "Selection rate",
+    //     "Trademark issues avoided"
+    //   ],
+    //   "capabilities": "Generates product names with domain and trademark checks.",
+    //   "category": "Creator"
+    // },
+    // {
+    //   "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-W1jxb6ZH8y0j6nycCa5LsbeA.png?st=2025-06-13T17%3A48%3A29Z&se=2025-06-13T19%3A48%3A29Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-13T14%3A35%3A22Z&ske=2025-06-14T14%3A35%3A22Z&sks=b&skv=2024-08-04&sig=qFUtUM1IDbCts6itDESmJ1XadbkAgvT7sXhWbk0s7JI%3D",
+    //   "title": "Brand Voice Style Guide Creator",
+    //   "subtitle": "Codify your tone in minutes",
+    //   "description": "Paste content samples or answer a quiz. Agent builds a concise style guide with voice principles and sample phrases.",
+    //   "websiteLink": "",
+    //   "metrics": [
+    //     "Guide completeness",
+    //     "Team adoption",
+    //     "Consistency improvement",
+    //     "Revision frequency"
+    //   ],
+    //   "capabilities": "Creates brand voice style guides quickly.",
+    //   "category": "Creator"
+    // },
+    // {
+    //   "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-EPW1Brn3aOYtOLddTrvmTKAl.png?st=2025-06-13T17%3A48%3A49Z&se=2025-06-13T19%3A48%3A49Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-13T01%3A37%3A55Z&ske=2025-06-14T01%3A37%3A55Z&sks=b&skv=2024-08-04&sig=cPs996Ct9ue5SBTA%2BOphKj9FIZcbCKfpP1t5%2B1BSAaU%3D",
+    //   "title": "Social Media Carousel Designer",
+    //   "subtitle": "Scroll‑stopping multi‑slide posts in one go",
+    //   "description": "Input message and platform; agent designs a 3‑5 slide carousel with copy, layout, and visual prompts.",
+    //   "websiteLink": "",
+    //   "metrics": [
+    //     "Engagement (saves/shares)",
+    //     "Slide clarity",
+    //     "Time saved",
+    //     "Edit rate"
+    //   ],
+    //   "capabilities": "Designs social media carousels from input messages.",
+    //   "category": "Creator"
+    // },
+    // {
+    //   "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-bfgL02UUBj8RbAsoIZ1druqn.png?st=2025-06-13T17%3A49%3A07Z&se=2025-06-13T19%3A49%3A07Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-13T13%3A17%3A40Z&ske=2025-06-14T13%3A17%3A40Z&sks=b&skv=2024-08-04&sig=qG9K628SpalA0nWHftkw0aw6pem5rm0GnK6/bzsbPPc%3D",
+    //   "title": "YouTube Title + Thumbnail Generator",
+    //   "subtitle": "Boost your click-throughs with compelling visuals",
+    //   "description": "Enter your video topic and tone, and receive 3–5 optimized titles and thumbnail ideas.",
+    //   "websiteLink": "",
+    //   "metrics": [
+    //     "CTR improvement",
+    //     "Engagement rate",
+    //     "Creator rating",
+    //     "Title relevance"
+    //   ],
+    //   "capabilities": "Generates optimized YouTube titles and thumbnails.",
+    //   "category": "Creator"
+    // },
+    // {
+    //   "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-QYgvZdbKTBrByl3Tzbm1riWe.png?st=2025-06-13T17%3A49%3A28Z&se=2025-06-13T19%3A49%3A28Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-13T15%3A40%3A41Z&ske=2025-06-14T15%3A40%3A41Z&sks=b&skv=2024-08-04&sig=XW/0V1Vx8Qx0AW0RGVUc5dyPSvJI2hRVLBwbZniVu%2Bg%3D",
+    //   "title": "TikTok Script Writer",
+    //   "subtitle": "Create engaging short-form scripts instantly",
+    //   "description": "Provide your content idea and audience; agent returns a 15–60 second hook‑based script.",
+    //   "websiteLink": "",
+    //   "metrics": [
+    //     "Retention time",
+    //     "Completion rate",
+    //     "Edit frequency",
+    //     "View count"
+    //   ],
+    //   "capabilities": "Creates engaging TikTok scripts quickly.",
+    //   "category": "Creator"
+    // },
+    // {
+    //   "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-i7DPJ1XJcRZVICRRoOkC7AjK.png?st=2025-06-13T17%3A49%3A52Z&se=2025-06-13T19%3A49%3A52Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-13T13%3A16%3A06Z&ske=2025-06-14T13%3A16%3A06Z&sks=b&skv=2024-08-04&sig=AL%2BhOFGh1Ln3qgjcrW9umllywNvrQKDqK48f0DCEdC4%3D",
+    //   "title": "E-book Formatter Agent",
+    //   "subtitle": "Turn long-form writing into beautiful e-books",
+    //   "description": "Upload a Google Doc and get a stylized, mobile-friendly ePub or PDF version.",
+    //   "websiteLink": "",
+    //   "metrics": [
+    //     "Design quality",
+    //     "Conversion success",
+    //     "Time saved",
+    //     "Reader feedback"
+    //   ],
+    //   "capabilities": "Formats documents into stylish e-books.",
+    //   "category": "Creator"
+    // },
+    // {
+    //   "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-e1rwEfWDCEQgMxNL56PmmEPL.png?st=2025-06-13T17%3A50%3A13Z&se=2025-06-13T19%3A50%3A13Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-12T22%3A17%3A13Z&ske=2025-06-13T22%3A17%3A13Z&sks=b&skv=2024-08-04&sig=OgrfdfksLG2NlqYaRugW7KdN/bvrlMtz0bJsyf/YvDU%3D",
+    //   "title": "Podcast Episode Packager",
+    //   "subtitle": "Turn a raw podcast into social-ready assets",
+    //   "description": "Upload an audio file and get a summary, title, episode description, social captions, and quote cards.",
+    //   "websiteLink": "",
+    //   "metrics": [
+    //     "Time saved",
+    //     "Engagement on assets",
+    //     "Download uplift",
+    //     "Edit rate"
+    //   ],
+    //   "capabilities": "Packages podcasts into social media assets.",
+    //   "category": "Creator"
+    // },
+    // {
+    //   "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-LYaozLZaHA7TUAAyDHWeS19k.png?st=2025-06-13T17%3A50%3A32Z&se=2025-06-13T19%3A50%3A32Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-12T23%3A29%3A59Z&ske=2025-06-13T23%3A29%3A59Z&sks=b&skv=2024-08-04&sig=f9tXjQ2bjWoIfp/tEheSbgREk3S1WyNMwCS6fFKnBNE%3D",
+    //   "title": "Outreach Follow-Up Tree Builder",
+    //   "subtitle": "Auto-generate a sequence of 3–5 follow-up emails based on intent",
+    //   "description": "Describe the outreach context, and this agent crafts a follow-up sequence with variations for no-response, soft interest, or bounce.",
+    //   "websiteLink": "https://lutra.ai/shared/BztORfXlBUk",
+    //   "metrics": [
+    //     "Response uplift",
+    //     "Sequence clarity",
+    //     "Personalization depth",
+    //     "Edit frequency"
+    //   ],
+    //   "capabilities": "Creates personalized follow-up email sequences.",
+    //   "category": "Creator"
+    // },
     {
       "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-SyU8xSfoc8YgS2gI6WGEgPck.png?st=2025-06-13T17%3A50%3A52Z&se=2025-06-13T19%3A50%3A52Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-13T02%3A59%3A52Z&ske=2025-06-14T02%3A59%3A52Z&sks=b&skv=2024-08-04&sig=BdP59hR6TIIZ9PwtVxREyRcVvBy1W5QlaQh7pUlH/ZA%3D",
       "title": "Job Description Optimizer",
@@ -753,21 +753,21 @@ function Registry() {
       "capabilities": "Transforms notes into prioritized task lists with owners.",
       "category": "Productivity"
     },
-    {
-      "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-XTO5aeQOfWz9yQh7qeQt9Y8b.png?st=2025-06-13T18%3A03%3A39Z&se=2025-06-13T20%3A03%3A39Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-12T19%3A48%3A27Z&ske=2025-06-13T19%3A48%3A27Z&sks=b&skv=2024-08-04&sig=jTwt6gGAiSvohp9OwnGbPDLxhxzpIj/j4RaVmTlKTxQ%3D",
-      "title": "Smart Calendar Scheduler",
-      "subtitle": "Find optimal meeting times, hassle-free",
-      "description": "Integrate your calendar, and the agent suggests the best slots for meetings based on priorities, availability, and preferences.",
-      "websiteLink": "",
-      "metrics": [
-        "Scheduling success rate",
-        "Conflict reduction",
-        "User time saved",
-        "Reschedule frequency"
-      ],
-      "capabilities": "Suggests optimal meeting times based on calendar data.",
-      "category": "Productivity"
-    },
+    // {
+    //   "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-XTO5aeQOfWz9yQh7qeQt9Y8b.png?st=2025-06-13T18%3A03%3A39Z&se=2025-06-13T20%3A03%3A39Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-12T19%3A48%3A27Z&ske=2025-06-13T19%3A48%3A27Z&sks=b&skv=2024-08-04&sig=jTwt6gGAiSvohp9OwnGbPDLxhxzpIj/j4RaVmTlKTxQ%3D",
+    //   "title": "Smart Calendar Scheduler",
+    //   "subtitle": "Find optimal meeting times, hassle-free",
+    //   "description": "Integrate your calendar, and the agent suggests the best slots for meetings based on priorities, availability, and preferences.",
+    //   "websiteLink": "",
+    //   "metrics": [
+    //     "Scheduling success rate",
+    //     "Conflict reduction",
+    //     "User time saved",
+    //     "Reschedule frequency"
+    //   ],
+    //   "capabilities": "Suggests optimal meeting times based on calendar data.",
+    //   "category": "Productivity"
+    // },
     // {
     //   "image": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-WM0C8DmpfiXb4ySIeUGFLcf2/user-GIG8da8QuHRCXLaF6Wti6LCe/img-s8jkGVimFuUa99GR2TeJnHVE.png?st=2025-06-13T18%3A03%3A59Z&se=2025-06-13T20%3A03%3A59Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=475fd488-6c59-44a5-9aa9-31c4db451bea&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-06-12T19%3A15%3A43Z&ske=2025-06-13T19%3A15%3A43Z&sks=b&skv=2024-08-04&sig=CutHTDzNU2FABfh7JegaMDaGl97FzWq5EvMmKldK7tU%3D",
     //   "title": "Email Tone Checker",
@@ -814,8 +814,8 @@ function Registry() {
       "category": "Productivity"
     }
   ]
-
-  const categories = ["Creator", "Education", "Analyze", "Automate", "Code", "Productivity"];
+  const categories = ["Education", "Analyze", "Automate", "Code", "Productivity"];
+  // const categories = ["Creator", "Education", "Analyze", "Automate", "Code", "Productivity"];
 
   const [selectedCategory, setSelectedCategory] = useState(null);
 
