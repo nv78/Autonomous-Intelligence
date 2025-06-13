@@ -814,8 +814,8 @@ function Registry() {
       "category": "Productivity"
     }
   ]
-  const categories = ["Education", "Analyze", "Automate", "Code", "Productivity"];
-  // const categories = ["Creator", "Education", "Analyze", "Automate", "Code", "Productivity"];
+  // const categories = ["Education", "Analyze", "Automate", "Code", "Productivity"];
+  const categories = ["Creator", "Education", "Analyze", "Automate", "Code", "Productivity"];
 
   const [selectedCategory, setSelectedCategory] = useState(null);
 
