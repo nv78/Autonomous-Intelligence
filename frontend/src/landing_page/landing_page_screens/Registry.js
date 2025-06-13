@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import agents from './agents.json'; 
 
 function Registry() {
   const [isModalOpen, setIsModalOpen] = useState(false);
