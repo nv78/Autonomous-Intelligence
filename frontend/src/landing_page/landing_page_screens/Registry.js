@@ -845,7 +845,7 @@ function Registry() {
     : agents;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-[#141414] to-[#1a1a1a] px-5 lg:px-32 py-24">
+    <div className="min-h-screen px-5 lg:px-32 py-24">
       <h1 className="text-center text-5xl font-extrabold text-white mb-6 tracking-tight">Agent Registry</h1>
 
       {/* Category selector */}
