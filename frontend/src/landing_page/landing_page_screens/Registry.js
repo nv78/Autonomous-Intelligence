@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { FaPlay } from "react-icons/fa";
 
 function Registry() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
 
   const agents = [
@@ -1021,11 +1022,24 @@ function Registry() {
     e.stopPropagation();
     openModal(agent);
   };
+  const normalize = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
   // Filter agents based on selectedCategory; show all if none selected
-  const filteredAgents = selectedCategory
+  const filteredAgents = useMemo(() => {
+  let filtered = selectedCategory
     ? agents.filter((agent) => agent.category === selectedCategory)
     : agents;
+
+  if (searchTerm) {
+    filtered = filtered.filter((agent) => {
+      const target = `${agent.title} ${agent.subtitle} ${agent.description} ${agent.capabilities}`;
+      return normalize(target).includes(normalize(searchTerm));
+    });
+  }
+
+  return filtered;
+}, [selectedCategory, searchTerm]);
+
 
   return (
     <div className="min-h-screen px-5 lg:px-32 py-24">
@@ -1061,49 +1075,16 @@ function Registry() {
         ))}
       </div>
 
+<div className="flex justify-center mb-12">
+  <input
+    type="text"
+    placeholder="🔎 Search agents by title, subtitle, or capabilities..."
+    className="w-full md:w-1/2 p-4 rounded-xl text-white bg-gray-700 text-lg shadow-lg border border-gray-600 focus:outline-none focus:ring-4 focus:ring-blue-400"
+    value={searchTerm}
+    onChange={(e) => setSearchTerm(e.target.value)}
+  />
+</div>
 
-      {/* <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-12">
-        {filteredAgents.length > 0 ? (
-          filteredAgents.map((agent, index) => (
-            <div
-              key={index}
-              className="bg-[#161616] border border-[#2a2a2a] rounded-3xl shadow-lg overflow-hidden transform transition-transform hover:-translate-y-3 hover:shadow-xl cursor-pointer group"
-              onClick={() => window.open(agent.websiteLink, "_blank", "noopener,noreferrer")}
-            >
-              <div className="relative w-full h-56 overflow-hidden">
-                <img
-                  src={agent.image}
-                  alt={agent.title}
-                  className="w-full h-full object-cover object-center transition-opacity duration-300 group-hover:opacity-30"
-                />
-                <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 space-y-3">
-                  <button
-                    onClick={(e) => handleTryAgent(e, agent.websiteLink)}
-                    className="bg-gradient-to-r from-[#EDDC8F] to-[#F1CA57] text-black px-5 py-2 rounded-full font-medium text-sm hover:scale-105 transition-transform"
-                  >
-                    Try Agent
-                  </button>
-                  <button
-                    onClick={(e) => handleMoreInfo(e, agent)}
-                    className="bg-white text-black px-5 py-2 rounded-full font-medium text-sm hover:scale-105 transition-transform"
-                  >
-                    More Info
-                  </button>
-                </div>
-              </div>
-              <div className="p-5">
-                <h3 className="text-xl font-bold text-white mb-1">{agent.title}</h3>
-                <p className="text-sm text-gray-400">{agent.subtitle}</p>
-              </div>
-            </div>
-          ))
-        ) : (
-          <p className="text-gray-500 italic col-span-full text-center">
-            No agents available in this category.
-          </p>
-        )}
-      </div> */}
-      {/* Agents grid */}
 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-12">
   {filteredAgents.length > 0 ? (
     filteredAgents.map((agent, index) => (
