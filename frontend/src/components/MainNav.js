@@ -7,7 +7,8 @@ import {
   selectWorkflowsPath,
   chatbotPath,
   apiKeyDashboardPath,
-  downloadPrivateGPTPath
+  downloadPrivateGPTPath,
+  gtmPath,
 } from "../constants/RouteConstants";
 import { Dropdown, Navbar, Avatar, DarkThemeToggle } from "flowbite-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";

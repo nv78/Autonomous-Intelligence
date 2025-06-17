@@ -13,6 +13,7 @@ import Research from "./landing_page_components/Research";
 import FinanceGPT from "./landing_page_screens/FinanceGPT";
 import DownloadPrivateGPT from "../components/DownloadPrivateGPT";
 import Customers from "./landing_page_screens/Customers/Customers";
+import GTMChatbot from "./landing_page_screens/GTMChatbot";
 import {
   faqsPath,
   sampleProjectsPath,
@@ -23,6 +24,7 @@ import {
   pricingPath,
   registryPath,
   financeGPTPath,
+  gtmPath,
 } from "../constants/RouteConstants";
 import Home from "./landing_page_screens/Home/Home";
 import Footer from "./landing_page_components/Footer";
@@ -78,6 +80,7 @@ function LandingPage() {
           <Route path={registryPath} index element={<Registry />} />
           <Route path={sampleProjectsPath} index element={<SampleProjects />} />
           <Route path={researchPath} index element={<Research />} />
+          <Route path={gtmPath} index element={<GTMChatbot />} />
           <Route path="*" element={<Navigate replace to="/" />} />
         </Routes>
       </div>
