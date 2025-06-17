@@ -15,6 +15,7 @@ from pip._vendor import cachecontrol
 import google.auth.transport.requests
 from flask.wrappers import Response
 import json
+from database.db import get_db_connection
 import jwt
 import requests
 from database.db_auth import api_key_access_invalid
@@ -90,6 +91,7 @@ config = {
   'ORIGINS': [
     'http://localhost:3000',  # React
     'http://dashboard.localhost:3000',  # React
+    
     'https://anote.ai', # Frontend prod URL,
     'https://privatechatbot.ai', # Frontend prod URL,
     'https://dashboard.privatechatbot.ai', # Frontend prod URL,
@@ -625,7 +627,6 @@ def retrieve_messages_from_chat():
     chat_id = request.json.get('chat_id')
 
     messages = retrieve_message_from_db(user_email, chat_id, chat_type)
-
     return jsonify(messages=messages)
 
 
@@ -866,7 +867,7 @@ def process_message_pdf():
            model_use = "gpt-4o-mini"
 
         print("using OpenAI and model is", model_use)
-        client = openai.OpenAI()
+        client = openai.OpenAI(api_key="")
         try:
             completion = client.chat.completions.create(
                 model=model_use,
@@ -877,6 +878,7 @@ def process_message_pdf():
             )
             print("using fine tuned model")
             answer = str(completion.choices[0].message.content)
+            print(answer, "message", message)
         except openai.NotFoundError:
             print(f"The model `{model_use}` does not exist. Falling back to 'gpt-4'.")
             completion = client.chat.completions.create(
@@ -913,8 +915,11 @@ def process_message_pdf():
         add_sources_to_db(message_id, sources)
     except:
         print("no sources")
-
-    return jsonify(answer=answer)
+    print("response", answer)
+    return jsonify(
+        answer=answer,
+        id=message_id
+    )
 
 # Only for demo purposes
 chat_to_document_mapping = {}

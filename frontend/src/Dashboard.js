@@ -38,7 +38,7 @@ function Dashboard() {
     }
   }
 
-  var showRestrictedRouteRequiringUserSession = isLoggedIn;
+  var showRestrictedRouteRequiringUserSession = true;
 
   let dispatch = useDispatch();
 
@@ -121,9 +121,9 @@ function Dashboard() {
   ];
 
   var daysStr = "";
-  if (numDaysLeft == "0") {
+  if (numDaysLeft === "0") {
     daysStr = "less than a day";
-  } else if (numDaysLeft == "1") {
+  } else if (numDaysLeft === "1") {
     daysStr = "1 day";
   } else {
     daysStr = numDaysLeft.toString() + " days";
@@ -135,7 +135,7 @@ function Dashboard() {
       //   dark: darkTheme,
       // }}
     >
-      <div className="DashboardView flex flex-col min-h-screen">
+      <div className="bg-white flex flex-col ">
         <div id="wrapperDiv" className="flex-grow">
           {/* {isLoggedIn && isFreeTrial && <div className="mt-2 mb-2 ml-6" style={{ color: "white" }}>
             Your free trial ends in {daysStr}
