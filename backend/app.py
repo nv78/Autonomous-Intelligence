@@ -867,11 +867,7 @@ def process_message_pdf():
            model_use = "gpt-4o-mini"
 
         print("using OpenAI and model is", model_use)
-<<<<<<< HEAD
-        client = openai.OpenAI(api_key="")
-=======
         client = openai.OpenAI(api_key=os.getenv("OPENAI_API"))
->>>>>>> 5e02597 (remove env)
         try:
             completion = client.chat.completions.create(
                 model=model_use,
