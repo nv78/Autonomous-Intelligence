@@ -335,7 +335,7 @@ const Chatbot = (props) => {
               <div ref={messagesEndRef} /> {/* Empty div for scrolling */}
             </div>
             <div className="absolute bottom-7 flex items-center w-[95%] mx-auto ">
-              <div className="mr-4 bg-gradient-to-r from-[#28b2fb] to-[#28b2fb] rounded-xl p-2 cursor-pointer text-black">
+              <div className="mr-4 bg-gradient-to-r from-[#b39ddb] to-[#b39ddb] rounded-xl p-2 cursor-pointer text-black">
                 <PDFUploader
                   className=""
                   chat_id={props.selectedChatId}
@@ -359,7 +359,7 @@ const Chatbot = (props) => {
                 }}
               />
               <div
-                className="text-white bg-[#28b2fb] p-2 rounded-xl ml-4 cursor-pointer"
+                className="text-white bg-[#b39ddb] p-2 rounded-xl ml-4 cursor-pointer"
                 onClick={() => {
                   const text = inputRef.current.value; // Get the input value
                   handleTryMessage(text, props.selectedChatId, props.isPrivate);
