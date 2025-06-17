@@ -232,8 +232,8 @@ function Registry() {
     capabilities: "Expands keyword lists for organic traffic growth.",
     category: "Analyze"
   },
-     {
-    image: "https://img.youtube.com/vi/d0ZkHkRLbpU/hqdefault.jpg",
+  {
+    image: "/images/upreach.png",
     title: "Upreach",
     subtitle: "AI-powered email marketing and outreach automation",
     description: "Upreach is an advanced email marketing agent designed to streamline outreach and optimize email campaigns with AI-driven insights.",
@@ -248,7 +248,7 @@ function Registry() {
     category: "Productivity"
   },
   {
-    image: "https://img.youtube.com/vi/EAeBYGkxA_8/hqdefault.jpg",
+    image: "/images/autolabel.png",
     title: "AutoLabel",
     subtitle: "AI-powered data labeling for machine learning datasets",
     description: "AutoLabel provides accurate and efficient annotation for large-scale image, text, and entity extraction datasets, supporting multiple annotation formats with integrated quality control.",
@@ -263,7 +263,7 @@ function Registry() {
     category: "Analyze"
   },
   {
-    image: "https://img.youtube.com/vi/fE4_Yjjfl0M/hqdefault.jpg",
+    image: "/images/ai-rfp.png",
     title: "AI-RFP",
     subtitle: "Grant writing and RFP proposal drafting agent",
     description: "AI-RFP assists with grant writing and proposal drafting, automatically generating high-quality drafts and analyzing funding opportunities for compliance and fit.",
@@ -278,7 +278,7 @@ function Registry() {
     category: "Productivity"
   },
   {
-    image: "https://img.youtube.com/vi/K2KUVdZjZnc/hqdefault.jpg",
+    image: "/images/autocode.png",
     title: "Autocode",
     subtitle: "Autonomous AI software engineer for coding tasks",
     description: "Autocode automatically generates code, reviews pull requests, detects bugs, and suggests optimizations for software projects with minimal human intervention.",
@@ -293,7 +293,7 @@ function Registry() {
     category: "Code"
   },
   {
-    image: "https://img.youtube.com/vi/SW6itfZ2nmg/hqdefault.jpg",
+    image: "/images/financial_chatbot.png",
     title: "Financial Chatbot",
     subtitle: "AI-powered financial analysis and reporting agent",
     description: "The Financial Chatbot delivers real-time financial insights, analyzes market data, and generates customizable dashboards to support decision-making.",
@@ -308,7 +308,7 @@ function Registry() {
     category: "Analyze"
   },
   {
-    image: "https://img.youtube.com/vi/sKSqpxP-GRw/hqdefault.jpg",
+    image: "/images/autonews.png",
     title: "AutoNews",
     subtitle: "AI newsletter and content curation agent",
     description: "AutoNews curates trending content from multiple sources, summarizes key insights, and automatically compiles personalized newsletters for distribution.",
@@ -771,234 +771,233 @@ function Registry() {
      "capabilities": "Summarizes large documents into key points and FAQs.",
      "category": "Productivity"
    }, // TODO: The ones below still need to be finalized
-        // {
-  //   image: "/images/survey_data_interpreter.png",
-  //   title: "Survey Data Interpreter",
-  //   subtitle: "Extract insights from survey datasets",
-  //   description: "Analyze responses, segment results, and generate actionable reports.",
-  //   websiteLink: "https://lutra.ai/shared/ZwLQpnrvLdQ",
-  //   metrics: [
-  //     "Insight quality",
-  //     "Segmentation depth",
-  //     "Time saved",
-  //     "Report clarity"
-  //   ],
-  //   capabilities: "Transforms raw survey responses into business insights.",
-  //   category: "Analyze"
-  // },
-  // {
-  //   image: "/images/performance_analytics_specialist.png",
-  //   title: "Performance Analytics Specialist",
-  //   subtitle: "Evaluate business and team KPIs",
-  //   description: "Assess performance against targets, benchmarks, and goals.",
-  //   websiteLink: "https://lutra.ai/shared/uB3I7S1-M80",
-  //   metrics: [
-  //     "KPI coverage",
-  //     "Goal alignment",
-  //     "Management adoption",
-  //     "Continuous improvement"
-  //   ],
-  //   capabilities: "Tracks organizational performance against goals.",
-  //   category: "Analyze"
-  // },
-  // {
-  //   image: "/images/social_media_metrics_analyzer.png",
-  //   title: "Social Media Metrics Analyzer",
-  //   subtitle: "Evaluate engagement across social platforms",
-  //   description: "Measure post performance, growth, and campaign effectiveness by channel.",
-  //   websiteLink: "https://lutra.ai/shared/HIo2cMGUP2U",
-  //   metrics: [
-  //     "Engagement accuracy",
-  //     "Platform insights",
-  //     "Optimization clarity",
-  //     "Campaign ROI"
-  //   ],
-  //   capabilities: "Analyzes platform-specific engagement metrics.",
-  //   category: "Analyze"
-  // },
-  // {
-  //   image: "/images/website_analytics_evaluator.png",
-  //   title: "Website Analytics Evaluator",
-  //   subtitle: "Analyze web traffic patterns",
-  //   description: "Visualize visitor behavior, conversion funnels, and user journey friction.",
-  //   websiteLink: "https://lutra.ai/shared/oUIfFiT17wQ",
-  //   metrics: [
-  //     "Visitor retention",
-  //     "Conversion improvement",
-  //     "UX optimization",
-  //     "Revenue impact"
-  //   ],
-  //   capabilities: "Evaluates website performance from analytics data.",
-  //   category: "Analyze"
-  // },
-  // {
-  //   image: "/images/business_intelligence_analyst.png",
-  //   title: "Business Intelligence Analyst",
-  //   subtitle: "Aggregate business data into insights",
-  //   description: "Analyze sales, operations, customer and financial data across departments.",
-  //   websiteLink: "https://lutra.ai/shared/lGkBQaHW-As",
-  //   metrics: [
-  //     "Data completeness",
-  //     "Insight actionability",
-  //     "Executive adoption",
-  //     "Revenue lift"
-  //   ],
-  //   capabilities: "Creates integrated business intelligence dashboards.",
-  //   category: "Analyze"
-  // },
-     // {
-  //   image: "/images/ab_testing_results_analyst.png",
-  //   title: "A/B Testing Results Analyst",
-  //   subtitle: "Evaluate A/B test outcomes",
-  //   description: "Assess statistical significance and optimization recommendations based on test results.",
-  //   websiteLink: "https://lutra.ai/shared/u98d7CBaGTs",
-  //   metrics: [
-  //     "Test validity",
-  //     "Variant significance",
-  //     "Conversion improvement",
-  //     "Iteration speed"
-  //   ],
-  //   capabilities: "Analyzes A/B tests to guide product optimization.",
-  //   category: "Analyze"
-  // },
-  //  {
-  //    "image": "/images/sales_deal_risk_detector.png",
-  //    "title": "Sales Deal Risk Detector",
-  //    "subtitle": "Spot red flags in your pipeline early",
-  //    "description": "Analyze CRM data and conversation transcripts to flag deals with low closing probability.",
-  //    "websiteLink": "https://lutra.ai/shared/TRJKTPH3slI",
-  //    "metrics": [
-  //      "Prediction accuracy",
-  //      "False positive rate",
-  //      "Deal closure rate",
-  //      "User trust"
-  //    ],
-  //    "capabilities": "Detects risky deals in sales pipelines.",
-  //    "category": "Analyze"
-  //  },
-  //  {
-  //    "image": "/images/customer_support_ticket_prioritizer.png",
-  //    "title": "Customer Support Ticket Prioritizer",
-  //    "subtitle": "Automatically triage and escalate urgent support tickets",
-  //    "description": "Categorizes tickets by severity and topic, highlighting issues needing immediate attention.",
-  //    "websiteLink": "https://lutra.ai/shared/TO5eMUetS1I",
-  //    "metrics": [
-  //      "Prioritization accuracy",
-  //      "Response time reduction",
-  //      "Customer satisfaction",
-  //      "Ticket resolution rate"
-  //    ],
-  //    "capabilities": "Prioritizes support tickets by urgency and topic.",
-  //    "category": "Analyze"
-  //  },
-    // {
-  //   image: "/images/blog_post_writer.png",
-  //   title: "Blog Post Writer",
-  //   subtitle: "Generate complete SEO-optimized blog posts",
-  //   description: "Produce fully written blog posts tailored to audience, topic, and SEO goals.",
-  //   websiteLink: "https://lutra.ai/shared/AGXi3TCSCzU",
-  //   metrics: [
-  //     "SEO score",
-  //     "Readability score",
-  //     "Time saved",
-  //     "Edit rate"
-  //   ],
-  //   capabilities: "Generates complete, SEO-optimized blog posts from topics.",
-  //   category: "Creator"
-  // },
-  // {
-  //   image: "/images/data_trend_analyzer.png",
-  //   title: "Data Trend Analyzer",
-  //   subtitle: "Analyze trends in time-series data",
-  //   description: "Visualize, compare, and extract insights from performance or operational data over time.",
-  //   websiteLink: "https://lutra.ai/shared/RxmHpW5SiJ8",
-  //   metrics: [
-  //     "Trend accuracy",
-  //     "Insight quality",
-  //     "Time saved",
-  //     "Data coverage"
-  //   ],
-  //   capabilities: "Analyzes time-series data and extracts actionable trends.",
-  //   category: "Analyze"
-  // },
-  //  {
-  //    "image": "/images/product_naming_wizard.png",
-  //    "title": "Product Naming Wizard",
-  //    "subtitle": "Catchy, brand‑safe names generated instantly",
-  //    "description": "Provide concept and audience. Agent proposes 10 names with domain availability and trademark risk flags.",
-  //    "websiteLink": "https://lutra.ai/shared/yQtWCuf9nZc",
-  //    "metrics": [
-  //      "Name uniqueness",
-  //      "Domain availability",
-  //      "Selection rate",
-  //      "Trademark issues avoided"
-  //    ],
-  //    "capabilities": "Generates product names with domain and trademark checks.",
-  //    "category": "Creator"
-  //  },
-  //  {
-  //    "image": "/images/brand_voice_style_guide_creator.png",
-  //    "title": "Brand Voice Style Guide Creator",
-  //    "subtitle": "Codify your tone in minutes",
-  //    "description": "Paste content samples or answer a quiz. Agent builds a concise style guide with voice principles and sample phrases.",
-  //    "websiteLink": "https://lutra.ai/shared/hQtX_fq_Ht4",
-  //    "metrics": [
-  //      "Guide completeness",
-  //      "Team adoption",
-  //      "Consistency improvement",
-  //      "Revision frequency"
-  //    ],
-  //    "capabilities": "Creates brand voice style guides quickly.",
-  //    "category": "Creator"
-  //  },
-  //  {
-  //    "image": "/images/youtube_title_+_thumbnail_generator.png",
-  //    "title": "YouTube Title + Thumbnail Generator",
-  //    "subtitle": "Boost your click-throughs with compelling visuals",
-  //    "description": "Enter your video topic and tone, and receive 3–5 optimized titles and thumbnail ideas.",
-  //    "websiteLink": "https://lutra.ai/shared/PjAudl4GSkg",
-  //    "metrics": [
-  //      "CTR improvement",
-  //      "Engagement rate",
-  //      "Creator rating",
-  //      "Title relevance"
-  //    ],
-  //    "capabilities": "Generates optimized YouTube titles and thumbnails.",
-  //    "category": "Creator"
-  //  },
-  //  {
-  //    "image": "/images/e-book_formatter_agent.png",
-  //    "title": "E-book Formatter Agent",
-  //    "subtitle": "Turn long-form writing into beautiful e-books",
-  //    "description": "Upload a Google Doc and get a stylized, mobile-friendly ePub or PDF version.",
-  //    "websiteLink": "https://lutra.ai/shared/6eq2HdGSFoU",
-  //    "metrics": [
-  //      "Design quality",
-  //      "Conversion success",
-  //      "Time saved",
-  //      "Reader feedback"
-  //    ],
-  //    "capabilities": "Formats documents into stylish e-books.",
-  //    "category": "Creator"
-  //  },
-  //  {
-  //    "image": "/images/podcast_episode_packager.png",
-  //    "title": "Podcast Episode Packager",
-  //    "subtitle": "Turn a raw podcast into social-ready assets",
-  //    "description": "Upload an audio file and get a summary, title, episode description, social captions, and quote cards.",
-  //    "websiteLink": "https://lutra.ai/shared/_G1thqeErUE",
-  //    "metrics": [
-  //      "Time saved",
-  //      "Engagement on assets",
-  //      "Download uplift",
-  //      "Edit rate"
-  //    ],
-  //    "capabilities": "Packages podcasts into social media assets.",
-  //    "category": "Creator"
-  //  },
+  {
+    image: "/images/survey_data_interpreter.png",
+    title: "Survey Data Interpreter",
+    subtitle: "Extract insights from survey datasets",
+    description: "Analyze responses, segment results, and generate actionable reports.",
+    websiteLink: "https://lutra.ai/shared/ZwLQpnrvLdQ",
+    metrics: [
+      "Insight quality",
+      "Segmentation depth",
+      "Time saved",
+      "Report clarity"
+    ],
+    capabilities: "Transforms raw survey responses into business insights.",
+    category: "Analyze"
+  },
+  {
+    image: "/images/performance_analytics_specialist.png",
+    title: "Performance Analytics Specialist",
+    subtitle: "Evaluate business and team KPIs",
+    description: "Assess performance against targets, benchmarks, and goals.",
+    websiteLink: "https://lutra.ai/shared/uB3I7S1-M80",
+    metrics: [
+      "KPI coverage",
+      "Goal alignment",
+      "Management adoption",
+      "Continuous improvement"
+    ],
+    capabilities: "Tracks organizational performance against goals.",
+    category: "Analyze"
+  },
+  {
+    image: "/images/social_media_metrics_analyzer.png",
+    title: "Social Media Metrics Analyzer",
+    subtitle: "Evaluate engagement across social platforms",
+    description: "Measure post performance, growth, and campaign effectiveness by channel.",
+    websiteLink: "https://lutra.ai/shared/HIo2cMGUP2U",
+    metrics: [
+      "Engagement accuracy",
+      "Platform insights",
+      "Optimization clarity",
+      "Campaign ROI"
+    ],
+    capabilities: "Analyzes platform-specific engagement metrics.",
+    category: "Analyze"
+  },
+  {
+    image: "/images/website_analytics_evaluator.png",
+    title: "Website Analytics Evaluator",
+    subtitle: "Analyze web traffic patterns",
+    description: "Visualize visitor behavior, conversion funnels, and user journey friction.",
+    websiteLink: "https://lutra.ai/shared/oUIfFiT17wQ",
+    metrics: [
+      "Visitor retention",
+      "Conversion improvement",
+      "UX optimization",
+      "Revenue impact"
+    ],
+    capabilities: "Evaluates website performance from analytics data.",
+    category: "Analyze"
+  },
+  {
+    image: "/images/business_intelligence_analyst.png",
+    title: "Business Intelligence Analyst",
+    subtitle: "Aggregate business data into insights",
+    description: "Analyze sales, operations, customer and financial data across departments.",
+    websiteLink: "https://lutra.ai/shared/lGkBQaHW-As",
+    metrics: [
+      "Data completeness",
+      "Insight actionability",
+      "Executive adoption",
+      "Revenue lift"
+    ],
+    capabilities: "Creates integrated business intelligence dashboards.",
+    category: "Analyze"
+  },
+     {
+    image: "/images/ab_testing_results_analyst.png",
+    title: "A/B Testing Results Analyst",
+    subtitle: "Evaluate A/B test outcomes",
+    description: "Assess statistical significance and optimization recommendations based on test results.",
+    websiteLink: "https://lutra.ai/shared/u98d7CBaGTs",
+    metrics: [
+      "Test validity",
+      "Variant significance",
+      "Conversion improvement",
+      "Iteration speed"
+    ],
+    capabilities: "Analyzes A/B tests to guide product optimization.",
+    category: "Analyze"
+  },
+   {
+     "image": "/images/sales_deal_risk_detector.png",
+     "title": "Sales Deal Risk Detector",
+     "subtitle": "Spot red flags in your pipeline early",
+     "description": "Analyze CRM data and conversation transcripts to flag deals with low closing probability.",
+     "websiteLink": "https://lutra.ai/shared/TRJKTPH3slI",
+     "metrics": [
+       "Prediction accuracy",
+       "False positive rate",
+       "Deal closure rate",
+       "User trust"
+     ],
+     "capabilities": "Detects risky deals in sales pipelines.",
+     "category": "Analyze"
+   },
+   {
+     "image": "/images/customer_support_ticket_prioritizer.png",
+     "title": "Customer Support Ticket Prioritizer",
+     "subtitle": "Automatically triage and escalate urgent support tickets",
+     "description": "Categorizes tickets by severity and topic, highlighting issues needing immediate attention.",
+     "websiteLink": "https://lutra.ai/shared/TO5eMUetS1I",
+     "metrics": [
+       "Prioritization accuracy",
+       "Response time reduction",
+       "Customer satisfaction",
+       "Ticket resolution rate"
+     ],
+     "capabilities": "Prioritizes support tickets by urgency and topic.",
+     "category": "Analyze"
+   },
+    {
+    image: "/images/blog_post_writer.png",
+    title: "Blog Post Writer",
+    subtitle: "Generate complete SEO-optimized blog posts",
+    description: "Produce fully written blog posts tailored to audience, topic, and SEO goals.",
+    websiteLink: "https://lutra.ai/shared/AGXi3TCSCzU",
+    metrics: [
+      "SEO score",
+      "Readability score",
+      "Time saved",
+      "Edit rate"
+    ],
+    capabilities: "Generates complete, SEO-optimized blog posts from topics.",
+    category: "Creator"
+  },
+  {
+    image: "/images/data_trend_analyzer.png",
+    title: "Data Trend Analyzer",
+    subtitle: "Analyze trends in time-series data",
+    description: "Visualize, compare, and extract insights from performance or operational data over time.",
+    websiteLink: "https://lutra.ai/shared/RxmHpW5SiJ8",
+    metrics: [
+      "Trend accuracy",
+      "Insight quality",
+      "Time saved",
+      "Data coverage"
+    ],
+    capabilities: "Analyzes time-series data and extracts actionable trends.",
+    category: "Analyze"
+  },
+   {
+     "image": "/images/product_naming_wizard.png",
+     "title": "Product Naming Wizard",
+     "subtitle": "Catchy, brand‑safe names generated instantly",
+     "description": "Provide concept and audience. Agent proposes 10 names with domain availability and trademark risk flags.",
+     "websiteLink": "https://lutra.ai/shared/yQtWCuf9nZc",
+     "metrics": [
+       "Name uniqueness",
+       "Domain availability",
+       "Selection rate",
+       "Trademark issues avoided"
+     ],
+     "capabilities": "Generates product names with domain and trademark checks.",
+     "category": "Creator"
+   },
+   {
+     "image": "/images/brand_voice_style_guide_creator.png",
+     "title": "Brand Voice Style Guide Creator",
+     "subtitle": "Codify your tone in minutes",
+     "description": "Paste content samples or answer a quiz. Agent builds a concise style guide with voice principles and sample phrases.",
+     "websiteLink": "https://lutra.ai/shared/hQtX_fq_Ht4",
+     "metrics": [
+       "Guide completeness",
+       "Team adoption",
+       "Consistency improvement",
+       "Revision frequency"
+     ],
+     "capabilities": "Creates brand voice style guides quickly.",
+     "category": "Creator"
+   },
+   {
+     "image": "/images/youtube_title_+_thumbnail_generator.png",
+     "title": "YouTube Title + Thumbnail Generator",
+     "subtitle": "Boost your click-throughs with compelling visuals",
+     "description": "Enter your video topic and tone, and receive 3–5 optimized titles and thumbnail ideas.",
+     "websiteLink": "https://lutra.ai/shared/PjAudl4GSkg",
+     "metrics": [
+       "CTR improvement",
+       "Engagement rate",
+       "Creator rating",
+       "Title relevance"
+     ],
+     "capabilities": "Generates optimized YouTube titles and thumbnails.",
+     "category": "Creator"
+   },
+   {
+     "image": "/images/e-book_formatter_agent.png",
+     "title": "E-book Formatter Agent",
+     "subtitle": "Turn long-form writing into beautiful e-books",
+     "description": "Upload a Google Doc and get a stylized, mobile-friendly ePub or PDF version.",
+     "websiteLink": "https://lutra.ai/shared/6eq2HdGSFoU",
+     "metrics": [
+       "Design quality",
+       "Conversion success",
+       "Time saved",
+       "Reader feedback"
+     ],
+     "capabilities": "Formats documents into stylish e-books.",
+     "category": "Creator"
+   },
+   {
+     "image": "/images/podcast_episode_packager.png",
+     "title": "Podcast Episode Packager",
+     "subtitle": "Turn a raw podcast into social-ready assets",
+     "description": "Upload an audio file and get a summary, title, episode description, social captions, and quote cards.",
+     "websiteLink": "https://lutra.ai/shared/_G1thqeErUE",
+     "metrics": [
+       "Time saved",
+       "Engagement on assets",
+       "Download uplift",
+       "Edit rate"
+     ],
+     "capabilities": "Packages podcasts into social media assets.",
+     "category": "Creator"
+   },
  ]
 
-  // const categories = ["Education", "Analyze", "Automate", "Code", "Productivity"];
   const categories = ["Creator", "Education", "Analyze", "Automate", "Code", "Productivity"];
 
   const [selectedCategory, setSelectedCategory] = useState(null);
