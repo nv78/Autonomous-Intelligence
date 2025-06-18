@@ -952,7 +952,7 @@ function Registry() {
      "category": "Creator"
    },
    {
-     "image": "/images/youtube_title_+_thumbnail_generator.png",
+     "image": "/images/youtube_title_and_thumbnail_generator.png",
      "title": "YouTube Title + Thumbnail Generator",
      "subtitle": "Boost your click-throughs with compelling visuals",
      "description": "Enter your video topic and tone, and receive 3–5 optimized titles and thumbnail ideas.",
