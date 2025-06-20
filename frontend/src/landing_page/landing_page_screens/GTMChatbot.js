@@ -1,7 +1,8 @@
 import React from "react";
-import Chatbot from "./../landing_page_components/Chatbot/Chatbot.js"
+import Chatbot from "../landing_page_components/Chatbot/Chatbot.js"
 
 const GTMChatbot = ()  => {
+  console.log("✅ GTMChatbot component loaded");
   return (
     <div className="text-white text-center mt-10">
       <h1 className="text-4xl font-bold mb-4">GTM Chatbot</h1>

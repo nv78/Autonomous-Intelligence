@@ -20,7 +20,7 @@ export const customerCaseStudyPath = "/customercasestudy";
 export const apiKeyDashboardPath = "/api";
 export const registryPath = "/registry";
 export const gtmPath = "/gtm-chatbot"; //this is what will show in the URL, doesn't have to match JS file
-
+export const landing = "/landing"
 // Connector options with paths
 export const connectorOptions = [
     { value: "APPLE", label: "APPLE", taskType: "Organization", path: "/apple" },
