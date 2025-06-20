@@ -76,6 +76,8 @@ from api_endpoints.financeGPT.chatbot_endpoints import add_prompt_to_workflow_db
     ensure_SDK_user_exists, get_chat_info, ensure_demo_user_exists, get_message_info, get_text_from_url, \
     add_organization_to_db, get_organization_from_db
 
+from api_endpoints.sharable_playbook.handler import shareable_playbook_handler, get_previous_chat_by_url
+
 from datetime import datetime
 
 load_dotenv(override=True)
@@ -225,6 +227,15 @@ def login():
                           'Origin, Content-Type, Accept')
       return response
 
+
+@app.route('/generate-playbook/<string:chat_id>', methods = ["GET"])
+def get_shareable_playbook(chat_id):
+    return get_previous_chat_by_url(chat_id)
+
+
+@app.route('/playbook/<string:playbook_url>', methods = ["GET"])
+def shareable_playbook(playbook_url):
+    return shareable_playbook_handler(playbook_url);
 
 
 @app.route("/callback")  #this is the page that will handle the callback process meaning process after the authorization
@@ -1213,8 +1224,6 @@ def remove_prompt_from_workflow():
     return remove_prompt_from_workflow_db(prompt_id)
 
 
-
-
 @app.route('/generate_financial_report', methods=['POST'])
 def generate_financial_report():
     print("generate_financial_report")
@@ -1282,8 +1291,6 @@ def generate_financial_report():
     except Exception as e:
         print(f'Failed to generate financial report: {str(e)}')
         return f'Failed to generate financial report: {str(e)}', 500
-
-
 
 
 @app.route("/generateAPIKey", methods=["POST"])

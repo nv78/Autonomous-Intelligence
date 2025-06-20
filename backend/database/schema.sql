@@ -80,6 +80,7 @@ CREATE TABLE chats (
     ticker TEXT,
     associated_task INTEGER NOT NULL,
     custom_model_key TEXT,
+    chat_sharable_url TEXT,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 

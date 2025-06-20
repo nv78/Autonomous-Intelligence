@@ -13,6 +13,7 @@ import numpy as np
 import PyPDF2
 from sec_api import QueryApi, RenderApi
 import requests
+import uuid
 
 # from openai import OpenAI
 
@@ -36,7 +37,6 @@ else:
 from database.db import get_db_connection
 from tika import parser as p
 
-
 load_dotenv()
 API_KEY = os.getenv('OPENAI_API_KEY')
 embeddings = OpenAIEmbeddings(api_key=API_KEY)
@@ -52,7 +52,10 @@ def add_chat_to_db(user_email, chat_type, model_type): #intake the current userI
     cursor.execute("SELECT id FROM users WHERE email = %s", [user_email])
     user_id = cursor.fetchone()['id']
 
-    cursor.execute('INSERT INTO chats (user_id, model_type, associated_task) VALUES (%s, %s, %s)', (user_id, model_type, chat_type))
+    chat_sharable_url = f"https://privatechatbot.ai/playbook/{str(uuid.uuid4())}"
+
+    cursor.execute('INSERT INTO chats (user_id, model_type, associated_task, chat_sharable_url) VALUES (%s, %s, %s)', (user_id, model_type, chat_type, chat_sharable_url))
+
     chat_id = cursor.lastrowid
 
     name = f"Chat {chat_id}"
@@ -136,6 +139,40 @@ def retrieve_chats_from_db(user_email):
 
     return chat_info
 
+def get_messages_by_chat_id(chat_id):
+    conn, cursor = get_db_connection()
+
+    query = """
+        SELECT 
+            messages.id AS message_id,
+            messages.created AS message_created,
+            messages.message_text,
+            messages.sent_from_user,
+            messages.relevant_chunks
+        FROM messages
+        WHERE messages.chat_id = %s
+        ORDER BY messages.created ASC;
+    """
+
+    cursor.execute(query, [chat_id])
+    messages = cursor.fetchall()
+    conn.close()
+
+    return messages
+
+def get_chat_url_by_id(chat_id):
+    conn, cursor = get_db_connection()
+
+    query = "SELECT chat_sharable_url FROM chats WHERE id = %s"
+    cursor.execute(query, [chat_id])
+    result = cursor.fetchone()
+
+    conn.close()
+
+    if result:
+        return result['chat_sharable_url']
+    return None
+
 def find_most_recent_chat_from_db(user_email):
     conn, cursor = get_db_connection()
 
@@ -168,7 +205,6 @@ def retrieve_message_from_db(user_email, chat_id, chat_type):
         JOIN users ON chats.user_id = users.id
         WHERE chats.id = %s AND users.email = %s AND chats.associated_task = %s;
         """
-
 
     # Execute the query
     cursor.execute(query, (chat_id, user_email, chat_type))
@@ -976,8 +1012,6 @@ def remove_prompt_from_workflow_db(prompt_id):
     conn.close()
 
     return "Success"
-
-
 
 
 def process_ticker_info_wf(user_email, workflow_id, ticker):
