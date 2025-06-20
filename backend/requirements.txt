@@ -16,7 +16,7 @@ google-auth-oauthlib==0.4.6
 google-pasta==0.2.0
 python-dotenv==1.0.0
 ray==2.47.0
-openai==1.6.1
+openai>=1.13.3
 google-api-python-client==2.95.0
 flask-socketio>=5.3.6
 Werkzeug==2.2.2
@@ -35,3 +35,5 @@ tika==1.24
 ragas
 mkdocstrings
 mkdocstrings-python
+beautifulsoup4
+httpx>=0.27.0
