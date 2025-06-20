@@ -439,7 +439,7 @@ def get_text_from_url(web_url):
     return text.replace("\n", "").replace("\t", "")
 
 # Organization routes
-
+'''
 @app.route('/create_organization', methods=['POST'])
 @valid_api_key_required
 def create_organization():
@@ -507,6 +507,7 @@ def get_organization_from_db_by_name(organization_name):
     organization = cursor.fetchone()
     conn.close()
     return organization
+'''
 
 ## CHATBOT SECTION
 output_document_path = 'output_document'
