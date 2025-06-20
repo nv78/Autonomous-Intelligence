@@ -9,7 +9,7 @@ import {
   apiKeyDashboardPath,
   downloadPrivateGPTPath,
   gtmPath,
-  landing,
+  homePath,
 } from "../constants/RouteConstants";
 import { Dropdown, Navbar, Avatar, DarkThemeToggle } from "flowbite-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -18,7 +18,7 @@ import { useLocation } from "react-router-dom";
 import { useUser, viewUser } from "../redux/UserSlice";
 
 import { useHistory } from 'react-router-dom';
-
+import { Link } from "react-router-dom";
 
 function MainNav(props) {
   const location = useLocation();
@@ -52,12 +52,14 @@ function MainNav(props) {
 
   return (
     <Navbar className="navbar-fixed bg-black text-white border-b-2" fluid rounded>
-      <Navbar.Brand onClick={() => navigate(landing)}>
+      
+      <Navbar.Brand href={homePath}>
         <div className="h-10 w-10 bg-center bg-contain bg-[url('../public/logonew.png')] dark:bg-[url('../public/logonew.png')]"></div>
         <span className="self-center whitespace-nowrap text-xl font-semibold dark:text-white text-white pl-3">
           Panacea
         </span>
       </Navbar.Brand>
+     
       <div className="flex items-center md:order-2">
         {/* Download Button */}
         <div
