@@ -53,7 +53,7 @@ function MainNav(props) {
   return (
     <Navbar className="navbar-fixed bg-black text-white border-b-2" fluid rounded>
       
-      <Navbar.Brand href={homePath}>
+      <Navbar.Brand href="https://privatechatbot.ai">
         <div className="h-10 w-10 bg-center bg-contain bg-[url('../public/logonew.png')] dark:bg-[url('../public/logonew.png')]"></div>
         <span className="self-center whitespace-nowrap text-xl font-semibold dark:text-white text-white pl-3">
           Panacea
