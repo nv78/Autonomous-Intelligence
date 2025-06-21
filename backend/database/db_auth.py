@@ -47,17 +47,19 @@ def extractUserEmailFromRequest(request):
         raise InvalidTokenError()
 
 def get_db_connection():
-    # print('in db_auth')
+    print('in db_auth')
     if ('.local' in socket.gethostname() or '.lan' in socket.gethostname() or 'Shadow' in socket.gethostname()) or ('APP_ENV' in os.environ and os.environ['APP_ENV'] == 'local'):
-        # print('in local')
+        print('in local')
         if ('BL' in os.environ and os.environ['BL'] == 'bl'):
-            # print("in daniel location")
+            print("in daniel location")
+            print(dbName)
             conn = mysql.connector.connect(
                 user='root',
-                password='1165205407',
-                host='localhost',
+                #password='1165205407',
+                #host='localhost',
                 port=3306,
                 database=dbName
+               
             )
         else:
             conn = mysql.connector.connect(
@@ -72,6 +74,7 @@ def get_db_connection():
             password=dbPassword,
             database=dbName,
         )
+    
     return conn, conn.cursor(dictionary=True)
 
 def user_email_for_session_token(session_token):
