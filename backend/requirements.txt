@@ -36,4 +36,5 @@ ragas
 mkdocstrings
 mkdocstrings-python
 beautifulsoup4
+transformers>=4.36.0
 httpx>=0.27.0
