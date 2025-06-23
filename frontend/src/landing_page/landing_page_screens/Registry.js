@@ -6,8 +6,7 @@ function Registry() {
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
 
-
-  const agents = [
+    const agents = [
     {
     image: "/images/one-pager_builder_agent.png",
     title: "One-Pager Builder Agent",
@@ -996,9 +995,220 @@ function Registry() {
      "capabilities": "Packages podcasts into social media assets.",
      "category": "Creator"
    },
+      {
+     "image": "/images/automated_financial_reporting.png",
+     "title": "Automated Financial Reporting",
+     "subtitle": "Turn financial data into timely reports and dashboards",
+     "description": "Agents transform structured financial data into P&L statements, cash flow summaries, and KPI dashboards—automatically shared with stakeholders to enhance visibility and reduce manual effort.",
+     "websiteLink": "https://lutra.ai/shared/vvF_aImWMdY",
+     "metrics": ["Report accuracy", "Delivery speed", "Manual effort saved"],
+     "capabilities": "Generates automated financial reports on a schedule.",
+     "category": "Finance"
+   },
+   {
+     "image": "/images/financial_insights_for_business.png",
+     "title": "Financial Insights for Business",
+     "subtitle": "Track performance of sales, staff, and operations",
+     "description": "From restaurants to car dealerships, agents analyze sales trends, staffing performance, and operational metrics to suggest improvements—helping managers make informed decisions.",
+     "websiteLink": "https://lutra.ai/shared/D2cIhc1q38g",
+     "metrics": ["Business performance insights", "Staff utilization", "Sales trend clarity"],
+     "capabilities": "Provides tailored business performance analysis.",
+     "category": "Finance"
+   },
+   {
+     "image": "/images/invoice_and_payment_workflow.png",
+     "title": "Invoice and Payment Workflow",
+     "subtitle": "Automate invoicing and payment tracking",
+     "description": "Agents generate and track invoices from CRM data, alert teams about unpaid invoices, and help integrate billing details with accounting software.",
+     "websiteLink": "https://lutra.ai/shared/pFqqFCGQzJM",
+     "metrics": ["Payment cycle time", "Invoice accuracy", "Overdue reduction"],
+     "capabilities": "Automates end-to-end invoice management.",
+     "category": "Finance"
+   },
+   {
+     "image": "/images/document_processing_for_finance.png",
+     "title": "Document Processing for Finance",
+     "subtitle": "Automate W9/1099 document workflows",
+     "description": "Agents extract, validate, and populate data from tax forms to streamline accounting tasks and minimize errors.",
+     "websiteLink": "https://lutra.ai/shared/OuZ_9I2wwew",
+     "metrics": ["Document processing time", "Data entry error reduction"],
+     "capabilities": "Automates extraction and validation of financial documents.",
+     "category": "Finance"
+   },
+   {
+     "image": "/images/patient_intake_processing.png",
+     "title": "Patient Intake Processing",
+     "subtitle": "Summarize patient intake data for care teams",
+     "description": "Agents generate structured summaries from patient intake forms to highlight urgent needs and reduce administrative load.",
+     "websiteLink": "https://lutra.ai/shared/k68rpfaEfX0",
+     "metrics": ["Care team time saved", "Flagging accuracy", "Clinical efficiency"],
+     "capabilities": "Summarizes and flags critical patient data from forms.",
+     "category": "Analyze"
+   },
+   {
+     "image": "/images/scheduling_and_follow-up_coordination.png",
+     "title": "Scheduling and Follow-Up Coordination",
+     "subtitle": "Reduce no-shows and improve patient retention",
+     "description": "Agents automate appointment scheduling, reminders, and post-visit follow-ups—integrating with calendars and EHRs.",
+     "websiteLink": "https://lutra.ai/shared/tvbscKiNq_4",
+     "metrics": ["Missed appointment rate", "Patient follow-up compliance"],
+     "capabilities": "Handles patient scheduling and reminders end-to-end.",
+     "category": "Analyze"
+   },
+   {
+     "image": "/images/insurance_claims_tracker.png",
+     "title": "Insurance Claims Tracker",
+     "subtitle": "Monitor and report on claims lifecycle",
+     "description": "Agents track insurance claims, flag delays, and generate weekly summaries for financial oversight.",
+     "websiteLink": "https://lutra.ai/shared/fKiZKW7drsI",
+     "metrics": ["Claim processing time", "Pending claim value", "Administrative overhead"],
+     "capabilities": "Monitors claims and provides actionable reports.",
+     "category": "Analyze"
+   },
+   {
+     "image": "/images/time_tracking_for_legal_hours.png",
+     "title": "Time Tracking for Legal Hours",
+     "subtitle": "Auto-log legal activities into billing records",
+     "description": "Agents analyze emails and work patterns to populate timesheets—automatically categorized and visualized for billing.",
+     "websiteLink": "https://lutra.ai/shared/0IXziwmUMbI",
+     "metrics": ["Time entry coverage", "Billing accuracy", "Visualization clarity"],
+     "capabilities": "Logs and categorizes legal work for billing.",
+     "category": "Legal"
+   },
+   {
+     "image": "/images/contract_metadata_extraction.png",
+     "title": "Contract Metadata Extraction",
+     "subtitle": "Extract key fields from legal agreements",
+     "description": "Agents pull effective dates, parties, and renewal terms from contracts to populate legal databases and track obligations.",
+     "websiteLink": "https://lutra.ai/shared/9hi4zfOK1gE",
+     "metrics": ["Metadata extraction accuracy", "Review time saved"],
+     "capabilities": "Extracts and structures legal contract data.",
+     "category": "Legal"
+   },
+   {
+     "image": "/images/emails_of_communications_view_on_case_files.png",
+     "title": "Emails of Communications View on Case Files",
+     "subtitle": "Organize communications by legal case",
+     "description": "Agents generate PDF summaries of communications tied to a legal case or person—centralizing correspondence for discovery.",
+     "websiteLink": "https://lutra.ai/shared/p8HqYpLp0qA",
+     "metrics": ["Discovery efficiency", "Time to organize"],
+     "capabilities": "Aggregates and formats email communications by case.",
+     "category": "Legal"
+   },
+   {
+     "image": "/images/legal_document_tracker.png",
+     "title": "Legal Document Tracker",
+     "subtitle": "Track versions, reviews, and deadlines",
+     "description": "Agents manage legal document versions, alert stakeholders of pending reviews, and maintain audit logs of revisions.",
+     "websiteLink": "https://lutra.ai/shared/gUkzkP85rXM",
+     "metrics": ["Review coordination speed", "Compliance rate"],
+     "capabilities": "Automates legal document lifecycle management.",
+     "category": "Legal"
+   },
+   {
+     "image": "/images/nda_and_agreement_workflow.png",
+     "title": "NDA and Agreement Workflow",
+     "subtitle": "Automate NDA distribution and status tracking",
+     "description": "Agents send, track, and confirm NDAs—providing alerts on signatures and expirations, with complete audit trails.",
+     "websiteLink": "https://lutra.ai/shared/tjEI-FmujAc",
+     "metrics": ["NDA cycle time", "Audit readiness"],
+     "capabilities": "Handles full NDA distribution and tracking.",
+     "category": "Legal"
+   },
+   {
+     "image": "/images/sbir_aggregations_by_company.png",
+     "title": "SBIR Aggregations by Company",
+     "subtitle": "Visualize award trends and proposal activity",
+     "description": "Agents generate charts and breakdowns of SBIR award data by company, domain, and award type.",
+     "websiteLink": "https://lutra.ai/shared/wl1SQvA5Zy0",
+     "metrics": ["Insight clarity", "Report generation time"],
+     "capabilities": "Visualizes SBIR proposal and award activity.",
+     "category": "Federal"
+   },
+   {
+     "image": "/images/contract_compliance_and_audit_support.png",
+     "title": "Contract Compliance and Audit Support",
+     "subtitle": "Track milestones and create audit-ready logs",
+     "description": "Agents monitor contract obligations and generate reports to support federal audits and compliance efforts.",
+     "websiteLink": "https://lutra.ai/shared/TnzJ7Wdoee0",
+     "metrics": ["Compliance risk reduction", "Audit prep time"],
+     "capabilities": "Supports contract oversight and audit preparation.",
+     "category": "Federal"
+   },
+   {
+     "image": "/images/structured_intelligence_reporting.png",
+     "title": "Structured Intelligence Reporting",
+     "subtitle": "Generate formatted intelligence reports",
+     "description": "Agents convert raw structured data into formatted summaries and dashboards for defense agency analysts.",
+     "websiteLink": "https://lutra.ai/shared/lPBWH60fSJU",
+     "metrics": ["Reporting speed", "Analyst preparation time"],
+     "capabilities": "Transforms data into intelligence-grade reports.",
+     "category": "Federal"
+   },
+   {
+     "image": "/images/supply_chain_oversight_for_defense_contracts.png",
+     "title": "Supply Chain Oversight for Defense Contracts",
+     "subtitle": "Monitor procurement risks and supplier performance",
+     "description": "Agents track procurement, flag delays, and report deviations from contract timelines or supplier SLAs.",
+     "websiteLink": "https://lutra.ai/shared/NzPoAWf7sXs",
+     "metrics": ["Delivery timeliness", "Supply risk reduction"],
+     "capabilities": "Provides early warnings on supply chain risks.",
+     "category": "Federal"
+   },
+   {
+     "image": "/images/cybersecurity_incident_log_management.png",
+     "title": "Cybersecurity Incident Log Management",
+     "subtitle": "Track and escalate security incidents",
+     "description": "Agents consolidate logs, track resolution workflows, and flag unresolved or overdue incidents.",
+     "websiteLink": "https://lutra.ai/shared/8YLHvljKT2o",
+     "metrics": ["Incident closure rate", "Escalation accuracy"],
+     "capabilities": "Monitors and organizes security incident workflows.",
+     "category": "Federal"
+   },
+   {
+     "image": "/images/customer_support_workflow_automation.png",
+     "title": "Customer Support Workflow Automation",
+     "subtitle": "Route and summarize support messages",
+     "description": "Agents classify incoming messages, route them to the right team, and summarize support trends for reporting.",
+     "websiteLink": "https://lutra.ai/shared/cLAeGqUJdT8",
+     "metrics": ["Response time", "Ticket routing accuracy", "Support trend visibility"],
+     "capabilities": "Automates triage and classification of support issues.",
+     "category": "Automate"
+   },
+   {
+     "image": "/images/internal_kpi_reporting.png",
+     "title": "Internal KPI Reporting",
+     "subtitle": "Generate recurring reports from team metrics",
+     "description": "Agents collect internal KPIs and distribute reports to stakeholders automatically on a schedule.",
+     "websiteLink": "https://lutra.ai/shared/uMDTjfkDkos",
+     "metrics": ["Executive visibility", "Manual reporting time saved"],
+     "capabilities": "Creates scheduled internal reports from KPIs.",
+     "category": "Automate"
+   },
+   {
+     "image": "/images/team_onboarding_assistant.png",
+     "title": "Team Onboarding Assistant",
+     "subtitle": "Assign onboarding tasks and track progress",
+     "description": "Agents send welcome messages, distribute resources, and ensure onboarding milestones are completed.",
+     "websiteLink": "https://lutra.ai/shared/4Y9dKgxsHSc",
+     "metrics": ["Onboarding completion rate", "Manager intervention required"],
+     "capabilities": "Orchestrates end-to-end onboarding tasks for new hires.",
+     "category": "Automate"
+   },
+   {
+     "image": "/images/marketing_campaign_tracker.png",
+     "title": "Marketing Campaign Tracker",
+     "subtitle": "Monitor, analyze, and improve campaigns",
+     "description": "Agents track engagement across channels, surface insights from A/B tests, and generate breakdowns from platforms like Reddit or Google Analytics.",
+     "websiteLink": "https://lutra.ai/shared/lqC5GxVDZqw",
+     "metrics": ["Campaign performance insight", "Channel breakdown depth", "Optimization recommendations"],
+     "capabilities": "Analyzes and visualizes cross-platform marketing data.",
+     "category": "Automate"
+   }
  ]
 
-  const categories = ["Creator", "Education", "Analyze", "Automate", "Code", "Productivity"];
+  // const categories = ["Creator", "Education", "Analyze", "Automate", "Code", "Productivity"];
+  const categories = ["Creator", "Education", "Analyze", "Automate", "Code", "Productivity", "Finance", "Legal", "Federal"];
 
   const [selectedCategory, setSelectedCategory] = useState(null);
 
