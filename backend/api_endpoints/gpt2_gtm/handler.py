@@ -5,10 +5,10 @@ import torch
 gpt2_blueprint = Blueprint('gpt2', __name__)
 
 model_name = "rfrey/fine_tuned_gpt2"
-token = "your_hf_token_here"  # Or use os.getenv("HF_TOKEN")
+# token = "your_hf_token_here"  # Or use os.getenv("HF_TOKEN")
 
-model = GPT2LMHeadModel.from_pretrained(model_name, use_auth_token=token)
-tokenizer = GPT2Tokenizer.from_pretrained(model_name, use_auth_token=token)
+model = GPT2LMHeadModel.from_pretrained(model_name)
+tokenizer = GPT2Tokenizer.from_pretrained(model_name)
 
 @gpt2_blueprint.route("/gtm/respond", methods=["POST"])
 def generate_response():
