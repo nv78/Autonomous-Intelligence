@@ -19,7 +19,9 @@ export const customersPath = "/customers";
 export const customerCaseStudyPath = "/customercasestudy";
 export const apiKeyDashboardPath = "/api";
 export const registryPath = "/registry";
+export const homePath = "/home";
 export const gtmPath = "/gtmchatbot";
+export const landing = "/landing";
 
 // Connector options with paths
 export const connectorOptions = [

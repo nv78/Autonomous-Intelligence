@@ -10,6 +10,7 @@ import {
   chatbotPath,
   apiKeyDashboardPath,
   downloadPrivateGPTPath,
+  homePath,
   gtmPath,
   connectorOptions, // Import connector options from RouteConstants
 } from "./constants/RouteConstants";
@@ -89,7 +90,12 @@ function Dashboard() {
     <Route key={option.value} path={option.path} element={<Home />} />
   ));
 
-  var routes = [
+  var publicRoutes = [
+    <Route key="root" index element={<CheckLogin darkTheme={darkTheme} setIsLoggedInParent={setIsLoggedIn} />} />,
+    <Route path={homePath} element={<Home />} />,
+    <Route path={gtmPath} element={<GTMChatbot />} />,
+  ]
+  var privateRoutes = [
     <Route
       index
       element={
@@ -113,9 +119,6 @@ function Dashboard() {
     ) : null,
     showRestrictedRouteRequiringUserSession ? (
       <Route path={downloadPrivateGPTPath} element={<DownloadPrivateGPT />} />
-    ) : null,
-    showRestrictedRouteRequiringUserSession ? (
-      <Route path={gtmPath} element={<GTMChatbot />} />
     ) : null,
     // showRestrictedRouteRequiringUserSession ? (
     //   <Route path={selectWorkflowsPath} element={<SelectWorkflow />} />
@@ -157,7 +160,8 @@ function Dashboard() {
             <title>Panacea</title>
           </Helmet>
           <Routes>
-            {routes}
+            {publicRoutes}
+            {privateRoutes}
             {connectorRoutes}
             <Route path="*" element={<Navigate replace to="/" />} />
           </Routes>
