@@ -7,7 +7,8 @@ import {
   selectWorkflowsPath,
   chatbotPath,
   apiKeyDashboardPath,
-  downloadPrivateGPTPath
+  downloadPrivateGPTPath,
+  gtmPath,
 } from "../constants/RouteConstants";
 import { Dropdown, Navbar, Avatar, DarkThemeToggle } from "flowbite-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -64,6 +65,12 @@ function MainNav(props) {
             <FontAwesomeIcon icon={faCoins} className="mr-2" />
             Download Private Version
           </span>
+        </div>
+        <div
+          className="text-white text-sm font-medium cursor-pointer mr-4"
+          onClick={() => navigate(gtmPath)}
+        >
+          Chat with Us
         </div>
         <Dropdown
           theme={{

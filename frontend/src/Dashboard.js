@@ -10,7 +10,8 @@ import {
   chatbotPath,
   apiKeyDashboardPath,
   downloadPrivateGPTPath,
-  connectorOptions // Import connector options from RouteConstants
+  gtmPath,
+  connectorOptions, // Import connector options from RouteConstants
 } from "./constants/RouteConstants";
 import PaymentsComponent from "./subcomponents/payments/PaymentsComponent";
 import PaymentsProduct from "./subcomponents/payments/PaymentsProduct";
@@ -22,6 +23,7 @@ import Workflows from "./components/Workflows"
 import Home from "./financeGPT/components/Home";
 import { APISKeyDashboard } from "./subcomponents/api/APISKeyDashboard";
 import DownloadPrivateGPT from "./components/DownloadPrivateGPT.js";
+import GTMChatbot from "./landing_page/landing_page_screens/GTMChatbot";
 
 function Dashboard() {
   const [darkTheme, setDarkTheme] = useState(true);
@@ -112,6 +114,9 @@ function Dashboard() {
     showRestrictedRouteRequiringUserSession ? (
       <Route path={downloadPrivateGPTPath} element={<DownloadPrivateGPT />} />
     ) : null,
+    showRestrictedRouteRequiringUserSession ? (
+      <Route path={gtmPath} element={<GTMChatbot />} />
+    ) : null,
     // showRestrictedRouteRequiringUserSession ? (
     //   <Route path={selectWorkflowsPath} element={<SelectWorkflow />} />
     // ) : null,
@@ -131,9 +136,9 @@ function Dashboard() {
 
   return (
     <Flowbite
-      // theme={{
-      //   dark: darkTheme,
-      // }}
+    // theme={{
+    //   dark: darkTheme,
+    // }}
     >
       <div className="DashboardView flex flex-col min-h-screen">
         <div id="wrapperDiv" className="flex-grow">

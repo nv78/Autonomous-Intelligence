@@ -23,6 +23,7 @@ import {
   pricingPath,
   registryPath,
   financeGPTPath,
+  gtmPath,
 } from "../constants/RouteConstants";
 import Home from "./landing_page_screens/Home/Home";
 import Footer from "./landing_page_components/Footer";
@@ -36,6 +37,7 @@ import { robotHeader } from "../util/RobotHeader";
 import Pricing from "./landing_page_screens/Pricing";
 import Registry from "./landing_page_screens/Registry";
 import CustomerCaseStudy from "./landing_page_screens/Customers/CustomerCaseStudy";
+import GTMChatbot from "./landing_page_screens/GTMChatbot";
 
 function LandingPage() {
   const location = useLocation();
@@ -78,6 +80,7 @@ function LandingPage() {
           <Route path={registryPath} index element={<Registry />} />
           <Route path={sampleProjectsPath} index element={<SampleProjects />} />
           <Route path={researchPath} index element={<Research />} />
+          <Route path={gtmPath} element = {<GTMChatbot />} />
           <Route path="*" element={<Navigate replace to="/" />} />
         </Routes>
       </div>
