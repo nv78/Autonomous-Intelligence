@@ -78,6 +78,10 @@ from api_endpoints.financeGPT.chatbot_endpoints import add_prompt_to_workflow_db
 
 from datetime import datetime
 
+from database.db_auth import get_db_connection
+
+from api_endpoints.gpt2_gtm.handler import handler as generate_response
+
 load_dotenv(override=True)
 
 app = Flask(__name__)
@@ -1539,6 +1543,19 @@ def evaluate():
 
     return result
 
+@app.route("/gtm/respond", methods=["POST"])
+@cross_origin(supports_credentials=True)
+def gtm_respond():
+    data = request.get_json()
+    prompt = data.get("prompt", "").strip()
+    if not prompt:
+        return jsonify({"error": "Missing prompt"}), 400
+
+    try:
+        reply = generate_response(prompt)
+        return jsonify({"response": reply})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(port=5000)
