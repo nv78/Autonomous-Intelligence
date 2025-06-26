@@ -6,8 +6,7 @@ services:
     container_name: anote-backend
     restart: unless-stopped
     ports:
-      - "8000:5000"  # Map container's 5000 to host's 8000
-      - "6379:6379"  # Ray
+      - "5000:5000"  # Map container's 5000 to host's 8000
       - "9998:9998"  # Tika
     volumes:
       - ./:/app
@@ -58,6 +57,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+
 
 networks:
   anote-network:
