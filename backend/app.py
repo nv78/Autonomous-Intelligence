@@ -93,6 +93,7 @@ if ray.is_initialized() == False:
 config = {
   'ORIGINS': [
     'http://localhost:3000',  # React
+    'http://localhost:5000',
     'http://dashboard.localhost:3000',  # React
     'https://anote.ai', # Frontend prod URL,
     'https://privatechatbot.ai', # Frontend prod URL,
@@ -1544,7 +1545,6 @@ def evaluate():
     return result
 
 @app.route("/gtm/respond", methods=["POST"])
-@cross_origin(supports_credentials=True)
 def gtm_respond():
     data = request.get_json()
     prompt = data.get("prompt", "").strip()
