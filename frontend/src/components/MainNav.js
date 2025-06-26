@@ -9,6 +9,7 @@ import {
   apiKeyDashboardPath,
   downloadPrivateGPTPath,
   gtmPath,
+  landing,
 } from "../constants/RouteConstants";
 import { Dropdown, Navbar, Avatar, DarkThemeToggle } from "flowbite-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -51,13 +52,14 @@ function MainNav(props) {
 
   return (
     <Navbar className="navbar-fixed bg-black text-white border-b-2" fluid rounded>
-      <Navbar.Brand href="https://privatechatbot.ai">
+      {/* <Navbar.Brand href="https://privatechatbot.ai"> */}
+      <Navbar.Brand onClick={() => navigate(landing)}>
         <div className="h-10 w-10 bg-center bg-contain bg-[url('../public/logonew.png')] dark:bg-[url('../public/logonew.png')]"></div>
         <span className="self-center whitespace-nowrap text-xl font-semibold dark:text-white text-white pl-3">
           Panacea
         </span>
       </Navbar.Brand>
-      <div className="flex md:order-2">
+      <div className="flex items-center md:order-2">
       <div className="mr-4 my-2 py-1 bg-gradient-to-r from-[#EDDC8F] to-[#F1CA57] text-black rounded-2xl cursor-pointer"
           onClick={() => navigate(downloadPrivateGPTPath)}
         >

@@ -23,6 +23,7 @@ import {
   pricingPath,
   registryPath,
   financeGPTPath,
+  homePath,
   gtmPath,
 } from "../constants/RouteConstants";
 import Home from "./landing_page_screens/Home/Home";
@@ -71,6 +72,7 @@ function LandingPage() {
       <div className="">
         <Routes>
           <Route index element={<Home open={open} />} />,
+          <Route path={homePath} element={<Home />} />
           <Route path={faqsPath} index element={<FAQs />} />
           <Route path={financeGPTPath} index element={<FinanceGPT />} />
           <Route path={downloadPrivateGPTPath} index element={<DownloadPrivateGPT/>} />
