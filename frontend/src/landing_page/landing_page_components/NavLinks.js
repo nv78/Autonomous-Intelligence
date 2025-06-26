@@ -79,7 +79,7 @@ const NavLinks = ({ open, setOpen }) => {
     },
     {
       name: "Chat with Us",
-      link: "/gtm-chatbot",
+      link: "/gtmchatbot",
       new_tab: false,
     },
   ];
