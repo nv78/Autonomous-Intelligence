@@ -220,11 +220,18 @@ function ChatHistory(props) {
       </div>
     </>
   ) : null;
+  const [searchTerm, setSearchTerm] = useState("");
 
   return (
     <div className="flex flex-col px-4 mt-4 bg-[#141414] rounded-xl py-4 my-4 h-[80vh] overflow-y-scroll">
       {deleteConfirmationPopupChat}
       {renameModal}
+      <input
+        className="bg-anoteblack-500 rounded-xl p-2 my-1 text-white w-full"
+        placeholder="Search chats..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+      />
       <div className="flex flex-row justify-between items-center">
         <h2 className="text-[#FFFFFF] uppercase tracking-wide font-semibold text-s mb-2">
           Chat history
@@ -255,53 +262,64 @@ function ChatHistory(props) {
           <FontAwesomeIcon icon={faPenToSquare} />
         </button>
       </div>
-      {[...chats].reverse().map((chat) => (
-        <div
-          key={chat.id}
-          onClick={() => {
-            props.onChatSelect(chat.id);
-            props.setIsPrivate(chat.model_type);
-            props.setTicker(chat.ticker);
-            const custom_model_key = chat.custom_model_key || "";
-            console.log("custom model key", custom_model_key);
-            props.setConfirmedModelKey(custom_model_key);
-            if (chat.ticker) {
-              props.setIsEdit(0);
-              props.setShowChatbot(true);
-            }
-            props.setcurrTask(chat.associated_task);
-            props.setCurrChatName(chat.chat_name);
-            console.log("props selected chat id", props.selectedChatId, "and", chat.id)
-          }}
-          className={`flex-shrink-0 flex items-center justify-between hover:bg-[#3A3B41] pl-4 py-2 rounded cursor-pointer text-ellipsis whitespace-nowrap overflow-hidden ${
-            props.selectedChatId === chat.id ? "bg-[#3A3B41] bg-opacity-50" : ""
-          }`}
-        >
-        <div className="flex items-center p-1 text-[#9C9C9C] rounded-lg mr-2 text-ellipsis whitespace-nowrap overflow-hidden">
-            {chat.chat_name}
+      {[...chats]
+        .filter((chat) =>
+          chat.chat_name.toLowerCase().includes(searchTerm.toLowerCase())
+        ).reverse()
+        .map((chat) => (
+          <div
+            key={chat.id}
+            onClick={() => {
+              props.onChatSelect(chat.id);
+              props.setIsPrivate(chat.model_type);
+              props.setTicker(chat.ticker);
+              const custom_model_key = chat.custom_model_key || "";
+              console.log("custom model key", custom_model_key);
+              props.setConfirmedModelKey(custom_model_key);
+              if (chat.ticker) {
+                props.setIsEdit(0);
+                props.setShowChatbot(true);
+              }
+              props.setcurrTask(chat.associated_task);
+              props.setCurrChatName(chat.chat_name);
+              console.log(
+                "props selected chat id",
+                props.selectedChatId,
+                "and",
+                chat.id
+              );
+            }}
+            className={`flex-shrink-0 flex items-center justify-between hover:bg-[#3A3B41] pl-4 py-2 rounded cursor-pointer text-ellipsis whitespace-nowrap overflow-hidden ${
+              props.selectedChatId === chat.id
+                ? "bg-[#3A3B41] bg-opacity-50"
+                : ""
+            }`}
+          >
+            <div className="flex items-center p-1 text-[#9C9C9C] rounded-lg mr-2 text-ellipsis whitespace-nowrap overflow-hidden">
+              {chat.chat_name}
+            </div>
+            <div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRenameChat(chat.id);
+                }}
+                className="p-2 rounded-full "
+              >
+                <FontAwesomeIcon icon={faPen} />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteChat(chat.id);
+                }}
+                className="p-2 rounded-full"
+              >
+                <FontAwesomeIcon icon={faTrashCan} />
+              </button>
+            </div>
           </div>
-          <div>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleRenameChat(chat.id);
-              }}
-              className="p-2 rounded-full "
-            >
-              <FontAwesomeIcon icon={faPen} />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDeleteChat(chat.id);
-              }}
-              className="p-2 rounded-full"
-            >
-              <FontAwesomeIcon icon={faTrashCan} />
-            </button>
-          </div>
-        </div>
-      ))}
+        ))}
     </div>
   );
 }
