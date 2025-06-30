@@ -31,9 +31,9 @@ const GTMChatbot = () => {
     ]);
 
     try {
-      const res = await fetch("http://localhost:5000/gtm/respond", {
+      const res = await fetch("http://localhost:8000/gtm/respond", {
         method: "POST",
-        credentials: true,
+        credentials: true, //necessary to avoid CORS issues 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: text }),
       });
