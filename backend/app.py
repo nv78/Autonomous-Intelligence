@@ -81,10 +81,12 @@ from datetime import datetime
 from database.db_auth import get_db_connection
 
 from api_endpoints.gpt2_gtm.handler import handler as generate_response
+from api_endpoints.gpt2_gtm.handler import gpt2_blueprint
 
 load_dotenv(override=True)
 
 app = Flask(__name__)
+app.register_blueprint(gpt2_blueprint)
 
 if ray.is_initialized() == False:
   ray.init(logging_level="INFO", log_to_driver=True)
@@ -1558,4 +1560,4 @@ def gtm_respond():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(port=5000)
+    app.run(host="0.0.0.0", port=5000, debug=True)

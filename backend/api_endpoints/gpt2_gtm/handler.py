@@ -12,10 +12,23 @@ tokenizer = GPT2Tokenizer.from_pretrained(model_name)
 
 @gpt2_blueprint.route("/gtm/respond", methods=["POST"])
 def generate_response():
-    prompt = request.json.get("prompt", "")
-    inputs = tokenizer(prompt, return_tensors="pt")
-    outputs = model.generate(**inputs, max_length=150)
-    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    return jsonify({"response": response})
+    try:
+        prompt = request.json.get("prompt", "")
+        print(f"[DEBUG] Received prompt: {prompt}")
+        
+        inputs = tokenizer(prompt, return_tensors="pt")
+        print("[DEBUG] Tokenized input.")
+
+        outputs = model.generate(**inputs, max_length=150)
+        print("[DEBUG] Model generated output.")
+
+        response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        print(f"[DEBUG] Decoded response: {response}")
+
+        return jsonify({"response": response})
+    
+    except Exception as e:
+        print(f"[ERROR] {e}")
+        return jsonify({"error": "Internal server error"}), 500
 
 handler = gpt2_blueprint
