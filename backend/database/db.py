@@ -12,7 +12,19 @@ import secrets
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+
 def get_db_connection():
+    db_host = os.environ.get("DB_HOST")
+    db_user = os.environ.get("DB_USER")
+    db_password = os.environ.get("DB_PASSWORD")
+    db_name = os.environ.get("DB_NAME")
+    port=int(os.environ.get("DB_PORT", 3306))
+    print("=== DB Connection Debug ===")
+    print("DB_HOST:", db_host)
+    print("DB_USER:", db_user)
+    print("DB_PASSWORD:", "(hidden)" if db_password else "(empty)")
+    print("DB_NAME:", db_name)
+    print("==========================")  
     if ('.local' in socket.gethostname() or '.lan' in socket.gethostname() or 'Shadow' in socket.gethostname()) or ('APP_ENV' in os.environ and os.environ['APP_ENV'] == 'local'):
         if ('BL' in os.environ and os.environ['BL'] == 'bl'):
             conn = mysql.connector.connect(
@@ -30,12 +42,14 @@ def get_db_connection():
             )
     else:
         conn = mysql.connector.connect(
-            host=dbHost,
-            user=dbUser,
-            password=dbPassword,
-            database=dbName,
+            host=db_host,
+            user=db_user,
+            password=db_password,
+            database=db_name,
+            port=port
         )
     return conn, conn.cursor(dictionary=True)
+
 
 def create_7_day_free_trial(user_id):
     conn, cursor = get_db_connection()

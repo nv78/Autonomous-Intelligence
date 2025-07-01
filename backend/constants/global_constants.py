@@ -33,10 +33,18 @@ planToSearches = {
 
 chatgptLimit = 10000
 
-dbName = "agents"
-dbHost = "db"  # Docker service name for the database container
-dbPassword = ""
-dbUser = "root"
+
+# comment this out for development 
+# dbName = "agents"
+# dbHost = "db"  # Docker service name for the database container
+# dbPassword = ""
+# dbUser = "root"
+
+
+
+
+
+
 
 # TODO: COMMENT OUT WHEN DEPLOY TO PROD
 # dbName = "agents"
