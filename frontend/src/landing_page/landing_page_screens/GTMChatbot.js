@@ -20,6 +20,7 @@ const GTMChatbot = () => {
   }, [messages]);
 
   const sendMessage = async (text) => {
+    console.log("🟡 Attempting to send:", text);
     if (!text.trim()) return;
     inputRef.current.value = "";
 
@@ -31,13 +32,19 @@ const GTMChatbot = () => {
     ]);
 
     try {
-      const res = await fetch("http://localhost:8000/gtm/respond", {
+      console.log("Sending message:", text);
+
+      const res = await fetch("/gtm/respond", {
         method: "POST",
-        credentials: true, //necessary to avoid CORS issues 
+        credentials: "include", //necessary to avoid CORS issues 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: text }),
       });
+
+      
       const data = await res.json();
+
+      console.log("Received response:", res);
 
       setMessages((prev) =>
         prev.map((msg) =>

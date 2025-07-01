@@ -1554,10 +1554,15 @@ def gtm_respond():
         return jsonify({"error": "Missing prompt"}), 400
 
     try:
-        reply = generate_response(prompt)
+        #reply = generate_response(prompt)
+        reply = "Testing!"
         return jsonify({"response": reply})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route("/test", methods=["GET"])
+def test():
+    return jsonify({"message": "Test works!"})
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)
