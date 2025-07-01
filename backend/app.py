@@ -88,8 +88,19 @@ load_dotenv(override=True)
 app = Flask(__name__)
 app.register_blueprint(gpt2_blueprint)
 
-if ray.is_initialized() == False:
-  ray.init(logging_level="INFO", log_to_driver=True)
+#if ray.is_initialized() == False:
+   #ray.init(logging_level="INFO", log_to_driver=True)
+
+def ensure_ray_started():
+    if not ray.is_initialized():
+        try:
+            ray.init(
+                logging_level="INFO",
+                log_to_driver=True,
+                ignore_reinit_error=True  # Helpful when running in dev
+            )
+        except Exception as e:
+            print(f"Ray init failed: {e}")
 
 # TODO: Replace with your URLs.
 config = {
@@ -465,6 +476,7 @@ def create_organization():
                 # Ingest each sub-URL's text as a document
                 doc_id, doesExist = add_document_to_db(link_text, link, organization_id)
                 if not doesExist:
+                    ensure_ray_started()
                     chunk_document.remote(link_text, 1000, doc_id)
 
         return jsonify({"organization_id": organization_id}), 201
@@ -746,7 +758,8 @@ def ingest_pdfs():
         doc_id, doesExist = add_document_to_db(text, filename, chat_id=chat_id)
 
         if not doesExist:
-           chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+            ensure_ray_started()
+            chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
 
 
     return jsonify({"error": "Invalid JWT"}), 200
@@ -774,7 +787,8 @@ def ingest_pdfs_wf():
         doc_id, doesExist = add_document_to_db(text, filename, workflow_id)
 
         if not doesExist:
-          chunk_document.remote(text_pages, MAX_CHUNK_SIZE, doc_id)
+            ensure_ray_started()
+            chunk_document.remote(text_pages, MAX_CHUNK_SIZE, doc_id)
     return text, filename
 
 @app.route('/retrieve-current-docs', methods=['POST'])
@@ -985,6 +999,7 @@ def ingest_pdfs_demo():
         # Assuming add_document_to_db and chunk_document.remote are implemented
         doc_id, doesExist = add_document_to_db(text, filename, chat_id=chat_id)
         if not doesExist:
+            ensure_ray_started()
             chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
 
     # This mapping is now redundant since we're using a static demo_chat_id, but you could maintain it if you plan to extend functionality
@@ -1124,6 +1139,7 @@ def process_ticker_info():
 
         if not doesExist:
             print("test")
+            ensure_ray_started()
             chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
             #remote_task = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
             #result = ray.get(remote_task)
@@ -1373,7 +1389,9 @@ def upload():
 
             if not doesExist:
                 #chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+                ensure_ray_started()
                 result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+                ensure_ray_started()
                 result = ray.get(result_id)
         for path in paths:
 
@@ -1383,7 +1401,9 @@ def upload():
 
             if not doesExist:
                 #chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+                ensure_ray_started()
                 result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+                ensure_ray_started()
                 result = ray.get(result_id)
     elif chat_type == "edgar": #edgar
         print("ticker")
@@ -1413,7 +1433,9 @@ def upload():
             if not doesExist:
                 #print("test")
                 #chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+                ensure_ray_started()
                 result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+                
                 result = ray.get(result_id)
     else:
         return jsonify({"id": "Please enter a valid task type"}), 400
