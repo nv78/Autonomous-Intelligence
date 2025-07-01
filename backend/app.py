@@ -83,16 +83,28 @@ load_dotenv(override=True)
 app = Flask(__name__)
 
 # TODO: Replace with your URLs.
-config = {
-  'ORIGINS': [
-    'http://localhost:3000',  # React
-    'http://dashboard.localhost:3000',  # React
-    'https://anote.ai', # Frontend prod URL,
-    'https://privatechatbot.ai', # Frontend prod URL,
-    'https://dashboard.privatechatbot.ai', # Frontend prod URL,
-  ],
-}
-CORS(app, resources={ r'/*': {'origins': config['ORIGINS']}}, supports_credentials=True)
+# config = {
+#   'ORIGINS': [
+#     'http://localhost:3000',  # React
+#     'http://dashboard.localhost:3000',  # React
+#     'https://anote.ai', # Frontend prod URL,
+#     'https://privatechatbot.ai', # Frontend prod URL,
+#     'https://dashboard.privatechatbot.ai', # Frontend prod URL,
+#   ],
+# }
+
+
+CORS(app, resources={r"/*": {"origins": [
+    "https://anote.ai",
+    "https://privatechatbot.ai",
+    "https://dashboard.privatechatbot.ai",
+    r"https://.*\.privatechatbot\.ai"
+]}}, supports_credentials=True)
+
+
+CORS(app, supports_credentials=True)
+
+# CORS(app, resources={ r'/*': {'origins': config['ORIGINS']}}, supports_credentials=True)
 
 app.secret_key = '6cac159dd02c902f822635ee0a6c3078'
 app.config['SESSION_TYPE'] = 'filesystem'
@@ -499,6 +511,7 @@ def get_organization_from_db_by_name(organization_name):
     organization = cursor.fetchone()
     conn.close()
     return organization
+
 
 ## CHATBOT SECTION
 output_document_path = 'output_document'

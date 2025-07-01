@@ -45,8 +45,20 @@ def extractUserEmailFromRequest(request):
                     raise InvalidTokenError() from e
     else:
         raise InvalidTokenError()
+    
 
 def get_db_connection():
+    db_host = os.environ.get("DB_HOST", "db")
+    db_user = os.environ.get("DB_USER", "root")
+    db_password = os.environ.get("DB_PASSWORD", "")
+    db_name = os.environ.get("DB_NAME", "agents")
+    port=int(os.environ.get("DB_PORT", 3306))
+    print("=== DB Connection Debug ===")
+    print("DB_HOST:", db_host)
+    print("DB_USER:", db_user)
+    print("DB_PASSWORD:", "(hidden)" if db_password else "(empty)")
+    print("DB_NAME:", db_name)
+    print("==========================")
     # print('in db_auth')
     if ('.local' in socket.gethostname() or '.lan' in socket.gethostname() or 'Shadow' in socket.gethostname()) or ('APP_ENV' in os.environ and os.environ['APP_ENV'] == 'local'):
         # print('in local')
@@ -71,8 +83,14 @@ def get_db_connection():
             user=dbUser,
             password=dbPassword,
             database=dbName,
+            port=port
         )
     return conn, conn.cursor(dictionary=True)
+
+
+
+
+
 
 def user_email_for_session_token(session_token):
     conn, cursor = get_db_connection()

@@ -6,7 +6,7 @@ services:
     container_name: anote-backend
     restart: unless-stopped
     ports:
-      - "5000:5000"  # Map container's 5000 to host's 8000
+      - "8000:5000"  # Map container's 5000 to host's 8000
       - "9998:9998"  # Tika
     volumes:
       - ./:/app
@@ -22,9 +22,11 @@ services:
       - FLASK_DEBUG=1
       - PYTHONUNBUFFERED=1
       - PYTHONDONTWRITEBYTECODE=1
-    depends_on:
-      db:
-        condition: service_healthy
+  
+    # Remove or fix depends_on if there are no dependencies
+    #depends_on:
+    #  # db:  # Removed db service
+    #  #   condition: service_healthy
     networks:
       - anote-network
     shm_size: '2.44gb'
@@ -35,34 +37,9 @@ services:
       retries: 3
       start_period: 40s
 
-  db:
-    image: mysql:8.0
-    container_name: anote-db
-    restart: unless-stopped
-    ports:
-      - "3306:3306"
-    environment:
-      - MYSQL_ALLOW_EMPTY_PASSWORD=true
-      - MYSQL_DATABASE=agents
-      - MYSQL_ROOT_PASSWORD=
-    volumes:
-      - mysql-data:/var/lib/mysql
-      - ./database/schema.sql:/docker-entrypoint-initdb.d/init.sql
-    command: --default-authentication-plugin=mysql_native_password
-    networks:
-      - anote-network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-
-
 networks:
   anote-network:
     driver: bridge
 
 volumes:
-  mysql-data:
   tika-data:  # Volume for Tika server data
