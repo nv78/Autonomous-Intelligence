@@ -6,7 +6,7 @@ services:
     container_name: anote-backend
     restart: unless-stopped
     ports:
-      - "8000:5000"  # Map container's 5000 to host's 8000
+      - "5000:5000"  # Map container's 5000 to host's 8000
       - "9998:9998"  # Tika
     volumes:
       - ./:/app
@@ -22,7 +22,6 @@ services:
       - FLASK_DEBUG=1
       - PYTHONUNBUFFERED=1
       - PYTHONDONTWRITEBYTECODE=1
-  
     # Remove or fix depends_on if there are no dependencies
     #depends_on:
     #  # db:  # Removed db service
@@ -43,3 +42,6 @@ networks:
 
 volumes:
   tika-data:  # Volume for Tika server data
+
+
+
