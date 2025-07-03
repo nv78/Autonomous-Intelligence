@@ -7,7 +7,9 @@ import {
   selectWorkflowsPath,
   chatbotPath,
   apiKeyDashboardPath,
-  downloadPrivateGPTPath
+  downloadPrivateGPTPath,
+  gtmPath,
+  homePath,
 } from "../constants/RouteConstants";
 import { Dropdown, Navbar, Avatar, DarkThemeToggle } from "flowbite-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -16,7 +18,7 @@ import { useLocation } from "react-router-dom";
 import { useUser, viewUser } from "../redux/UserSlice";
 
 import { useHistory } from 'react-router-dom';
-
+import { Link } from "react-router-dom";
 
 function MainNav(props) {
   const location = useLocation();
@@ -74,6 +76,15 @@ function MainNav(props) {
             Download Private Version
           </span>
         </div>
+
+        {/* New GTM Button */}
+        <div
+          className="text-white text-sm font-medium cursor-pointer mr-4"
+          onClick={() => navigate(gtmPath)}
+        >
+          Chat with Us
+        </div>
+
         <Dropdown
           theme={{
             arrowIcon: "text-white ml-2 h-4 w-4",

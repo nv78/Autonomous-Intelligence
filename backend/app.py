@@ -56,6 +56,8 @@ from tika import parser as p
 import anthropic
 from anthropic import Anthropic, HUMAN_PROMPT, AI_PROMPT
 from datasets import Dataset
+from api_endpoints.gpt2_gtm.handler import handler as GPT2GenerateHandler
+
 import re
 import ragas
 from ragas.metrics import (
@@ -79,6 +81,12 @@ from api_endpoints.financeGPT.chatbot_endpoints import add_prompt_to_workflow_db
 
 from datetime import datetime
 
+from database.db_auth import get_db_connection
+
+from api_endpoints.gpt2_gtm.handler import generate_response
+
+
+
 load_dotenv(override=True)
 
 app = Flask(__name__)
@@ -97,7 +105,7 @@ config = {
     'https://dashboard.privatechatbot.ai', # Frontend prod URL,
   ],
 }
-CORS(app, resources={ r'/*': {'origins': config['ORIGINS']}}, supports_credentials=True)
+CORS(app, resources={r"/*": {"origins": config['ORIGINS']}}, supports_credentials=False)
 
 app.secret_key = '6cac159dd02c902f822635ee0a6c3078'
 app.config['SESSION_TYPE'] = 'filesystem'
@@ -436,7 +444,7 @@ def get_text_from_url(web_url):
     return text.replace("\n", "").replace("\t", "")
 
 # Organization routes
-
+'''
 @app.route('/create_organization', methods=['POST'])
 @valid_api_key_required
 def create_organization():
@@ -504,6 +512,7 @@ def get_organization_from_db_by_name(organization_name):
     organization = cursor.fetchone()
     conn.close()
     return organization
+'''
 
 ## CHATBOT SECTION
 output_document_path = 'output_document'
@@ -1543,7 +1552,18 @@ def evaluate():
     )
 
     return result
+@app.route("/gtm/respond", methods=["POST"])
+def gtm_respond():
+    data = request.get_json()
+    prompt = data.get("prompt", "").strip()
+    if not prompt:
+        return jsonify({"error": "Missing prompt"}), 400
 
+    try:
+        reply = generate_response(prompt)
+        return jsonify({"response": reply})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(port=5000)
