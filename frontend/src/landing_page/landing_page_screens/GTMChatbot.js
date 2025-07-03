@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPaperPlane, faUndoAlt } from "@fortawesome/free-solid-svg-icons";
+import fetcher from "../../http/RequestConfig";
 
 const GTMChatbot = () => {
   const [messages, setMessages] = useState([
@@ -31,7 +32,7 @@ const GTMChatbot = () => {
     ]);
 
     try {
-      const res = await fetch("http://localhost:5000/gtm/respond", {
+      const res = await fetcher("/gtm/respond", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: text }),
@@ -46,6 +47,7 @@ const GTMChatbot = () => {
         )
       );
     } catch (e) {
+      console.log(e)
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === tempId

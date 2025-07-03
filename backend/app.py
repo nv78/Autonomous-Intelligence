@@ -105,7 +105,7 @@ config = {
     'https://dashboard.privatechatbot.ai', # Frontend prod URL,
   ],
 }
-CORS(app, resources={r"/*": {"origins": config['ORIGINS']}}, supports_credentials=False)
+CORS(app, resources={r"/*": {"origins": config['ORIGINS']}}, supports_credentials=True)
 
 app.secret_key = '6cac159dd02c902f822635ee0a6c3078'
 app.config['SESSION_TYPE'] = 'filesystem'
