@@ -78,6 +78,7 @@ from api_endpoints.financeGPT.chatbot_endpoints import add_prompt_to_workflow_db
 
 from datetime import datetime
 
+
 load_dotenv(override=True)
 
 app = Flask(__name__)
@@ -843,21 +844,31 @@ def process_message_pdf():
     model_type = request.json.get('model_type')
     model_key = request.json.get('model_key')
 
-    try:
-        user_email = extractUserEmailFromRequest(request)
-    except InvalidTokenError:
-    # If the JWT is invalid, return an error
-        return jsonify({"error": "Invalid JWT"}), 401
 
-    ##Include part where we verify if user actually owns the chat_id later
+    is_guest = chat_id == 0
 
+    if not is_guest:
+        try:
+            user_email = extractUserEmailFromRequest(request)
+        except InvalidTokenError:
+        # If the JWT is invalid, return an error
+            return jsonify({"error": "Invalid JWT"}), 401
+
+        ##Include part where we verify if user actually owns the chat_id later
+    else:
+        user_email = "guest@gmail.com"
     query = message.strip()
 
     #This adds user message to db
-    add_message_to_db(query, chat_id, 1)
+    if not is_guest:
+        add_message_to_db(query, chat_id, 1)
 
     #Get most relevant section from the document
-    sources = get_relevant_chunks(2, query, chat_id, user_email)
+    if not is_guest:
+        sources = get_relevant_chunks(2, query, chat_id, user_email)
+    else: 
+        sources = []
+    
     sources_str = " ".join([", ".join(str(elem) for elem in source) for source in sources])
 
     if (model_type == 0):
@@ -908,12 +919,15 @@ def process_message_pdf():
         answer = completion.completion
 
     #This adds bot message
-    message_id = add_message_to_db(answer, chat_id, 0)
+    message_id = None
+    if not is_guest:
+        message_id = add_message_to_db(answer, chat_id, 0)
+        if message_id:
 
-    try:
-        add_sources_to_db(message_id, sources)
-    except:
-        print("no sources")
+            try:
+                add_sources_to_db(message_id, sources)
+            except:
+                print("no sources")
 
     return jsonify(answer=answer)
 
@@ -1539,6 +1553,7 @@ def evaluate():
     )
 
     return result
+
 
 
 if __name__ == '__main__':

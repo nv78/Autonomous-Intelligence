@@ -100,6 +100,12 @@ function LPHeader(props) {
             >
               Schedule Demo
             </button>
+            <button
+              className="btn-black w-full sm:w-auto flex justify-center items-center sm:ml-4"
+              onClick={() => window.location.assign("/chat?free=true")}
+            >
+              Try Free
+            </button>
           </div>
         </div>
         {/* Hide image on mobile view */}
