@@ -78,6 +78,10 @@ from api_endpoints.financeGPT.chatbot_endpoints import add_prompt_to_workflow_db
 
 from datetime import datetime
 
+from database.db import insert_agent_info, get_agent_info 
+
+# from duckduckgo_search import DDGS optional 
+
 load_dotenv(override=True)
 
 app = Flask(__name__)
@@ -1539,6 +1543,125 @@ def evaluate():
     )
 
     return result
+
+
+agents = {}
+
+class Agent:
+    def __init__(self, name, model, system_prompt, task=None, tools=None, verbose=False):
+        self.name = name
+        self.model = model
+        self.system_prompt = system_prompt
+        self.task = task
+        self.tools = tools if tools else []
+        self.verbose = verbose
+        self.messages = []
+
+        if self.system_prompt:
+            self.messages.append({"role": "system", "content": self.system_prompt})
+
+    def __call__(self, message):
+        self.messages.append({"role": "user", "content": message})
+        result = self.execute()
+        self.messages.append({"role": "assistant", "content": result})
+        return result
+
+    def execute(self):
+        client = openai.OpenAI()  
+        try:
+            completion = client.chat.completions.create(
+                model=self.model,
+                temperature=0,
+                messages=self.messages
+            )
+
+            response = completion.choices[0].message.content  
+            return response
+        except openai.OpenAIError as e:
+            return f"OpenAI API Error: {str(e)}"
+        
+    def __repr__(self):
+        return f"Agent(name={self.name}, model={self.model}, system_prompt={self.system_prompt}, task={self.task}, tools={self.tools}, verbose={self.verbose})"
+
+def load_agents_from_db():
+    agents_info = get_agent_info()
+    for agent_info in agents_info:
+        agent = Agent(
+            name=agent_info['name'],
+            model=agent_info['model'],
+            system_prompt=agent_info['system_prompt'],
+            task=agent_info.get('task'),
+            tools=agent_info.get('tools').split(',') if agent_info.get('tools') else [],
+            verbose=agent_info['verbose']
+        )
+        agents[agent.name] = agent
+
+@app.route('/create-agent', methods=['POST'])
+def create_agent():
+    """Creates a new agent and stores it in the global dictionary."""
+    data = request.json
+    if not data.get('name') or not data.get('model') or not data.get('system_prompt'):
+        return jsonify({"error": "Missing required fields"}), 400
+    
+
+    existing_agents = get_agent_info()
+    if any(agent_info['name'] == data['name'] for agent_info in existing_agents):
+        return jsonify({"error": f"Agent with name '{data['name']}' already exists"}), 400
+    agent = Agent(
+        name=data['name'],
+        model=data['model'],
+        system_prompt=data['system_prompt'],
+        task=data.get('task'),
+        tools=data.get('tools'),
+        verbose=data.get('verbose', False)
+    )
+
+
+    agents[data['name']] = agent  
+    insert_agent_info(agent.name, agent.model, agent.system_prompt, agent.task, agent.tools, agent.verbose)
+    print(f"Agent created: {agent}")
+    # results = DDGS().text(agent.system_prompt, region='wt-wt', safesearch='off', timelimit='y', max_results=10)
+    # print(results) optional if duckduckGo tester needs to be implemented 
+    return jsonify({"message": f"Agent '{data['name']}' created"}), 201
+
+
+@app.route('/get-agents', methods=['GET'])
+def get_agents():
+    """Returns a list of all created agents."""
+    load_agents_from_db() 
+    return jsonify({name: agent.__dict__ for name, agent in agents.items()}), 200
+
+@app.route('/update-agent', methods=['PUT'])
+def update_agent():
+    """Updates an agent's attributes by name."""
+    data = request.json
+    agent_name = data.get('name')
+    if not agent_name or agent_name not in agents:
+        return jsonify({"error": "Agent not found"}), 404
+
+    agent = agents[agent_name]
+    agent.model = data.get('model', agent.model)
+    agent.system_prompt = data.get('system_prompt', agent.system_prompt)
+    agent.task = data.get('task', agent.task)
+    agent.tools = data.get('tools', agent.tools)
+    agent.verbose = data.get('verbose', agent.verbose)
+
+    print(f"Agent updated: {agent}")
+    return jsonify({"message": f"Agent '{agent_name}' updated"}), 200
+
+
+@app.route('/delete-agent', methods=['DELETE'])
+def delete_agent():
+    agent_name = request.args.get('agent_name')
+    if not agent_name:
+        return jsonify({"error": "Missing agent_name parameter"}), 400
+
+    if agent_name in agents:
+        del agents[agent_name]
+        return jsonify({"message": f"Agent '{agent_name}' deleted successfully"}), 200
+    else:
+        return jsonify({"error": "Agent not found"}), 404
+
 
 
 if __name__ == '__main__':
