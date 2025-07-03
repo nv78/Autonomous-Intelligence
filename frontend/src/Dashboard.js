@@ -10,6 +10,8 @@ import {
   chatbotPath,
   apiKeyDashboardPath,
   downloadPrivateGPTPath,
+  homePath,
+  gtmPath,
   connectorOptions // Import connector options from RouteConstants
 } from "./constants/RouteConstants";
 import PaymentsComponent from "./subcomponents/payments/PaymentsComponent";
@@ -22,6 +24,7 @@ import Workflows from "./components/Workflows"
 import Home from "./financeGPT/components/Home";
 import { APISKeyDashboard } from "./subcomponents/api/APISKeyDashboard";
 import DownloadPrivateGPT from "./components/DownloadPrivateGPT.js";
+import GTMChatbot from "./landing_page/landing_page_screens/GTMChatbot";
 
 function Dashboard() {
   const [darkTheme, setDarkTheme] = useState(true);
@@ -86,8 +89,12 @@ function Dashboard() {
   const connectorRoutes = connectorOptions.map((option) => (
     <Route key={option.value} path={option.path} element={<Home />} />
   ));
-
-  var routes = [
+  var publicRoutes = [
+    <Route key="root" index element={<CheckLogin darkTheme={darkTheme} setIsLoggedInParent={setIsLoggedIn} />} />,
+    <Route path={homePath} element={<Home />} />,
+    <Route path={gtmPath} element={<GTMChatbot />} />,
+  ]
+  var privateRoutes = [
     <Route
       index
       element={
@@ -152,7 +159,8 @@ function Dashboard() {
             <title>Panacea</title>
           </Helmet>
           <Routes>
-            {routes}
+            {publicRoutes}
+            {privateRoutes}
             {connectorRoutes}
             <Route path="*" element={<Navigate replace to="/" />} />
           </Routes>
