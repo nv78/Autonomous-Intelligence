@@ -122,11 +122,13 @@ CREATE TABLE documents (
     created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     workflow_id INTEGER,
     chat_id INTEGER,
+    organization_id INTEGER,
     storage_key TEXT NOT NULL,
     document_name VARCHAR(255) NOT NULL,
     document_text LONGTEXT NOT NULL,
     FOREIGN KEY (workflow_id) REFERENCES workflows(id),
-    FOREIGN KEY (chat_id) REFERENCES chats(id)
+    FOREIGN KEY (chat_id) REFERENCES chats(id),
+    FOREIGN KEY (organization_id) REFERENCES organizations(id)
 );
 
 CREATE TABLE chunks (

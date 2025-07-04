@@ -37,7 +37,7 @@ from api_endpoints.get_api_keys.handler import GetAPIKeysHandler
 from enum import Enum
 import stripe
 from dotenv import load_dotenv
-import ray
+#import ray
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
 from flask_socketio import SocketIO, emit, disconnect
@@ -77,7 +77,7 @@ from api_endpoints.financeGPT.chatbot_endpoints import add_prompt_to_workflow_db
     retrieve_chats_from_db, delete_chat_from_db, retrieve_message_from_db, retrieve_docs_from_db, add_sources_to_db, delete_doc_from_db, reset_chat_db, \
     change_chat_mode_db, update_chat_name_db, find_most_recent_chat_from_db, process_prompt_answer, \
     ensure_SDK_user_exists, get_chat_info, ensure_demo_user_exists, get_message_info, get_text_from_url, \
-    add_organization_to_db, get_organization_from_db
+    add_organization_to_db, get_organization_from_db, get_document_content_from_db
 
 from datetime import datetime
 
@@ -91,8 +91,8 @@ load_dotenv(override=True)
 
 app = Flask(__name__)
 
-if ray.is_initialized() == False:
-  ray.init(logging_level="INFO", log_to_driver=True)
+#if ray.is_initialized() == False:
+#  ray.init(logging_level="INFO", log_to_driver=True)
 
 # TODO: Replace with your URLs.
 config = {
@@ -468,7 +468,7 @@ def create_organization():
                 # Ingest each sub-URL's text as a document
                 doc_id, doesExist = add_document_to_db(link_text, link, organization_id)
                 if not doesExist:
-                    chunk_document.remote(link_text, 1000, doc_id)
+                    chunk_document(link_text, 1000, doc_id)
 
         return jsonify({"organization_id": organization_id}), 201
 
@@ -667,9 +667,9 @@ def infer_chat_name():
     chat_messages = request.json.get('messages')
     chat_id = request.json.get('chat_id')
 
-    client = openai.OpenAI()
+    client = openai.OpenAI(base_url='http://host.docker.internal:11434/v1', api_key="ollama")
     completion = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="llama2:latest", #"gpt-4o-mini",
         messages=[
             {"role": "user",
              "content": f"Based off these 2 messages between me and my chatbot, please infer a name for the chat. Keep it to a maximum of 4 words, 5 if you must. Do not use the word chat in it. Some good examples are, AI research paper, Apple financial report, Questions about earnings calls. Return only the chatname and nothing else. Here are the messages: {chat_messages}"}
@@ -738,8 +738,7 @@ def ingest_pdfs():
 
     print("before files loop time is", datetime.now() - start_time)
     for file in files:
-        #text = get_text_from_single_file(file)
-        #text_pages = get_text_pages_from_single_file(file)
+        print(f"Processing file: {file.filename}")
 
         result = p.from_buffer(file)
         text = result["content"].strip()
@@ -749,13 +748,13 @@ def ingest_pdfs():
         doc_id, doesExist = add_document_to_db(text, filename, chat_id=chat_id)
 
         if not doesExist:
-           chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+            print(f"Chunking document {filename} with ID {doc_id}")
+            chunk_document(text, MAX_CHUNK_SIZE, doc_id)
+        else:
+            print(f"Document {filename} already exists, skipping chunking")
 
-
-    return jsonify({"error": "Invalid JWT"}), 200
-
-
-    #return text, filename
+    print("Document ingestion completed")
+    return jsonify({"message": "Documents processed successfully"}), 200
 
 @app.route('/api/ingest-pdf-wf', methods=['POST'])
 def ingest_pdfs_wf():
@@ -777,7 +776,7 @@ def ingest_pdfs_wf():
         doc_id, doesExist = add_document_to_db(text, filename, workflow_id)
 
         if not doesExist:
-          chunk_document.remote(text_pages, MAX_CHUNK_SIZE, doc_id)
+          chunk_document(text_pages, MAX_CHUNK_SIZE, doc_id)
     return text, filename
 
 @app.route('/retrieve-current-docs', methods=['POST'])
@@ -795,6 +794,7 @@ def retrieve_current_docs():
     return jsonify(doc_info=doc_info)
 
 @app.route('/delete-doc', methods=['POST'])
+@cross_origin(supports_credentials=True)
 def delete_doc():
     doc_id = request.json.get('doc_id')
 
@@ -803,10 +803,32 @@ def delete_doc():
     except InvalidTokenError:
     # If the JWT is invalid, return an error
         return jsonify({"error": "Invalid JWT"}), 401
-
+    print(doc_id)
     delete_doc_from_db(doc_id, user_email)
 
     return "success"
+
+@app.route('/get-doc-content', methods=['POST'])
+@cross_origin(supports_credentials=True)
+def get_doc_content():
+    doc_id = request.json.get('doc_id')
+
+    try:
+        user_email = extractUserEmailFromRequest(request)
+    except InvalidTokenError:
+        return jsonify({"error": "Invalid JWT"}), 401
+
+    doc_content = get_document_content_from_db(doc_id, user_email)
+    
+    if doc_content is None:
+        return jsonify({"error": "Document not found or access denied"}), 404
+    
+    return jsonify({
+        "doc_id": doc_id,
+        "document_name": doc_content['document_name'],
+        "document_text": doc_content['document_text'],
+        "created": doc_content['created']
+    })
 
 @app.route('/change-chat-mode', methods=['POST'])
 def change_chat_mode_and_reset_chat():
@@ -873,10 +895,11 @@ def process_message_pdf():
         if model_key:
            model_use = model_key
         else:
-           model_use = "gpt-4o-mini"
+           model_use = "llama2:latest"
 
-        print("using OpenAI and model is", model_use)
-        client = openai.OpenAI(api_key=os.getenv("OPENAI_API"))
+        print("using Ollama and model is", model_use)
+        client = openai.OpenAI(base_url='http://host.docker.internal:11434/v1',
+                              api_key='ollama')
         try:
             completion = client.chat.completions.create(
                 model=model_use,
@@ -889,12 +912,12 @@ def process_message_pdf():
             answer = str(completion.choices[0].message.content)
             print(answer, "message", message)
         except openai.NotFoundError:
-            print(f"The model `{model_use}` does not exist. Falling back to 'gpt-4'.")
+            print(f"The model `{model_use}` does not exist. Falling back to 'llama2:latest'.")
             completion = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="llama2:latest",
                 messages=[
                     {"role": "user",
-                     "content": f"First, tell the user that their given model key does not exist, and that you have resorted to using GPT-4 before answering their question, then add a line break and answer their question. You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. These are the sources from the text:{sources[0]}{sources[1]} And this is the question:{query}."}
+                     "content": f"First, tell the user that their given model key does not exist, and that you have resorted to using llama2:latest before answering their question, then add a line break and answer their question. You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. These are the sources from the text:{sources[0]}{sources[1]} And this is the question:{query}."}
                 ]
             )
             answer = str(completion.choices[0].message.content)
@@ -954,9 +977,9 @@ def process_message_pdf_demo():
     print('sources_str is', sources_str)
 
 
-    client = openai.OpenAI()
+    client = openai.OpenAI(base_url='http://host.docker.internal:11434/v1', api_key="ollama")
     completion = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="llama2:latest", #"gpt-4o-mini",
         messages=[
             {"role": "user",
              "content": f"You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. These are the sources from the text:{sources_str} And this is the question:{query}."}
@@ -979,24 +1002,29 @@ def ingest_pdfs_demo():
     global chat_id
     user_email = DEMO_USER_EMAIL
 
-    #create_new_demo_chat(chat_id, user_email)
-
     files = request.files.getlist('files[]')
     MAX_CHUNK_SIZE = 1000
 
+    print(f"Processing {len(files)} files for demo chat {chat_id}")
+
     for file in files:
-        result = p.from_buffer(file)  # Ensure your PDF extraction works as expected
+        print(f"Processing demo file: {file.filename}")
+        result = p.from_buffer(file)
         text = result["content"].strip()
         filename = file.filename
 
-        # Assuming add_document_to_db and chunk_document.remote are implemented
         doc_id, doesExist = add_document_to_db(text, filename, chat_id=chat_id)
         if not doesExist:
-            chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+            print(f"Chunking demo document {filename} with ID {doc_id}")
+            chunk_document(text, MAX_CHUNK_SIZE, doc_id)
+        else:
+            print(f"Demo document {filename} already exists, skipping chunking")
 
     # This mapping is now redundant since we're using a static demo_chat_id, but you could maintain it if you plan to extend functionality
-    chat_to_document_mapping[chat_id] = doc_id
+    if files:
+        chat_to_document_mapping[chat_id] = doc_id
 
+    print("Demo document ingestion completed")
     return jsonify({"message": "Document processed successfully"}), 200
 
 # @app.route('/reset-chat-demo', methods=['POST'])
@@ -1131,9 +1159,7 @@ def process_ticker_info():
 
         if not doesExist:
             print("test")
-            chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
-            #remote_task = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
-            #result = ray.get(remote_task)
+            chunk_document(text, MAX_CHUNK_SIZE, doc_id)
 
         #if os.path.exists(filename):
         #    os.remove(filename)
@@ -1379,9 +1405,7 @@ def upload():
             doc_id, doesExist = add_document_to_db(text, filename, chat_id=chat_id)
 
             if not doesExist:
-                #chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
-                result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
-                result = ray.get(result_id)
+                chunk_document(text, MAX_CHUNK_SIZE, doc_id)
         for path in paths:
 
             text = get_text_from_url(path)
@@ -1389,9 +1413,7 @@ def upload():
             doc_id, doesExist = add_document_to_db(text, path, chat_id=chat_id)
 
             if not doesExist:
-                #chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
-                result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
-                result = ray.get(result_id)
+                chunk_document(text, MAX_CHUNK_SIZE, doc_id)
     elif chat_type == "edgar": #edgar
         print("ticker")
         ticker = request.form.getlist('ticker')[0]
@@ -1418,10 +1440,7 @@ def upload():
             doc_id, doesExist = add_document_to_db(text, filename, chat_id)
 
             if not doesExist:
-                #print("test")
-                #chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
-                result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
-                result = ray.get(result_id)
+                chunk_document(text, MAX_CHUNK_SIZE, doc_id)
     else:
         return jsonify({"id": "Please enter a valid task type"}), 400
 
@@ -1461,10 +1480,10 @@ def public_ingest_pdf():
         if model_key:
            model_use = model_key
         else:
-           model_use = "gpt-4o-mini"
+           model_use = "llama2:latest" # "gpt-4o-mini"
 
-        print("using OpenAI and model is", model_use)
-        client = openai.OpenAI()
+        print("using Ollama and model is", model_use)
+        client = openai.OpenAI(api_key="ollama", base_url="http://host.docker.internal:11434/v1/")
         try:
             completion = client.chat.completions.create(
                 model=model_use,
@@ -1476,12 +1495,12 @@ def public_ingest_pdf():
             print("using fine tuned model")
             answer = str(completion.choices[0].message.content)
         except openai.NotFoundError:
-            print(f"The model `{model_use}` does not exist. Falling back to 'gpt-4'.")
+            print(f"The model `{model_use}` does not exist. Falling back to 'llama2:latest'.")
             completion = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="llama2:latest", #"gpt-4o-mini",
                 messages=[
                     {"role": "user",
-                     "content": f"First, tell the user that their given model key does not exist, and that you have resorted to using GPT-4 before answering their question, then add a line break and answer their question. You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. These are the sources from the text:{sources[0]}{sources[1]} And this is the question:{query}."}
+                     "content": f"First, tell the user that their given model key does not exist, and that you have resorted to using llama2:latest before answering their question, then add a line break and answer their question. You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. These are the sources from the text:{sources[0]}{sources[1]} And this is the question:{query}."}
                 ]
             )
             answer = str(completion.choices[0].message.content)

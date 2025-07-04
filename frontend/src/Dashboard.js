@@ -8,11 +8,12 @@ import {
   accountPath,
   pricingRedirectPath,
   chatbotPath,
+  chatPath,
   apiKeyDashboardPath,
   downloadPrivateGPTPath,
   homePath,
   gtmPath,
-  connectorOptions // Import connector options from RouteConstants
+  connectorOptions, // Import connector options from RouteConstants
 } from "./constants/RouteConstants";
 import PaymentsComponent from "./subcomponents/payments/PaymentsComponent";
 import PaymentsProduct from "./subcomponents/payments/PaymentsProduct";
@@ -20,7 +21,7 @@ import { Flowbite } from "flowbite-react";
 import { refreshCredits, useUser, viewUser } from "./redux/UserSlice";
 import { useDispatch } from "react-redux";
 import { useEffect } from "react";
-import Workflows from "./components/Workflows"
+import Workflows from "./components/Workflows";
 import Home from "./financeGPT/components/Home";
 import { APISKeyDashboard } from "./subcomponents/api/APISKeyDashboard";
 import DownloadPrivateGPT from "./components/DownloadPrivateGPT.js";
@@ -90,10 +91,16 @@ function Dashboard() {
     <Route key={option.value} path={option.path} element={<Home />} />
   ));
   var publicRoutes = [
-    <Route key="root" index element={<CheckLogin darkTheme={darkTheme} setIsLoggedInParent={setIsLoggedIn} />} />,
+    <Route
+      key="root"
+      index
+      element={
+        <CheckLogin darkTheme={darkTheme} setIsLoggedInParent={setIsLoggedIn} />
+      }
+    />,
     <Route path={homePath} element={<Home />} />,
     <Route path={gtmPath} element={<GTMChatbot />} />,
-  ]
+  ];
   var privateRoutes = [
     <Route
       index
@@ -112,6 +119,9 @@ function Dashboard() {
     ) : null,
     showRestrictedRouteRequiringUserSession ? (
       <Route path={pricingRedirectPath} element={<PaymentsProduct />} />
+    ) : null,
+    showRestrictedRouteRequiringUserSession ? (
+      <Route path={chatPath} element={<Home />} />
     ) : null,
     showRestrictedRouteRequiringUserSession ? (
       <Route path={chatbotPath} element={<Home />} />
@@ -138,9 +148,9 @@ function Dashboard() {
 
   return (
     <Flowbite
-      // theme={{
-      //   dark: darkTheme,
-      // }}
+    // theme={{
+    //   dark: darkTheme,
+    // }}
     >
       <div className="bg-white flex flex-col ">
         <div id="wrapperDiv" className="flex-grow">

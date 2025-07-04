@@ -4,7 +4,7 @@ from langchain.docstore.document import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from dotenv import load_dotenv
-import ray
+#import ray
 import openai
 import datetime
 import shutil
@@ -388,7 +388,7 @@ def add_document_to_wfs_db(text, document_name, workflow_id):
     cursor.close()
 
 
-@ray.remote
+#@ray.remote
 def chunk_document_by_page(text_pages, maxChunkSize, document_id):
     print("start chunk doc")
 
@@ -449,7 +449,7 @@ def chunk_document_by_page(text_pages, maxChunkSize, document_id):
     conn.commit()
     conn.close()
 
-@ray.remote
+#@ray.remote
 def chunk_document(text, maxChunkSize, document_id):
     conn, cursor = get_db_connection()
 
