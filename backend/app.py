@@ -109,33 +109,31 @@ app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": [
     "https://anote.ai",
     "https://privatechatbot.ai",
-    "https://dashboard.privatechatbot.ai",
-    r"https://.*\.privatechatbot\.ai"
+    "https://*.privatechatbot.ai",
+    "https://localhost:*"
 ]}}, supports_credentials=True)
 
 
-CORS(app, supports_credentials=True)
-
 # CORS(app, resources={ r'/*': {'origins': config['ORIGINS']}}, supports_credentials=True)
 
-app.secret_key = '6cac159dd02c902f822635ee0a6c3078'
-app.config['SESSION_TYPE'] = 'filesystem'
-app.config['SESSION_COOKIE_HTTPONLY'] = False
-app.config["JWT_SECRET_KEY"] = "6cac159dd02c902f822635ee0a6c3078"
+app.secret_key = os.environ.get("secret_key")
+app.config['SESSION_TYPE'] = os.environ.get("SESSION_TYPE")
+app.config['SESSION_COOKIE_HTTPONLY'] = os.environ.get("SESSION_COOKIE_HTTPONLY")
+app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY")
 app.config["JWT_REFRESH_TOKEN_EXPIRES"] = kSessionTokenExpirationTime
-app.config["JWT_TOKEN_LOCATION"] = "headers"
+app.config["JWT_TOKEN_LOCATION"] = os.environ.get("JWT_TOKEN_LOCATION")
 app.config.from_object(__name__)
 
 jwt_manager = JWTManager(app)
 app.jwt_manager = jwt_manager
 
 # Configure Flask-Mail
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'vidranatan@gmail.com'
-app.config['MAIL_PASSWORD'] = 'fhytlgpsjyzutlnm'
-app.config['MAIL_DEFAULT_SENDER'] = 'vidranatan@gmail.com'
+app.config['MAIL_SERVER'] = os.environ.get("MAIL_SERVER")
+app.config['MAIL_PORT'] = os.environ.get("MAIL_PORT")
+app.config['MAIL_USE_TLS'] = os.environ.get("MAIL_USE_TLS")
+app.config['MAIL_USERNAME'] = os.environ.get("MAIL_USERNAME")
+app.config['MAIL_PASSWORD'] = os.environ.get("MAIL_PASSWORD")
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get("MAIL_DEFAULT_SENDER")
 mail = Mail(app)
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
@@ -194,7 +192,7 @@ def health_check():
 # Auth
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"  #this is to set our environment to https because OAuth 2.0 only supports https environments
 
-GOOGLE_CLIENT_ID = "261908856206-fff63nag7j793tkbapd3hugthbcp8kfn.apps.googleusercontent.com"  #enter your client id you got from Google console
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")  #enter your client id you got from Google console
 client_secrets_file = os.path.join(pathlib.Path(__file__).parent, "client_secret.json")  #set the path to where the .json file you got Google console is
 
 flow = Flow.from_client_secrets_file(  #Flow is OAuth 2.0 a class that stores all the information on how we want to authorize our users
@@ -272,8 +270,7 @@ def callback():
     )
 
     # TODO: COMMENT OUT WHEN DEPLOY TO PROD
-    default_referrer = "http://dashboard.localhost:3000"
-    # default_referrer = "https://dashboard.privatechatbot.ai"
+    default_referrer = os.environ.get("default_referrer", "https://dashboard.privatechatbot.ai")
     user_id = create_user_if_does_not_exist(id_info.get("email"), id_info.get("sub"), id_info.get("name"), id_info.get("picture"))
 
     access_token = create_access_token(identity=id_info.get("email"))
@@ -293,8 +290,7 @@ def callback():
     #   "refreshToken=" + refresh_token
     # )
     response = redirect(
-      (default_referrer) +
-      "?accessToken=" + access_token + "&"
+      default_referrer + "?accessToken=" + access_token + "&"
       "refreshToken=" + refresh_token + productGetParam + freeTrialCodeGetParam
     )
     return response
