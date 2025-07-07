@@ -175,6 +175,7 @@ function SidebarChatbot(props) {
   const retrieveDocs = async () => {
     const response = await fetcher("retrieve-current-docs", {
       method: "POST",
+      credentials: "include",
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",

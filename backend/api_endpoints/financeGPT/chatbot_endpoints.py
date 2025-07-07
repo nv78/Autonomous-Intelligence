@@ -20,6 +20,8 @@ import requests
 import json
 import os
 import re
+import uuid
+from flask import jsonify
 import requests
 import webbrowser
 from fpdf import FPDF
@@ -62,6 +64,136 @@ def add_chat_to_db(user_email, chat_type, model_type): #intake the current userI
     conn.close()
 
     return chat_id
+
+def create_chat_shareable_url(chat_id):
+    conn, cursor = get_db_connection()
+    # Generate shareable UUID
+    share_uuid = str(uuid.uuid4())
+    # Insert into chat_shares
+    cursor.execute(
+        "INSERT INTO chat_shares (chat_id, share_uuid) VALUES (%s, %s)",
+        (chat_id, share_uuid)
+    )
+    chat_share_id = cursor.lastrowid
+    # Copy messages
+    cursor.execute("""
+        SELECT sent_from_user, message_text, created
+        FROM messages
+        WHERE chat_id = %s
+        ORDER BY created ASC
+    """, (chat_id,))
+    messages = cursor.fetchall()
+    for msg in messages:
+        role = 'user' if msg['sent_from_user'] else 'chatbot'
+        cursor.execute("""
+            INSERT INTO chat_share_messages (chat_share_id, role, message_text, created)
+            VALUES (%s, %s, %s, %s)
+        """, (chat_share_id, role, msg['message_text'], msg['created']))
+    # Copy documents
+    cursor.execute("""
+        SELECT id, document_name, document_text, storage_key, created
+        FROM documents
+        WHERE chat_id = %s
+    """, (chat_id,))
+    docs = cursor.fetchall()
+    for doc in docs:
+        cursor.execute("""
+            INSERT INTO chat_share_documents (
+                chat_share_id, document_name, document_text, storage_key, created
+            ) VALUES (%s, %s, %s, %s, %s)
+        """, (
+            chat_share_id,
+            doc["document_name"],
+            doc["document_text"],
+            doc["storage_key"],
+            doc["created"]
+        ))
+        chat_share_doc_id = cursor.lastrowid
+        # Copy chunks associated with the original document
+        cursor.execute("""
+            SELECT start_index, end_index, embedding_vector, page_number
+            FROM chunks
+            WHERE document_id = %s
+        """, (doc["id"],))
+        chunks = cursor.fetchall()
+        for chunk in chunks:
+            cursor.execute("""
+                INSERT INTO chat_share_chunks (
+                    chat_share_document_id, start_index, end_index, embedding_vector, page_number
+                ) VALUES (%s, %s, %s, %s, %s)
+            """, (
+                chat_share_doc_id,
+                chunk["start_index"],
+                chunk["end_index"],
+                chunk["embedding_vector"],
+                chunk["page_number"]
+            ))
+    conn.commit()
+    conn.close()
+    return jsonify({"url": f"/playbook/{share_uuid}"})
+
+def access_sharable_chat(share_uuid, user_id=1):
+    conn, cursor = get_db_connection()
+    cursor.execute("SELECT * FROM chat_shares WHERE share_uuid = %s", (share_uuid,))
+    share = cursor.fetchone()
+    if not share:
+        return jsonify({"error": "Snapshot not found"}), 404
+    # Create new chat
+    cursor.execute("""
+        INSERT INTO chats (user_id, model_type, chat_name, associated_task)
+        VALUES (%s, %s, %s, %s)
+    """, (user_id, 0, "Imported from share", 0))
+    new_chat_id = cursor.lastrowid
+    # Copy messages
+    cursor.execute("""
+        SELECT role, message_text
+        FROM chat_share_messages
+        WHERE chat_share_id = %s
+        ORDER BY created ASC
+    """, (share['id'],))
+    messages = cursor.fetchall()
+    for msg in messages:
+        sent_from_user = 1 if msg['role'] == 'user' else 0
+        cursor.execute("""
+            INSERT INTO messages (chat_id, message_text, sent_from_user)
+            VALUES (%s, %s, %s)
+        """, (new_chat_id, msg['message_text'], sent_from_user))
+    # Copy documents + chunks
+    cursor.execute("""
+        SELECT id, document_name, document_text, storage_key
+        FROM chat_share_documents
+        WHERE chat_share_id = %s
+    """, (share['id'],))
+    docs = cursor.fetchall()
+    for doc in docs:
+        # Insert document
+        cursor.execute("""
+            INSERT INTO documents (chat_id, workflow_id, document_name, document_text, storage_key)
+            VALUES (%s, NULL, %s, %s, %s)
+        """, (new_chat_id, doc['document_name'], doc['document_text'], doc['storage_key']))
+        new_doc_id = cursor.lastrowid
+        # Retrieve and copy chunks from snapshot
+        cursor.execute("""
+            SELECT start_index, end_index, embedding_vector, page_number
+            FROM chat_share_chunks
+            WHERE chat_share_document_id = %s
+        """, (doc['id'],))
+        chunks = cursor.fetchall()
+        for chunk in chunks:
+            cursor.execute("""
+                INSERT INTO chunks (
+                    document_id, start_index, end_index, embedding_vector, page_number
+                ) VALUES (%s, %s, %s, %s, %s)
+            """, (
+                new_doc_id,
+                chunk['start_index'],
+                chunk['end_index'],
+                chunk['embedding_vector'],
+                chunk['page_number']
+            ))
+    conn.commit()
+    conn.close()
+    return jsonify({"new_chat_id": new_chat_id})
 
 ## General for all chatbots
 # Worflow_type is an integer where 2=FinancialReports

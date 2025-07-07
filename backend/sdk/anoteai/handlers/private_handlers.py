@@ -152,7 +152,7 @@ def process_files(chat_type, files, paths, user_email, model_type, chat_id):
 
             if not doesExist:
                 result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
-                result = ray.get(result_id)
+                # result = ray.get(result_id)
         for path in paths:
             text = get_text_from_url(path)
 
@@ -160,7 +160,7 @@ def process_files(chat_type, files, paths, user_email, model_type, chat_id):
 
             if not doesExist:
                 result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
-                result = ray.get(result_id)
+                #result = ray.get(result_id)
     elif chat_type == "edgar": #edgar
 
         if ticker:
@@ -178,7 +178,7 @@ def process_files(chat_type, files, paths, user_email, model_type, chat_id):
 
             if not doesExist:
                 result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
-                result = ray.get(result_id)
+                #result = ray.get(result_id)
     else:
         return {"id": "Please enter a valid task type"}
 

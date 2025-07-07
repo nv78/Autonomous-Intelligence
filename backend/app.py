@@ -74,7 +74,7 @@ from api_endpoints.financeGPT.chatbot_endpoints import add_prompt_to_workflow_db
     retrieve_chats_from_db, delete_chat_from_db, retrieve_message_from_db, retrieve_docs_from_db, add_sources_to_db, delete_doc_from_db, reset_chat_db, \
     change_chat_mode_db, update_chat_name_db, find_most_recent_chat_from_db, process_prompt_answer, \
     ensure_SDK_user_exists, get_chat_info, ensure_demo_user_exists, get_message_info, get_text_from_url, \
-    add_organization_to_db, get_organization_from_db
+    add_organization_to_db, get_organization_from_db, create_chat_shareable_url, access_sharable_chat
 
 from datetime import datetime
 
@@ -82,8 +82,8 @@ load_dotenv(override=True)
 
 app = Flask(__name__)
 
-if ray.is_initialized() == False:
-  ray.init(logging_level="INFO", log_to_driver=True)
+# if ray.is_initialized() == False:
+#   ray.init(logging_level="INFO", log_to_driver=True)
 
 # TODO: Replace with your URLs.
 config = {
@@ -93,8 +93,11 @@ config = {
     'https://anote.ai', # Frontend prod URL,
     'https://privatechatbot.ai', # Frontend prod URL,
     'https://dashboard.privatechatbot.ai', # Frontend prod URL,
+    'http://localhost:8000',
+    'http://localhost:5000',
   ],
 }
+
 CORS(app, resources={ r'/*': {'origins': config['ORIGINS']}}, supports_credentials=True)
 
 app.secret_key = '6cac159dd02c902f822635ee0a6c3078'
@@ -184,6 +187,7 @@ flow = Flow.from_client_secrets_file(  #Flow is OAuth 2.0 a class that stores al
     # redirect_uri="http://127.0.0.1:3000"  #and the redirect URI is the point where the user will end up after the authorization
 )
 # postmessage
+
 
 @app.route("/login")  #the page where the user can login
 @cross_origin(supports_credentials=True)
@@ -578,8 +582,6 @@ def download_chat_history():
     except Exception as e:
         print("error is,", str(e))
         return jsonify({"error": str(e)}), 500
-
-
 
 
 @app.route('/create-new-chat', methods=['POST'])
@@ -1225,8 +1227,15 @@ def remove_prompt_from_workflow():
 
     return remove_prompt_from_workflow_db(prompt_id)
 
+@app.route('/generate-playbook/<int:chat_id>', methods=["GET"])
+@jwt_or_session_token_required
+def create_shareable_playbook(chat_id):
+    return create_chat_shareable_url(chat_id)
 
 
+@app.route('/playbook/<string:playbook_url>', methods=["GET"])
+def import_shared_chat(playbook_url):
+    return access_sharable_chat(playbook_url) 
 
 @app.route('/generate_financial_report', methods=['POST'])
 def generate_financial_report():
@@ -1380,7 +1389,7 @@ def upload():
             if not doesExist:
                 #chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
                 result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
-                result = ray.get(result_id)
+                # result = ray.get(result_id)
         for path in paths:
 
             text = get_text_from_url(path)
@@ -1390,7 +1399,7 @@ def upload():
             if not doesExist:
                 #chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
                 result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
-                result = ray.get(result_id)
+                # result = ray.get(result_id)
     elif chat_type == "edgar": #edgar
         print("ticker")
         ticker = request.form.getlist('ticker')[0]
@@ -1420,7 +1429,7 @@ def upload():
                 #print("test")
                 #chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
                 result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
-                result = ray.get(result_id)
+                # result = ray.get(result_id)
     else:
         return jsonify({"id": "Please enter a valid task type"}), 400
 

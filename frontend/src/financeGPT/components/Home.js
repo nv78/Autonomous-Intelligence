@@ -37,6 +37,7 @@ function HomeChatbot({ isLoggedIn }) {
 
     const response = await fetcher("create-new-chat", {
       method: "POST",
+      credentials: "include",
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
