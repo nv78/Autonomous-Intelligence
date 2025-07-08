@@ -32,7 +32,7 @@ function SideNav(props) {
               backgroundColor: index === props.tabNum ? "#ccc" : "transparent",
             }}
             onClick={() => {
-              if (index == 0) {
+              if (index === 0) {
                 navigate("/");
               }
               // else if (index == 3) {
@@ -47,7 +47,7 @@ function SideNav(props) {
       <button
         onClick={onLogout}
         type="button"
-        class="login-with-google-btn LogoutButton"
+        className="login-with-google-btn LogoutButton"
         style={{ width: "auto" }}
       >
         LOGOUT

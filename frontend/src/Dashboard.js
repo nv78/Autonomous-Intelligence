@@ -8,9 +8,12 @@ import {
   accountPath,
   pricingRedirectPath,
   chatbotPath,
+  chatPath,
   apiKeyDashboardPath,
   downloadPrivateGPTPath,
-  connectorOptions // Import connector options from RouteConstants
+  homePath,
+  gtmPath,
+  connectorOptions, // Import connector options from RouteConstants
 } from "./constants/RouteConstants";
 import PaymentsComponent from "./subcomponents/payments/PaymentsComponent";
 import PaymentsProduct from "./subcomponents/payments/PaymentsProduct";
@@ -18,10 +21,11 @@ import { Flowbite } from "flowbite-react";
 import { refreshCredits, useUser, viewUser } from "./redux/UserSlice";
 import { useDispatch } from "react-redux";
 import { useEffect } from "react";
-import Workflows from "./components/Workflows"
+import Workflows from "./components/Workflows";
 import Home from "./financeGPT/components/Home";
 import { APISKeyDashboard } from "./subcomponents/api/APISKeyDashboard";
 import DownloadPrivateGPT from "./components/DownloadPrivateGPT.js";
+import GTMChatbot from "./landing_page/landing_page_screens/GTMChatbot";
 
 function Dashboard() {
   const [darkTheme, setDarkTheme] = useState(true);
@@ -38,7 +42,7 @@ function Dashboard() {
     }
   }
 
-  var showRestrictedRouteRequiringUserSession = isLoggedIn;
+  var showRestrictedRouteRequiringUserSession = true;
 
   let dispatch = useDispatch();
 
@@ -86,8 +90,18 @@ function Dashboard() {
   const connectorRoutes = connectorOptions.map((option) => (
     <Route key={option.value} path={option.path} element={<Home />} />
   ));
-
-  var routes = [
+  var publicRoutes = [
+    <Route
+      key="root"
+      index
+      element={
+        <CheckLogin darkTheme={darkTheme} setIsLoggedInParent={setIsLoggedIn} />
+      }
+    />,
+    <Route path={homePath} element={<Home />} />,
+    <Route path={gtmPath} element={<GTMChatbot />} />,
+  ];
+  var privateRoutes = [
     <Route
       index
       element={
@@ -107,6 +121,9 @@ function Dashboard() {
       <Route path={pricingRedirectPath} element={<PaymentsProduct />} />
     ) : null,
     showRestrictedRouteRequiringUserSession ? (
+      <Route path={chatPath} element={<Home />} />
+    ) : null,
+    showRestrictedRouteRequiringUserSession ? (
       <Route path={chatbotPath} element={<Home />} />
     ) : null,
     showRestrictedRouteRequiringUserSession ? (
@@ -121,9 +138,9 @@ function Dashboard() {
   ];
 
   var daysStr = "";
-  if (numDaysLeft == "0") {
+  if (numDaysLeft === "0") {
     daysStr = "less than a day";
-  } else if (numDaysLeft == "1") {
+  } else if (numDaysLeft === "1") {
     daysStr = "1 day";
   } else {
     daysStr = numDaysLeft.toString() + " days";
@@ -131,11 +148,11 @@ function Dashboard() {
 
   return (
     <Flowbite
-      // theme={{
-      //   dark: darkTheme,
-      // }}
+    // theme={{
+    //   dark: darkTheme,
+    // }}
     >
-      <div className="DashboardView flex flex-col min-h-screen">
+      <div className="bg-white flex flex-col ">
         <div id="wrapperDiv" className="flex-grow">
           {/* {isLoggedIn && isFreeTrial && <div className="mt-2 mb-2 ml-6" style={{ color: "white" }}>
             Your free trial ends in {daysStr}
@@ -152,7 +169,8 @@ function Dashboard() {
             <title>Panacea</title>
           </Helmet>
           <Routes>
-            {routes}
+            {publicRoutes}
+            {privateRoutes}
             {connectorRoutes}
             <Route path="*" element={<Navigate replace to="/" />} />
           </Routes>

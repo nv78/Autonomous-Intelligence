@@ -3,7 +3,7 @@ import sqlite3
 import ollama
 import json
 import requests
-import ray
+#import ray
 from tika import parser as p
 from datasets import Dataset
 import ragas
@@ -151,16 +151,16 @@ def process_files(chat_type, files, paths, user_email, model_type, chat_id):
             doc_id, doesExist = add_document_to_db(text, filename, chat_id=chat_id)
 
             if not doesExist:
-                result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
-                result = ray.get(result_id)
+                #result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+                pass
         for path in paths:
             text = get_text_from_url(path)
 
             doc_id, doesExist = add_document_to_db(text, path, chat_id=chat_id)
 
             if not doesExist:
-                result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
-                result = ray.get(result_id)
+                #result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+                pass
     elif chat_type == "edgar": #edgar
 
         if ticker:
@@ -177,8 +177,8 @@ def process_files(chat_type, files, paths, user_email, model_type, chat_id):
             doc_id, doesExist = add_document_to_db(text, filename, chat_id)
 
             if not doesExist:
-                result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
-                result = ray.get(result_id)
+                #result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+                pass
     else:
         return {"id": "Please enter a valid task type"}
 

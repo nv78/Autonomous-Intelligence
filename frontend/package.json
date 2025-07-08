@@ -25,6 +25,7 @@
     "axios": "^1.4.0",
     "copy-to-clipboard": "^3.3.3",
     "date-fns": "^2.30.0",
+    "eslint-config-airbnb": "^19.0.4",
     "flowbite-react": "^0.5.0",
     "framer-motion": "^10.17.9",
     "react": "^18.2.0",
@@ -54,6 +55,7 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
+    "lint": "eslint . --ext .js,.jsx",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {

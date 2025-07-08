@@ -501,7 +501,7 @@ const ChatbotEdgar = (props) => {
                       >
                         {msg.message}
                       </div>
-                      {msg.direction === "incoming" && index != 0 && (
+                      {msg.direction === "incoming" && index !== 0 && (
                         <FontAwesomeIcon
                           style={{
                             height: "13px",

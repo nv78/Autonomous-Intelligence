@@ -5,6 +5,8 @@ import "../styles/Chatbot.css";
 import SidebarChatbot from "./SidebarChatbot";
 import fetcher from "../../http/RequestConfig";
 import ChatbotEdgar from "./chatbot_subcomponents/ChatbotEdgar";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
+import Popout from "./Popout";
 
 function HomeChatbot() {
   const [selectedChatId, setSelectedChatId] = useState(null);
@@ -16,8 +18,17 @@ function HomeChatbot() {
   const [showChatbot, setShowChatbot] = useState(false);
   const [isEdit, setIsEdit] = useState(0); //for whether you can currently edit the ticker or not
   const [activeMessageIndex, setActiveMessageIndex] = useState(null);
-  const [relevantChunk, setRelevantChunk] = useState('');
+  const [relevantChunk, setRelevantChunk] = useState("");
+  const [menu, setMenu] = useState(false);
+  const [chats, setChats] = useState([]);
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const { id } = useParams();
+  const location = useLocation();
 
+  const handleMenu = () => {
+    setMenu((prev) => !prev);
+  };
   const [confirmedModelKey, setConfirmedModelKey] = useState("");
 
   const handleChatSelect = (chatId) => {
@@ -42,50 +53,70 @@ function HomeChatbot() {
 
     const response_data = await response.json();
     handleChatSelect(response_data.chat_id);
-
     return response_data.chat_id;
   };
 
-  const testClick = () => {
-    fetcher("temp-test", {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-    }).catch((e) => {
-      console.error(e.error);
-    });
-  };
+  useEffect(() => {
+    const retrieveAllChats = async () => {
+      console.log("i am in retrieve chats");
+      setLoading(true);
+      try {
+        const response = await fetcher("retrieve-all-chats", {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ chat_type: 0 }),
+        });
+
+        const response_data = await response.json();
+        setChats(response_data.chat_info);
+        console.log("retriving data", response_data);
+      } catch (error) {
+        console.error("Error fetching chats:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    retrieveAllChats();
+  }, []);
 
   return (
-    <div className="flex flex-row mt-2">
-      <div className="w-[20%]">
-        <Navbarchatbot
-          selectedChatId={selectedChatId}
-          onChatSelect={handleChatSelect}
-          handleForceUpdate={handleForceUpdate}
-          isPrivate={isPrivate}
-          setIsPrivate={setIsPrivate}
-          setcurrTask={setcurrTask}
-          setTicker={setTicker}
-          currTask={currTask}
-          setConfirmedModelKey={setConfirmedModelKey}
-          confirmedModelKey={confirmedModelKey}
-          setCurrChatName={setCurrChatName}
-          setIsEdit={setIsEdit}
-          setShowChatbot={setShowChatbot}
-          createNewChat={createNewChat}
-          handleChatSelect={handleChatSelect}
-          forceUpdate={forceUpdate}
-        />
-      </div>
-      <div className="w-[60%] mx-4">
+    <div className="flex flex-row h-screen">
+      <Navbarchatbot
+        selectedChatId={selectedChatId}
+        onChatSelect={handleChatSelect}
+        handleForceUpdate={handleForceUpdate}
+        isPrivate={isPrivate}
+        loading={loading}
+        setIsPrivate={setIsPrivate}
+        menu={menu}
+        handleMenu={handleMenu}
+        chats={chats}
+        setcurrTask={setcurrTask}
+        setTicker={setTicker}
+        currTask={currTask}
+        setConfirmedModelKey={setConfirmedModelKey}
+        confirmedModelKey={confirmedModelKey}
+        setCurrChatName={setCurrChatName}
+        setIsEdit={setIsEdit}
+        setShowChatbot={setShowChatbot}
+        createNewChat={createNewChat}
+        handleChatSelect={handleChatSelect}
+        forceUpdate={forceUpdate}
+      />
+  
+      <div className="w-full h-full">
         {currTask === 0 && (
           <Chatbot
             chat_type={currTask}
             selectedChatId={selectedChatId}
             handleChatSelect={handleChatSelect}
+            handleMenu={handleMenu}
+            chats={chats}
+            createNewChat={createNewChat}
+            menu={menu}
             handleForceUpdate={handleForceUpdate}
             forceUpdate={forceUpdate}
             isPrivate={isPrivate}
@@ -97,7 +128,7 @@ function HomeChatbot() {
             setRelevantChunk={setRelevantChunk}
           />
         )}
-        {currTask === 1 && (
+        {/* {currTask === 1 && (
           <ChatbotEdgar
             chat_type={currTask}
             selectedChatId={selectedChatId}
@@ -119,10 +150,10 @@ function HomeChatbot() {
             setActiveMessageIndex={setActiveMessageIndex}
             setRelevantChunk={setRelevantChunk}
           />
-        )}
+        )} */}
       </div>
-      <div className="w-[20%] mt-2">
-        <SidebarChatbot
+      <div className="mt-2">
+        {/* <SidebarChatbot
           selectedChatId={selectedChatId}
           chat_type={currTask}
           createNewChat={createNewChat}
@@ -138,7 +169,7 @@ function HomeChatbot() {
           setConfirmedModelKey={setConfirmedModelKey}
           relevantChunk={relevantChunk}
           activeMessageIndex={activeMessageIndex}
-        />
+        /> */}
       </div>
     </div>
   );

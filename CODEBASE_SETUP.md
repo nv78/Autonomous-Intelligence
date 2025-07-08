@@ -137,3 +137,46 @@ npm install --force
 
 You might need to install JDK8 for Apache Tika for uploading files.
 
+**8. Docker Setup**
+
+If you prefer to use Docker for development, follow these instructions:
+
+1. Make sure you have Docker installed on your system. You can download it from [Docker's official website](https://www.docker.com/products/docker-desktop/).
+
+2. Build and run the Docker containers:
+```bash
+$ docker-compose up --build
+```
+
+This will start both the frontend and backend services in Docker containers.
+
+3. Access the application:
+- Frontend will be available at: http://localhost:3000
+- Backend will be available at: http://localhost:5000
+
+4. Database Setup in Docker:
+You might need to initialize the database inside the Docker container. To do this:
+
+```bash
+# Get into the backend container
+$ docker compose exec <container_name> sh
+
+# Once inside the container, navigate to the database directory
+$ cd database
+
+# Initialize the database
+$ python init_db_dev.py
+```
+
+5. To stop the Docker containers:
+```bash
+$ docker-compose down
+```
+
+Note: If you make changes to the code, you'll need to rebuild the containers using `docker-compose up --build` again.
+
+Common Docker Issues:
+- If you get permission errors, you might need to run Docker commands with `sudo`
+- If ports are already in use, make sure no other services are running on ports 3000 and 5000
+- If the database connection fails, ensure the MySQL container is running properly
+

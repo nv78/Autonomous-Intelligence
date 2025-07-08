@@ -6,7 +6,7 @@ function Registry() {
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
 
-    const agents = [
+  const agents = [
     {
     image: "/images/one-pager_builder_agent.png",
     title: "One-Pager Builder Agent",
