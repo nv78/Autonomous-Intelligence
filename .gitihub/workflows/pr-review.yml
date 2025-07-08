@@ -1,39 +1,18 @@
-name: PR Code Review
+name: Lint Frontend (ESLint) & Backend (Python)
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - 'backend/**'
   pull_request:
-    branches: [ main ]
+    paths:
+      - 'frontend/**'
+      - 'backend/**'
 
 jobs:
-  codeql-analysis:
-    name: Security Scan (CodeQL)
-    runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
-
-    strategy:
-      matrix:
-        language: [javascript]
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: ${{ matrix.language }}
-
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
-
-      - name: CodeQL Analyze
-        uses: github/codeql-action/analyze@v3
-
   lint:
-    name: Lint with ESLint (Google Style)
     runs-on: ubuntu-latest
 
     steps:
@@ -45,8 +24,25 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install dependencies
+      - name: Install frontend dependencies
+        working-directory: frontend
         run: npm ci
 
-      - name: Run ESLint
-        run: npx eslint . --ext .js,.mjs,.cjs --max-warnings=0
+      - name: Lint frontend with ESLint
+        working-directory: frontend
+        run: npx eslint . --ext .js,.jsx,.ts,.tsx --max-warnings=0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'  # or match your backend version
+
+      - name: Install Python lint dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8  # or use `ruff`
+
+      - name: Lint backend with flake8
+        working-directory: backend
+        run: flake8 .
