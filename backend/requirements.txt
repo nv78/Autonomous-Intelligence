@@ -35,3 +35,5 @@ tika==1.24
 ragas
 mkdocstrings
 mkdocstrings-python
+
+pylint>=2.17.0

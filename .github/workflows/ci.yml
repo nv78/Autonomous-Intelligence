@@ -25,6 +25,9 @@ jobs:
       - name: Install dependencies
         run: pip install --no-cache-dir -r requirements.txt
 
+      - name: Run pylint
+        run: pylint . --fail-under=8
+
   frontend:
     runs-on: ubuntu-latest
     defaults:
