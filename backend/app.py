@@ -15,7 +15,6 @@ from pip._vendor import cachecontrol
 import google.auth.transport.requests
 from flask.wrappers import Response
 import json
-from database.db import get_db_connection
 import jwt
 import requests
 from database.db_auth import api_key_access_invalid
@@ -37,7 +36,7 @@ from api_endpoints.get_api_keys.handler import GetAPIKeysHandler
 from enum import Enum
 import stripe
 from dotenv import load_dotenv
-#import ray
+import ray
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
 from flask_socketio import SocketIO, emit, disconnect
@@ -56,8 +55,6 @@ from tika import parser as p
 import anthropic
 from anthropic import Anthropic, HUMAN_PROMPT, AI_PROMPT
 from datasets import Dataset
-from api_endpoints.gpt2_gtm.handler import handler as GPT2GenerateHandler
-
 import re
 import ragas
 from ragas.metrics import (
@@ -77,63 +74,65 @@ from api_endpoints.financeGPT.chatbot_endpoints import add_prompt_to_workflow_db
     retrieve_chats_from_db, delete_chat_from_db, retrieve_message_from_db, retrieve_docs_from_db, add_sources_to_db, delete_doc_from_db, reset_chat_db, \
     change_chat_mode_db, update_chat_name_db, find_most_recent_chat_from_db, process_prompt_answer, \
     ensure_SDK_user_exists, get_chat_info, ensure_demo_user_exists, get_message_info, get_text_from_url, \
-    add_organization_to_db, get_organization_from_db, get_document_content_from_db
+    add_organization_to_db, get_organization_from_db
 
 from datetime import datetime
 
 from database.db_auth import get_db_connection
 
-from api_endpoints.gpt2_gtm.handler import generate_response
-
-
+from api_endpoints.gpt2_gtm.handler import handler as generate_response
+from api_endpoints.gpt2_gtm.handler import gpt2_blueprint
 
 load_dotenv(override=True)
 
 app = Flask(__name__)
+app.register_blueprint(gpt2_blueprint)
 
 #if ray.is_initialized() == False:
-#  ray.init(logging_level="INFO", log_to_driver=True)
+   #ray.init(logging_level="INFO", log_to_driver=True)
+
+def ensure_ray_started():
+    if not ray.is_initialized():
+        try:
+            ray.init(
+                logging_level="INFO",
+                log_to_driver=True,
+                ignore_reinit_error=True  # Helpful when running in dev
+            )
+        except Exception as e:
+            print(f"Ray init failed: {e}")
 
 # TODO: Replace with your URLs.
-# config = {
-#   'ORIGINS': [
-#     'http://localhost:3000',  # React
-#     'http://dashboard.localhost:3000',  # React
-#     'https://anote.ai', # Frontend prod URL,
-#     'https://privatechatbot.ai', # Frontend prod URL,
-#     'https://dashboard.privatechatbot.ai', # Frontend prod URL,
-#   ],
-# }
+config = {
+  'ORIGINS': [
+    'http://localhost:3000',  # React
+    'http://localhost:5000',
+    'http://dashboard.localhost:3000',  # React
+    'https://anote.ai', # Frontend prod URL,
+    'https://privatechatbot.ai', # Frontend prod URL,
+    'https://dashboard.privatechatbot.ai', # Frontend prod URL,
+  ],
+}
+CORS(app, resources={ r'/*': {'origins': config['ORIGINS']}}, supports_credentials=True)
 
-
-CORS(app, resources={r"/*": {"origins": [
-    "https://anote.ai",
-    "https://privatechatbot.ai",
-    "https://*.privatechatbot.ai",
-    "https://localhost:*"
-]}}, supports_credentials=True)
-
-
-# CORS(app, resources={ r'/*': {'origins': config['ORIGINS']}}, supports_credentials=True)
-
-app.secret_key = os.environ.get("secret_key")
-app.config['SESSION_TYPE'] = os.environ.get("SESSION_TYPE")
-app.config['SESSION_COOKIE_HTTPONLY'] = os.environ.get("SESSION_COOKIE_HTTPONLY")
-app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY")
+app.secret_key = '6cac159dd02c902f822635ee0a6c3078'
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_COOKIE_HTTPONLY'] = False
+app.config["JWT_SECRET_KEY"] = "6cac159dd02c902f822635ee0a6c3078"
 app.config["JWT_REFRESH_TOKEN_EXPIRES"] = kSessionTokenExpirationTime
-app.config["JWT_TOKEN_LOCATION"] = os.environ.get("JWT_TOKEN_LOCATION")
+app.config["JWT_TOKEN_LOCATION"] = "headers"
 app.config.from_object(__name__)
 
 jwt_manager = JWTManager(app)
 app.jwt_manager = jwt_manager
 
 # Configure Flask-Mail
-app.config['MAIL_SERVER'] = os.environ.get("MAIL_SERVER")
-app.config['MAIL_PORT'] = os.environ.get("MAIL_PORT")
-app.config['MAIL_USE_TLS'] = os.environ.get("MAIL_USE_TLS")
-app.config['MAIL_USERNAME'] = os.environ.get("MAIL_USERNAME")
-app.config['MAIL_PASSWORD'] = os.environ.get("MAIL_PASSWORD")
-app.config['MAIL_DEFAULT_SENDER'] = os.environ.get("MAIL_DEFAULT_SENDER")
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'vidranatan@gmail.com'
+app.config['MAIL_PASSWORD'] = 'fhytlgpsjyzutlnm'
+app.config['MAIL_DEFAULT_SENDER'] = 'vidranatan@gmail.com'
 mail = Mail(app)
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
@@ -192,7 +191,7 @@ def health_check():
 # Auth
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"  #this is to set our environment to https because OAuth 2.0 only supports https environments
 
-GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")  #enter your client id you got from Google console
+GOOGLE_CLIENT_ID = "261908856206-fff63nag7j793tkbapd3hugthbcp8kfn.apps.googleusercontent.com"  #enter your client id you got from Google console
 client_secrets_file = os.path.join(pathlib.Path(__file__).parent, "client_secret.json")  #set the path to where the .json file you got Google console is
 
 flow = Flow.from_client_secrets_file(  #Flow is OAuth 2.0 a class that stores all the information on how we want to authorize our users
@@ -270,7 +269,8 @@ def callback():
     )
 
     # TODO: COMMENT OUT WHEN DEPLOY TO PROD
-    default_referrer = os.environ.get("default_referrer", "https://dashboard.privatechatbot.ai")
+    default_referrer = "http://dashboard.localhost:3000"
+    # default_referrer = "https://dashboard.privatechatbot.ai"
     user_id = create_user_if_does_not_exist(id_info.get("email"), id_info.get("sub"), id_info.get("name"), id_info.get("picture"))
 
     access_token = create_access_token(identity=id_info.get("email"))
@@ -290,7 +290,8 @@ def callback():
     #   "refreshToken=" + refresh_token
     # )
     response = redirect(
-      default_referrer + "?accessToken=" + access_token + "&"
+      (default_referrer) +
+      "?accessToken=" + access_token + "&"
       "refreshToken=" + refresh_token + productGetParam + freeTrialCodeGetParam
     )
     return response
@@ -451,7 +452,7 @@ def get_text_from_url(web_url):
     return text.replace("\n", "").replace("\t", "")
 
 # Organization routes
-'''
+
 @app.route('/create_organization', methods=['POST'])
 @valid_api_key_required
 def create_organization():
@@ -475,7 +476,8 @@ def create_organization():
                 # Ingest each sub-URL's text as a document
                 doc_id, doesExist = add_document_to_db(link_text, link, organization_id)
                 if not doesExist:
-                    chunk_document(link_text, 1000, doc_id)
+                    ensure_ray_started()
+                    chunk_document.remote(link_text, 1000, doc_id)
 
         return jsonify({"organization_id": organization_id}), 201
 
@@ -519,7 +521,6 @@ def get_organization_from_db_by_name(organization_name):
     organization = cursor.fetchone()
     conn.close()
     return organization
-'''
 
 ## CHATBOT SECTION
 output_document_path = 'output_document'
@@ -643,6 +644,7 @@ def retrieve_messages_from_chat():
     chat_id = request.json.get('chat_id')
 
     messages = retrieve_message_from_db(user_email, chat_id, chat_type)
+
     return jsonify(messages=messages)
 
 
@@ -674,9 +676,9 @@ def infer_chat_name():
     chat_messages = request.json.get('messages')
     chat_id = request.json.get('chat_id')
 
-    client = openai.OpenAI(base_url='http://host.docker.internal:11434/v1', api_key="ollama")
+    client = openai.OpenAI()
     completion = client.chat.completions.create(
-        model="llama2:latest", #"gpt-4o-mini",
+        model="gpt-4o-mini",
         messages=[
             {"role": "user",
              "content": f"Based off these 2 messages between me and my chatbot, please infer a name for the chat. Keep it to a maximum of 4 words, 5 if you must. Do not use the word chat in it. Some good examples are, AI research paper, Apple financial report, Questions about earnings calls. Return only the chatname and nothing else. Here are the messages: {chat_messages}"}
@@ -745,7 +747,8 @@ def ingest_pdfs():
 
     print("before files loop time is", datetime.now() - start_time)
     for file in files:
-        print(f"Processing file: {file.filename}")
+        #text = get_text_from_single_file(file)
+        #text_pages = get_text_pages_from_single_file(file)
 
         result = p.from_buffer(file)
         text = result["content"].strip()
@@ -755,13 +758,14 @@ def ingest_pdfs():
         doc_id, doesExist = add_document_to_db(text, filename, chat_id=chat_id)
 
         if not doesExist:
-            print(f"Chunking document {filename} with ID {doc_id}")
-            chunk_document(text, MAX_CHUNK_SIZE, doc_id)
-        else:
-            print(f"Document {filename} already exists, skipping chunking")
+            ensure_ray_started()
+            chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
 
-    print("Document ingestion completed")
-    return jsonify({"message": "Documents processed successfully"}), 200
+
+    return jsonify({"error": "Invalid JWT"}), 200
+
+
+    #return text, filename
 
 @app.route('/api/ingest-pdf-wf', methods=['POST'])
 def ingest_pdfs_wf():
@@ -783,7 +787,8 @@ def ingest_pdfs_wf():
         doc_id, doesExist = add_document_to_db(text, filename, workflow_id)
 
         if not doesExist:
-          chunk_document(text_pages, MAX_CHUNK_SIZE, doc_id)
+            ensure_ray_started()
+            chunk_document.remote(text_pages, MAX_CHUNK_SIZE, doc_id)
     return text, filename
 
 @app.route('/retrieve-current-docs', methods=['POST'])
@@ -801,7 +806,6 @@ def retrieve_current_docs():
     return jsonify(doc_info=doc_info)
 
 @app.route('/delete-doc', methods=['POST'])
-@cross_origin(supports_credentials=True)
 def delete_doc():
     doc_id = request.json.get('doc_id')
 
@@ -810,32 +814,10 @@ def delete_doc():
     except InvalidTokenError:
     # If the JWT is invalid, return an error
         return jsonify({"error": "Invalid JWT"}), 401
-    print(doc_id)
+
     delete_doc_from_db(doc_id, user_email)
 
     return "success"
-
-@app.route('/get-doc-content', methods=['POST'])
-@cross_origin(supports_credentials=True)
-def get_doc_content():
-    doc_id = request.json.get('doc_id')
-
-    try:
-        user_email = extractUserEmailFromRequest(request)
-    except InvalidTokenError:
-        return jsonify({"error": "Invalid JWT"}), 401
-
-    doc_content = get_document_content_from_db(doc_id, user_email)
-    
-    if doc_content is None:
-        return jsonify({"error": "Document not found or access denied"}), 404
-    
-    return jsonify({
-        "doc_id": doc_id,
-        "document_name": doc_content['document_name'],
-        "document_text": doc_content['document_text'],
-        "created": doc_content['created']
-    })
 
 @app.route('/change-chat-mode', methods=['POST'])
 def change_chat_mode_and_reset_chat():
@@ -902,11 +884,10 @@ def process_message_pdf():
         if model_key:
            model_use = model_key
         else:
-           model_use = "llama2:latest"
+           model_use = "gpt-4o-mini"
 
-        print("using Ollama and model is", model_use)
-        client = openai.OpenAI(base_url='http://host.docker.internal:11434/v1',
-                              api_key='ollama')
+        print("using OpenAI and model is", model_use)
+        client = openai.OpenAI()
         try:
             completion = client.chat.completions.create(
                 model=model_use,
@@ -917,14 +898,13 @@ def process_message_pdf():
             )
             print("using fine tuned model")
             answer = str(completion.choices[0].message.content)
-            print(answer, "message", message)
         except openai.NotFoundError:
-            print(f"The model `{model_use}` does not exist. Falling back to 'llama2:latest'.")
+            print(f"The model `{model_use}` does not exist. Falling back to 'gpt-4'.")
             completion = client.chat.completions.create(
-                model="llama2:latest",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "user",
-                     "content": f"First, tell the user that their given model key does not exist, and that you have resorted to using llama2:latest before answering their question, then add a line break and answer their question. You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. These are the sources from the text:{sources[0]}{sources[1]} And this is the question:{query}."}
+                     "content": f"First, tell the user that their given model key does not exist, and that you have resorted to using GPT-4 before answering their question, then add a line break and answer their question. You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. These are the sources from the text:{sources[0]}{sources[1]} And this is the question:{query}."}
                 ]
             )
             answer = str(completion.choices[0].message.content)
@@ -954,11 +934,8 @@ def process_message_pdf():
         add_sources_to_db(message_id, sources)
     except:
         print("no sources")
-    print("response", answer)
-    return jsonify(
-        answer=answer,
-        id=message_id
-    )
+
+    return jsonify(answer=answer)
 
 # Only for demo purposes
 chat_to_document_mapping = {}
@@ -984,9 +961,9 @@ def process_message_pdf_demo():
     print('sources_str is', sources_str)
 
 
-    client = openai.OpenAI(base_url='http://host.docker.internal:11434/v1', api_key="ollama")
+    client = openai.OpenAI()
     completion = client.chat.completions.create(
-        model="llama2:latest", #"gpt-4o-mini",
+        model="gpt-4o-mini",
         messages=[
             {"role": "user",
              "content": f"You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. These are the sources from the text:{sources_str} And this is the question:{query}."}
@@ -1009,29 +986,25 @@ def ingest_pdfs_demo():
     global chat_id
     user_email = DEMO_USER_EMAIL
 
+    #create_new_demo_chat(chat_id, user_email)
+
     files = request.files.getlist('files[]')
     MAX_CHUNK_SIZE = 1000
 
-    print(f"Processing {len(files)} files for demo chat {chat_id}")
-
     for file in files:
-        print(f"Processing demo file: {file.filename}")
-        result = p.from_buffer(file)
+        result = p.from_buffer(file)  # Ensure your PDF extraction works as expected
         text = result["content"].strip()
         filename = file.filename
 
+        # Assuming add_document_to_db and chunk_document.remote are implemented
         doc_id, doesExist = add_document_to_db(text, filename, chat_id=chat_id)
         if not doesExist:
-            print(f"Chunking demo document {filename} with ID {doc_id}")
-            chunk_document(text, MAX_CHUNK_SIZE, doc_id)
-        else:
-            print(f"Demo document {filename} already exists, skipping chunking")
+            ensure_ray_started()
+            chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
 
     # This mapping is now redundant since we're using a static demo_chat_id, but you could maintain it if you plan to extend functionality
-    if files:
-        chat_to_document_mapping[chat_id] = doc_id
+    chat_to_document_mapping[chat_id] = doc_id
 
-    print("Demo document ingestion completed")
     return jsonify({"message": "Document processed successfully"}), 200
 
 # @app.route('/reset-chat-demo', methods=['POST'])
@@ -1166,7 +1139,10 @@ def process_ticker_info():
 
         if not doesExist:
             print("test")
-            chunk_document(text, MAX_CHUNK_SIZE, doc_id)
+            ensure_ray_started()
+            chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+            #remote_task = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+            #result = ray.get(remote_task)
 
         #if os.path.exists(filename):
         #    os.remove(filename)
@@ -1412,7 +1388,11 @@ def upload():
             doc_id, doesExist = add_document_to_db(text, filename, chat_id=chat_id)
 
             if not doesExist:
-                chunk_document(text, MAX_CHUNK_SIZE, doc_id)
+                #chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+                ensure_ray_started()
+                result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+                ensure_ray_started()
+                result = ray.get(result_id)
         for path in paths:
 
             text = get_text_from_url(path)
@@ -1420,7 +1400,11 @@ def upload():
             doc_id, doesExist = add_document_to_db(text, path, chat_id=chat_id)
 
             if not doesExist:
-                chunk_document(text, MAX_CHUNK_SIZE, doc_id)
+                #chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+                ensure_ray_started()
+                result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+                ensure_ray_started()
+                result = ray.get(result_id)
     elif chat_type == "edgar": #edgar
         print("ticker")
         ticker = request.form.getlist('ticker')[0]
@@ -1447,7 +1431,12 @@ def upload():
             doc_id, doesExist = add_document_to_db(text, filename, chat_id)
 
             if not doesExist:
-                chunk_document(text, MAX_CHUNK_SIZE, doc_id)
+                #print("test")
+                #chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+                ensure_ray_started()
+                result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+                
+                result = ray.get(result_id)
     else:
         return jsonify({"id": "Please enter a valid task type"}), 400
 
@@ -1487,10 +1476,10 @@ def public_ingest_pdf():
         if model_key:
            model_use = model_key
         else:
-           model_use = "llama2:latest" # "gpt-4o-mini"
+           model_use = "gpt-4o-mini"
 
-        print("using Ollama and model is", model_use)
-        client = openai.OpenAI(api_key="ollama", base_url="http://host.docker.internal:11434/v1/")
+        print("using OpenAI and model is", model_use)
+        client = openai.OpenAI()
         try:
             completion = client.chat.completions.create(
                 model=model_use,
@@ -1502,12 +1491,12 @@ def public_ingest_pdf():
             print("using fine tuned model")
             answer = str(completion.choices[0].message.content)
         except openai.NotFoundError:
-            print(f"The model `{model_use}` does not exist. Falling back to 'llama2:latest'.")
+            print(f"The model `{model_use}` does not exist. Falling back to 'gpt-4'.")
             completion = client.chat.completions.create(
-                model="llama2:latest", #"gpt-4o-mini",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "user",
-                     "content": f"First, tell the user that their given model key does not exist, and that you have resorted to using llama2:latest before answering their question, then add a line break and answer their question. You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. These are the sources from the text:{sources[0]}{sources[1]} And this is the question:{query}."}
+                     "content": f"First, tell the user that their given model key does not exist, and that you have resorted to using GPT-4 before answering their question, then add a line break and answer their question. You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. These are the sources from the text:{sources[0]}{sources[1]} And this is the question:{query}."}
                 ]
             )
             answer = str(completion.choices[0].message.content)
@@ -1578,6 +1567,7 @@ def evaluate():
     )
 
     return result
+
 @app.route("/gtm/respond", methods=["POST"])
 def gtm_respond():
     data = request.get_json()
@@ -1586,10 +1576,15 @@ def gtm_respond():
         return jsonify({"error": "Missing prompt"}), 400
 
     try:
-        reply = generate_response(prompt)
+        #reply = generate_response(prompt)
+        reply = "Testing!"
         return jsonify({"response": reply})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/test", methods=["GET"])
+def test():
+    return jsonify({"message": "Test works!"})
+
 if __name__ == '__main__':
-    app.run(port=5000)
+    app.run(host="0.0.0.0", port=5000, debug=True)

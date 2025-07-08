@@ -12,7 +12,7 @@ function ChatHistory(props) {
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [chatIdToRename, setChatIdToRename] = useState(null);
   const [newChatName, setNewChatName] = useState("");
-  const { id } = useParams()
+  const { id } = useParams();
   const retrieveAllChats = async () => {
     console.log("i am in retrieve chats");
     try {
@@ -37,7 +37,8 @@ function ChatHistory(props) {
   }, [props.chats]);
 
   const handleDeleteChat = async (chat_id) => {
-    const chatToDelete = chats.find(chat => chat.id === chat_id)?.chat_name || 'Chat';
+    const chatToDelete =
+      chats.find((chat) => chat.id === chat_id)?.chat_name || "Chat";
     setChatToDelete(chatToDelete);
     setChatIdToDelete(chat_id);
     setShowConfirmPopupChat(true);
@@ -60,7 +61,7 @@ function ChatHistory(props) {
         // If deleted chat was selected, clear selection
         if (Number(id) === chatIdToDelete) {
           // Navigate to a different chat or home
-          window.location.href = '/chat';
+          window.location.href = "/chat";
         }
       }
     } catch (e) {
@@ -75,7 +76,8 @@ function ChatHistory(props) {
   };
 
   const handleRenameChat = async (chat_id) => {
-    const currentName = chats.find(chat => chat.id === chat_id)?.chat_name || '';
+    const currentName =
+      chats.find((chat) => chat.id === chat_id)?.chat_name || "";
     setNewChatName(currentName);
     setChatIdToRename(chat_id);
     setShowRenameModal(true);
@@ -83,7 +85,7 @@ function ChatHistory(props) {
 
   const confirmRenameChat = async () => {
     if (!newChatName.trim()) return;
-    
+
     try {
       const response = await fetcher("update-chat-name", {
         method: "POST",
@@ -91,9 +93,12 @@ function ChatHistory(props) {
           Accept: "application/json",
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ chat_id: chatIdToRename, chat_name: newChatName }),
+        body: JSON.stringify({
+          chat_id: chatIdToRename,
+          chat_name: newChatName,
+        }),
       });
-      
+
       if (response.ok) {
         setShowRenameModal(false);
         await retrieveAllChats();
@@ -112,73 +117,83 @@ function ChatHistory(props) {
   return (
     <>
       {/* Delete Confirmation Modal - Rendered outside parent */}
-      {showConfirmPopupChat && createPortal(
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[9999]">
-          <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl">
-            <h3 className="text-xl font-semibold text-gray-900 mb-6">Delete Chat</h3>
-            <p className="text-gray-600 mb-8 text-lg">
-              Are you sure you want to delete "<span className="font-semibold">{chatToDelete}</span>"? This action cannot be undone.
-            </p>
-            <div className="flex space-x-4">
-              <button
-                onClick={cancelDeleteChat}
-                className="flex-1 px-6 py-3 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDeleteChat}
-                className="flex-1 px-6 py-3 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors font-medium"
-              >
-                Delete
-              </button>
+      {showConfirmPopupChat &&
+        createPortal(
+          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[9999]">
+            <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl">
+              <h3 className="text-xl font-semibold text-gray-900 mb-6">
+                Delete Chat
+              </h3>
+              <p className="text-gray-600 mb-8 text-lg">
+                Are you sure you want to delete "
+                <span className="font-semibold">{chatToDelete}</span>"? This
+                action cannot be undone.
+              </p>
+              <div className="flex space-x-4">
+                <button
+                  onClick={cancelDeleteChat}
+                  className="flex-1 px-6 py-3 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDeleteChat}
+                  className="flex-1 px-6 py-3 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors font-medium"
+                >
+                  Delete
+                </button>
+              </div>
             </div>
-          </div>
-        </div>,
-        document.body
-      )}
+          </div>,
+          document.body
+        )}
 
       {/* Rename Modal - Rendered outside parent */}
-      {showRenameModal && createPortal(
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[9999]">
-          <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl">
-            <h3 className="text-xl font-semibold text-gray-900 mb-6">Rename Chat</h3>
-            <input
-              type="text"
-              value={newChatName}
-              onChange={(e) => setNewChatName(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-8 text-lg"
-              placeholder="Enter new chat name"
-              autoFocus
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  confirmRenameChat();
-                }
-              }}
-            />
-            <div className="flex space-x-4">
-              <button
-                onClick={cancelRenameChat}
-                className="flex-1 px-6 py-3 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmRenameChat}
-                className="flex-1 px-6 py-3 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                disabled={!newChatName.trim()}
-              >
-                Save
-              </button>
+      {showRenameModal &&
+        createPortal(
+          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[9999]">
+            <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl">
+              <h3 className="text-xl font-semibold text-gray-900 mb-6">
+                Rename Chat
+              </h3>
+              <input
+                type="text"
+                value={newChatName}
+                onChange={(e) => setNewChatName(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-8 text-lg"
+                placeholder="Enter new chat name"
+                autoFocus
+                onKeyPress={(e) => {
+                  if (e.key === "Enter") {
+                    confirmRenameChat();
+                  }
+                }}
+              />
+              <div className="flex space-x-4">
+                <button
+                  onClick={cancelRenameChat}
+                  className="flex-1 px-6 py-3 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmRenameChat}
+                  className="flex-1 px-6 py-3 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                  disabled={!newChatName.trim()}
+                >
+                  Save
+                </button>
+              </div>
             </div>
-          </div>
-        </div>,
-        document.body
-      )}
+          </div>,
+          document.body
+        )}
 
       <div className="px-3 mt-2">
         <h2
-          className={`text-base ${chats.length === 0 ? "hidden" : ""} font-bold`}
+          className={`text-base ${
+            chats.length === 0 ? "hidden" : ""
+          } font-bold`}
         >
           Chats
         </h2>
@@ -214,7 +229,9 @@ function ChatHistory(props) {
                 <Dropdown.Item onClick={() => handleRenameChat(chat.id)}>
                   Rename
                 </Dropdown.Item>
-                <Dropdown.Item onClick={() => handleDeleteChat(chat.id)}>Delete</Dropdown.Item>
+                <Dropdown.Item onClick={() => handleDeleteChat(chat.id)}>
+                  Delete
+                </Dropdown.Item>
               </Dropdown>
             </li>
           ))}

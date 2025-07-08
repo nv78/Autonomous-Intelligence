@@ -25,13 +25,6 @@ const Chatbot = (props) => {
   const [uploadedDocs, setUploadedDocs] = useState([]);
   const [docsViewerOpen, setDocsViewerOpen] = useState(false);
   const [loadingDocs, setLoadingDocs] = useState(false);
-  const [availableAgents, setAvailableAgents] = useState([]);
-  const [selectedAgent, setSelectedAgent] = useState(null);
-  const [agentDropdownOpen, setAgentDropdownOpen] = useState(false);
-  const [agentDropdownPosition, setAgentDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
-  const [loadingAgents, setLoadingAgents] = useState(false);
-
-  const agentButtonRef = useRef(null);
 
   // Load existing chat messages
   const handleLoadChat = useCallback(async () => {
@@ -55,8 +48,10 @@ const Chatbot = (props) => {
       // If no messages, this could be a new chat or a chat still processing
       if (!response_data.messages?.length) {
         // Check for pending message from navigation state or localStorage
-        const pendingMessage = location.state?.message || localStorage.getItem(`pending-message-${id}`);
-        
+        const pendingMessage =
+          location.state?.message ||
+          localStorage.getItem(`pending-message-${id}`);
+
         if (pendingMessage) {
           const userMessage = {
             id: "user-content",
@@ -72,10 +67,13 @@ const Chatbot = (props) => {
           };
           setMessages([userMessage, thinkingMessage]);
           setIsFirstMessageSent(false);
-          
+
           // Store in localStorage for refresh persistence
           if (location.state?.message) {
-            localStorage.setItem(`pending-message-${id}`, location.state.message);
+            localStorage.setItem(
+              `pending-message-${id}`,
+              location.state.message
+            );
           }
         } else {
           // No messages and no pending message - empty chat
@@ -138,73 +136,17 @@ const Chatbot = (props) => {
     setLoadingDocs(false);
   }, [id, uploadedDocs.length]);
 
-  // Load available agents for the user
-  const handleLoadAgents = useCallback(async () => {
-    setLoadingAgents(true);
-    try {
-      const response = await fetcher("get-user-agents", {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (response.ok) {
-        const response_data = await response.json();
-        setAvailableAgents(response_data.agents || []);
-        
-        // Set default agent if none selected and agents available
-        if (!selectedAgent && response_data.agents?.length > 0) {
-          setSelectedAgent(response_data.agents[0]);
-        }
-      } else {
-        console.error("Failed to load agents");
-        setAvailableAgents([]);
-      }
-    } catch (error) {
-      console.error("Error loading agents:", error);
-      setAvailableAgents([]);
-    }
-    setLoadingAgents(false);
-  }, [selectedAgent]);
-
   // Load chat when component mounts or ID changes
   useEffect(() => {
     if (id) {
       handleLoadChat();
       handleLoadDocs();
-      handleLoadAgents();
     } else {
       setMessages([]);
       setIsFirstMessageSent(false);
       setUploadedDocs([]);
     }
-  }, [id, handleLoadChat, handleLoadDocs, handleLoadAgents]);
-
-  // Close agent dropdown when clicking outside or scrolling
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (agentDropdownOpen && 
-          !agentButtonRef.current?.contains(event.target) &&
-          !event.target.closest('[data-agent-dropdown]')) {
-        setAgentDropdownOpen(false);
-      }
-    };
-
-    const handleScroll = () => {
-      if (agentDropdownOpen) {
-        setAgentDropdownOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    window.addEventListener('scroll', handleScroll, true);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      window.removeEventListener('scroll', handleScroll, true);
-    };
-  }, [agentDropdownOpen]);
+  }, [id, handleLoadChat, handleLoadDocs]);
 
   // Main message sending function
   const handleSendMessage = async (event) => {
@@ -228,7 +170,9 @@ const Chatbot = (props) => {
         // Create new chat first
         targetChatId = await props.createNewChat();
         // Navigate to new chat URL
-        navigate(`/chat/${targetChatId}`, { state: { message: currentMessage }});
+        navigate(`/chat/${targetChatId}`, {
+          state: { message: currentMessage },
+        });
       } catch (error) {
         console.error("Error creating new chat:", error);
         // Restore message and files on failure
@@ -260,15 +204,12 @@ const Chatbot = (props) => {
         chat_id: targetChatId,
         role: "user",
         content: currentMessage,
-        agent: selectedAgent, // Include selected agent info
-        // No files attached to message - they're stored as documents for context
       },
       {
         id: thinkingId,
         chat_id: targetChatId,
         role: "assistant",
         content: "Thinking...",
-        agent: selectedAgent, // Include selected agent info for response
       },
     ];
 
@@ -310,9 +251,6 @@ const Chatbot = (props) => {
           chat_id: Number(chatId),
           model_type: props.isPrivate,
           model_key: props.confirmedModelKey,
-          agent_id: selectedAgent?.id || null,
-          agent_name: selectedAgent?.name || null,
-          // Files are handled as uploaded documents, not attached to messages
         }),
       });
 
@@ -333,7 +271,6 @@ const Chatbot = (props) => {
             ...updatedMessages[thinkingIndex],
             id: response_data.id,
             content: answer,
-            agent: selectedAgent, // Preserve agent info
           };
           return updatedMessages;
         }
@@ -350,7 +287,6 @@ const Chatbot = (props) => {
             ...updatedMessages[fallbackIndex],
             id: response_data.id,
             content: answer,
-            agent: selectedAgent, // Preserve agent info
           };
           return updatedMessages;
         }
@@ -363,7 +299,6 @@ const Chatbot = (props) => {
             chat_id: Number(chatId),
             role: "assistant",
             content: answer,
-            agent: selectedAgent, // Include agent info
           },
         ];
       });
@@ -1163,40 +1098,6 @@ const Chatbot = (props) => {
                       : "Attach"}
                   </span>
                 </button>
-
-                {/* Agents dropdown */}
-                <div className="relative">
-                  <button
-                    ref={agentButtonRef}
-                    type="button"
-                    onClick={() => {
-                      if (!agentDropdownOpen) {
-                        // Calculate position when opening - position above the button
-                        const rect =
-                          agentButtonRef.current.getBoundingClientRect();
-                        setAgentDropdownPosition({
-                          top: rect.top + window.scrollY - 280, // Position well above the button
-                          left: rect.left + window.scrollX,
-                          width: Math.max(rect.width, 200),
-                        });
-                      }
-                      setAgentDropdownOpen(!agentDropdownOpen);
-                    }}
-                    className="border rounded-xl py-1 px-2 flex gap-1 text-center hover:bg-gray-100 flex-shrink-0 transition-colors"
-                  >
-                    <span className="text-sm">
-                      {selectedAgent ? selectedAgent.name : "Agents"}
-                      {loadingAgents && " ↻"}
-                    </span>
-                    <span
-                      className={`text-xs transform transition-transform ${
-                        agentDropdownOpen ? "rotate-180" : ""
-                      }`}
-                    >
-                      ▼
-                    </span>
-                  </button>
-                </div>
               </div>
 
               {/* Send button */}

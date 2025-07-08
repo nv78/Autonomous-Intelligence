@@ -3,7 +3,7 @@ import { faqsPath } from './../constants/RouteConstants';
 export function IsDashboardSubdomain() {
     // Get the full hostname from the location object
     const hostname = window.location.hostname;
-    const hostnameParts = hostname.split('.');
+    const hostnameParts = hostname.split(".");
     // If the hostname has more than two parts, the first part is the subdomain
     if (hostnameParts.length > 1) {
       const subdomain = hostnameParts[0];

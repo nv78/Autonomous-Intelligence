@@ -12,39 +12,6 @@ import secrets
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-<<<<<<< HEAD
-def get_db_connection():
-    if ('.local' in socket.gethostname() or '.lan' in socket.gethostname() or 'Shadow' in socket.gethostname()) or ('APP_ENV' in os.environ and os.environ['APP_ENV'] == 'local'):
-        '''if ('BL' in os.environ and os.environ['BL'] == 'bl'):
-            print("in arya location")
-            print(dbName)
-            conn = mysql.connector.connect(
-                user='root',
-                #password='1165205407',
-                #host='localhost',
-                port=3306,
-                database=dbName
-            )
-        else:
-        '''
-        conn = mysql.connector.connect(
-            user='root',
-            unix_socket='/tmp/mysql.sock',
-            database='agents',
-            
-        )
-        
-    else:
-        conn = mysql.connector.connect(
-            host=dbHost,
-            user=dbUser,
-            password=dbPassword,
-            database=dbName,
-        )
-    return conn, conn.cursor(dictionary=True)
-
-=======
-
 # def get_db_connection():
 #     db_host = os.environ.get("DB_HOST")
 #     db_user = os.environ.get("DB_USER")
@@ -101,7 +68,6 @@ def get_db_connection():
 
 
 
->>>>>>> 178e8d8 (refactored the get_db_connection function)
 def create_7_day_free_trial(user_id):
     conn, cursor = get_db_connection()
     cursor.execute("INSERT INTO StripeInfo (user_id) VALUES (%s)", [user_id])

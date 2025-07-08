@@ -234,6 +234,33 @@ def delete_chat_from_db(chat_id, user_email):
         cursor.close()
         return 'Could not delete'
 
+def get_document_content_from_db(id, email):
+    conn, cursor = get_db_connection()
+    
+    # Query to get document content with user verification through chat ownership
+    query = """
+    SELECT d.document_text, d.document_name, d.id
+    FROM documents d
+    JOIN chats c ON d.chat_id = c.id
+    JOIN users u ON c.user_id = u.id
+    WHERE d.id = %s AND u.email = %s
+    """
+    
+    cursor.execute(query, (id, email))
+    document = cursor.fetchone()
+    
+    conn.close()
+    cursor.close()
+    
+    if document:
+        return {
+            'id': document['id'],
+            'document_name': document['document_name'],
+            'document_text': document['document_text']
+        }
+    else:
+        return None
+
 def reset_chat_db(chat_id, user_email):
     print("reset chat")
     conn, cursor = get_db_connection()

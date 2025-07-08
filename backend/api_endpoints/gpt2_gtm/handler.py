@@ -1,14 +1,14 @@
 from flask import Blueprint, request, jsonify
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
 import torch
-
+import os
 gpt2_blueprint = Blueprint('gpt2', __name__)
 
 model_name = "rfrey/fine_tuned_gpt2"
-token = "your_hf_token_here"  # Or use os.getenv("HF_TOKEN")
+token = os.getenv("HUGGINGFACE") # Or use os.getenv("HF_TOKEN")
 
-model = GPT2LMHeadModel.from_pretrained(model_name, use_auth_token=token)
-tokenizer = GPT2Tokenizer.from_pretrained(model_name, use_auth_token=token)
+model = GPT2LMHeadModel.from_pretrained(model_name, token=token)
+tokenizer = GPT2Tokenizer.from_pretrained(model_name, token=token)
 
 @gpt2_blueprint.route("/gtm/respond", methods=["POST"])
 def generate_response():
