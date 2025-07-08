@@ -28,7 +28,7 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: frontend
-        run: npm ci
+        run: npm install --force
 
       - name: Lint frontend with ESLint
         working-directory: frontend
@@ -77,4 +77,3 @@ jobs:
 
       - name: Run CodeQL analysis
         uses: github/codeql-action/analyze@v3
-
