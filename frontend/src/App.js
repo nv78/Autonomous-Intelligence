@@ -2,6 +2,8 @@ import { IsDashboardSubdomain } from "./util/DomainParsing";
 import Dashboard from "./Dashboard";
 import LandingPage from "./landing_page/LandingPage";
 import CheckLogin from "./components/CheckLogin";
+//new
+import SharedChatViewer from "./components/SharedChatViewer";
 import { BrowserRouter as Router, Routes, Route} from "react-router-dom";
 
 function App() {
@@ -9,7 +11,14 @@ function App() {
   if (isDashboardSubdomain) {
     return (
       <Router>
-        <Dashboard />
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          
+          {/* Shared chat route */}
+          <Route path="/playbook/:shareUuid" element={<SharedChatViewer />} />
+          
+          <Route path="*" element={<Dashboard />} />
+        </Routes>
       </Router>
     );
   } else {
@@ -18,6 +27,7 @@ function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/chat" element={<CheckLogin setIsLoggedInParent={() => {}} />} />
+          <Route path="/playbook/:shareUuid" element={<SharedChatViewer />} />
         </Routes>
       </Router>
     );
@@ -25,4 +35,3 @@ function App() {
 }
 
 export default App;
-

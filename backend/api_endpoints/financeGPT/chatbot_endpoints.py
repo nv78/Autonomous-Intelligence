@@ -132,7 +132,7 @@ def create_chat_shareable_url(chat_id):
             ))
     conn.commit()
     conn.close()
-    return jsonify({"url": f"/playbook/{share_uuid}"})
+    return f"/playbook/{share_uuid}"
 
 def access_sharable_chat(share_uuid, user_id=1):
     conn, cursor = get_db_connection()
@@ -303,7 +303,6 @@ def retrieve_message_from_db(user_email, chat_id, chat_type):
         WHERE chats.id = %s AND users.email = %s AND chats.associated_task = %s;
         """
 
-
     # Execute the query
     cursor.execute(query, (chat_id, user_email, chat_type))
     messages = cursor.fetchall()
@@ -365,6 +364,22 @@ def delete_chat_from_db(chat_id, user_email):
         conn.close()
         cursor.close()
         return 'Could not delete'
+    
+def retrieve_messages_from_share_uuid(share_uuid):
+    conn, cursor = get_db_connection()
+
+    cursor.execute("""
+        SELECT csm.role, csm.message_text, csm.created
+        FROM chat_shares cs
+        JOIN chat_share_messages csm ON cs.id = csm.chat_share_id
+        WHERE cs.share_uuid = %s
+        ORDER BY csm.created ASC
+    """, (share_uuid,))
+    
+    messages = cursor.fetchall()
+
+    conn.close()
+    return messages
 
 def reset_chat_db(chat_id, user_email):
     print("reset chat")

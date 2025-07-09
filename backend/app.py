@@ -65,6 +65,11 @@ from ragas.metrics import (
 )
 from bs4 import BeautifulSoup
 
+#WESLEY
+from api_endpoints.financeGPT.chatbot_endpoints import create_chat_shareable_url, access_sharable_chat
+
+from database.db import get_db_connection
+
 from api_endpoints.financeGPT.chatbot_endpoints import add_prompt_to_workflow_db, add_workflow_to_db, \
     add_chat_to_db, add_message_to_db, chunk_document, get_text_from_single_file, add_document_to_db, get_relevant_chunks,  \
     remove_prompt_from_workflow_db, remove_ticker_from_workflow_db, reset_uploaded_docs_for_workflow, retrieve_chats_from_db, \
@@ -74,10 +79,9 @@ from api_endpoints.financeGPT.chatbot_endpoints import add_prompt_to_workflow_db
     retrieve_chats_from_db, delete_chat_from_db, retrieve_message_from_db, retrieve_docs_from_db, add_sources_to_db, delete_doc_from_db, reset_chat_db, \
     change_chat_mode_db, update_chat_name_db, find_most_recent_chat_from_db, process_prompt_answer, \
     ensure_SDK_user_exists, get_chat_info, ensure_demo_user_exists, get_message_info, get_text_from_url, \
-    add_organization_to_db, get_organization_from_db, create_chat_shareable_url, access_sharable_chat
+    add_organization_to_db, get_organization_from_db, update_workflow_name_db, retrieve_messages_from_share_uuid
 
 from datetime import datetime
-
 
 load_dotenv(override=True)
 
@@ -94,11 +98,8 @@ config = {
     'https://anote.ai', # Frontend prod URL,
     'https://privatechatbot.ai', # Frontend prod URL,
     'https://dashboard.privatechatbot.ai', # Frontend prod URL,
-    'http://localhost:8000',
-    'http://localhost:5000',
   ],
 }
-
 CORS(app, resources={ r'/*': {'origins': config['ORIGINS']}}, supports_credentials=True)
 
 app.secret_key = '6cac159dd02c902f822635ee0a6c3078'
@@ -169,6 +170,21 @@ def verifyAuthForIDs(table, non_user_id):
   if access_denied:
     abort(401)
 
+#WESLEY
+@app.route('/generate-playbook/<int:chat_id>', methods = ["GET"])
+@jwt_or_session_token_required
+def create_shareable_playbook(chat_id):
+    url = create_chat_shareable_url(chat_id)
+    return jsonify({
+            "url": url,
+            "success": True,
+            "message": "Shareable URL generated successfully"
+        }), 200
+
+@app.route('/playbook/<string:playbook_url>', methods=["POST"])
+@cross_origin(supports_credentials=True)
+def import_shared_chat(playbook_url):
+    return access_sharable_chat(playbook_url) 
 
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -188,7 +204,6 @@ flow = Flow.from_client_secrets_file(  #Flow is OAuth 2.0 a class that stores al
     # redirect_uri="http://127.0.0.1:3000"  #and the redirect URI is the point where the user will end up after the authorization
 )
 # postmessage
-
 
 @app.route("/login")  #the page where the user can login
 @cross_origin(supports_credentials=True)
@@ -631,7 +646,15 @@ def retrieve_messages_from_chat():
 
     return jsonify(messages=messages)
 
+@app.route('/retrieve-shared-messages-from-chat', methods=['POST'])
+def get_playbook_messages():
+    chat_type = 0
+    chat_id = request.json.get('chat_id')
 
+    messages = retrieve_message_from_db("anon@anote.ai", chat_id, chat_type)
+
+    return jsonify(messages=messages)
+    
 @app.route('/update-chat-name', methods=['POST'])
 def update_chat_name():
     try:
@@ -1228,15 +1251,8 @@ def remove_prompt_from_workflow():
 
     return remove_prompt_from_workflow_db(prompt_id)
 
-@app.route('/generate-playbook/<int:chat_id>', methods=["GET"])
-@jwt_or_session_token_required
-def create_shareable_playbook(chat_id):
-    return create_chat_shareable_url(chat_id)
 
 
-@app.route('/playbook/<string:playbook_url>', methods=["GET"])
-def import_shared_chat(playbook_url):
-    return access_sharable_chat(playbook_url) 
 
 @app.route('/generate_financial_report', methods=['POST'])
 def generate_financial_report():
@@ -1561,7 +1577,6 @@ def evaluate():
     )
 
     return result
-
 
 
 if __name__ == '__main__':

@@ -70,7 +70,7 @@ cur.execute("SELECT * FROM users WHERE id = 1")
 result = cur.fetchone()
 
 if result is None:
-    print("Inserting dummy user with ID 0...")
+    print("Inserting dummy user with ID 1...")
     cur.execute("""
         INSERT INTO users (id, email, person_name, credits)
         VALUES (0, 'anon@anote.ai', 'Anonymous', 0)

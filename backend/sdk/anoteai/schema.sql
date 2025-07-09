@@ -12,7 +12,7 @@ DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS freeTrialAllowlist;
 
 CREATE TABLE users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
     session_token TEXT,
     session_token_expiration TEXT,
     password_reset_token TEXT,
@@ -24,7 +24,7 @@ CREATE TABLE users (
 );
 
 CREATE TABLE StripeInfo (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
     user_id INTEGER NOT NULL,
     stripe_customer_id TEXT,
     last_webhook_received TEXT,
@@ -33,7 +33,7 @@ CREATE TABLE StripeInfo (
 );
 
 CREATE TABLE Subscriptions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
     stripe_info_id INTEGER NOT NULL,
     subscription_id TEXT NOT NULL,
     start_date TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -44,7 +44,7 @@ CREATE TABLE Subscriptions (
 );
 
 CREATE TABLE freeTrialAllowlist (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
     created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     email TEXT,
     token TEXT,
@@ -53,7 +53,7 @@ CREATE TABLE freeTrialAllowlist (
 );
 
 CREATE TABLE freeTrialsAccessed (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
     created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     free_trial_allow_list_id INTEGER,
     user_id INTEGER,
@@ -62,7 +62,7 @@ CREATE TABLE freeTrialsAccessed (
 );
 
 CREATE TABLE chats (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
     created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     user_id INTEGER NOT NULL,
     model_type INTEGER NOT NULL DEFAULT 0,
@@ -74,7 +74,7 @@ CREATE TABLE chats (
 );
 
 CREATE TABLE messages (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
     created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     message_text TEXT NOT NULL,
     chat_id INTEGER NOT NULL,
@@ -84,7 +84,7 @@ CREATE TABLE messages (
 );
 
 CREATE TABLE documents (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
     created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     chat_id INTEGER,
     storage_key TEXT NOT NULL,
@@ -94,7 +94,7 @@ CREATE TABLE documents (
 );
 
 CREATE TABLE chunks (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
     start_index INTEGER,
     end_index INTEGER,
     document_id INTEGER NOT NULL,
