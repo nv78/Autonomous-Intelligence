@@ -10,6 +10,15 @@ const LANGUAGE_MODELS = {
   arabic: "GPT-4",
   chinese: "GPT-4",
 };
+
+const LANGUAGE_API_ENDPOINTS = { //fill in with model fetch links
+    spanish: "/api/chat/spanish",
+    korean: "/api/chat/korean",
+    japanese: "/api/chat/japanese",
+    arabic: "/api/chat/arabic",
+    chinese: "/api/chat/chinese",
+  };
+
 const validLanguages = Object.keys(LANGUAGE_MODELS);
 const Languages = () => {
     const [selectedLanguage, setSelectedLanguage] = useState("english");
@@ -59,7 +68,10 @@ const Languages = () => {
       ]);
   
       try {
-        const res = await fetch(`/api/chat/${selectedLanguage}`, {
+        const apiUrl = LANGUAGE_API_ENDPOINTS[selectedLanguage] || "/api/chat/spanish";
+
+        const res = await fetch(apiUrl, {
+
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ prompt: text }),
