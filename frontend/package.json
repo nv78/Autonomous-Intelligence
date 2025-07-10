@@ -5,6 +5,7 @@
   "proxy": "http://localhost:8000",
   "dependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "@craco/craco": "^7.1.0",
     "@cyntler/react-doc-viewer": "^1.14.1",
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
@@ -24,6 +25,7 @@
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
     "axios": "^1.4.0",
+    "caniuse-lite": "^1.0.30001727",
     "copy-to-clipboard": "^3.3.3",
     "date-fns": "^2.30.0",
     "flowbite-react": "^0.5.0",
