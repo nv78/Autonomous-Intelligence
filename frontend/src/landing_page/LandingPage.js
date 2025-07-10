@@ -6,6 +6,7 @@ import "./landing_page_styles/LandingPageSampleProjects.css";
 import "./landing_page_styles/LandingPageEllipse.css";
 import "./landing_page_styles/LandingPageLabel.css";
 import "./landing_page_styles/LandingPageFooter.css";
+import React, { useState, useEffect, useRef } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import FAQs from "./landing_page_screens/FAQs";
 import SampleProjects from "./landing_page_screens/SampleProjects";
@@ -34,7 +35,7 @@ import Footer from "./landing_page_components/Footer";
 import Banner from "./landing_page_components/Banner";
 import Navbar from "./landing_page_components/Navbar";
 import { Helmet } from "react-helmet";
-import { useState } from "react";
+
 import { useDispatch } from "react-redux";
 import { useLocation } from "react-router-dom";
 import { robotHeader } from "../util/RobotHeader";
@@ -44,6 +45,7 @@ import CustomerCaseStudy from "./landing_page_screens/Customers/CustomerCaseStud
 import GTMChatbot from "./landing_page_screens/Chatbots/companies/GTMChatbot";
 import ChatbotLanding from "./landing_page_screens/Chatbots/ChatbotLanding";
 import Languages from "./landing_page_screens/Chatbots/languages/Languages";
+import { LANGUAGE_ROUTES } from "../constants/RouteConstants";
 import Companies from "./landing_page_screens/Chatbots/companies/Companies";
 function LandingPage() {
   const location = useLocation();
@@ -90,6 +92,8 @@ function LandingPage() {
           <Route path={gtmPath} element = {<GTMChatbot />} />
           <Route path={chatbots} element = {<ChatbotLanding />} />
           <Route path={languages} element = {<Languages />} />
+          <Route path="/languages/:lang" element={<Languages />} />
+
           <Route path={companies} element = {<Companies />} />
           <Route path="*" element={<Navigate replace to="/" />} />
         </Routes>
