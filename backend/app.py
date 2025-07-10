@@ -80,13 +80,12 @@ from datetime import datetime
 
 from database.db_auth import get_db_connection
 
-from api_endpoints.gpt2_gtm.handler import handler as generate_response
-from api_endpoints.gpt2_gtm.handler import gpt2_blueprint
+from api_endpoints.gpt4_gtm.handler import gpt4_blueprint
 
 load_dotenv(override=True)
 
 app = Flask(__name__)
-app.register_blueprint(gpt2_blueprint)
+app.register_blueprint(gpt4_blueprint)
 
 #if ray.is_initialized() == False:
    #ray.init(logging_level="INFO", log_to_driver=True)
