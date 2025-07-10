@@ -25,6 +25,9 @@ import {
   financeGPTPath,
   homePath,
   gtmPath,
+  chatbots,
+  languages,
+  companies,
 } from "../constants/RouteConstants";
 import Home from "./landing_page_screens/Home/Home";
 import Footer from "./landing_page_components/Footer";
@@ -38,8 +41,10 @@ import { robotHeader } from "../util/RobotHeader";
 import Pricing from "./landing_page_screens/Pricing";
 import Registry from "./landing_page_screens/Registry";
 import CustomerCaseStudy from "./landing_page_screens/Customers/CustomerCaseStudy";
-import GTMChatbot from "./landing_page_screens/GTMChatbot";
-
+import GTMChatbot from "./landing_page_screens/Chatbots/companies/GTMChatbot";
+import ChatbotLanding from "./landing_page_screens/Chatbots/ChatbotLanding";
+import Languages from "./landing_page_screens/Chatbots/languages/Languages";
+import Companies from "./landing_page_screens/Chatbots/companies/Companies";
 function LandingPage() {
   const location = useLocation();
   let dispatch = useDispatch();
@@ -83,6 +88,9 @@ function LandingPage() {
           <Route path={sampleProjectsPath} index element={<SampleProjects />} />
           <Route path={researchPath} index element={<Research />} />
           <Route path={gtmPath} element = {<GTMChatbot />} />
+          <Route path={chatbots} element = {<ChatbotLanding />} />
+          <Route path={languages} element = {<Languages />} />
+          <Route path={companies} element = {<Companies />} />
           <Route path="*" element={<Navigate replace to="/" />} />
         </Routes>
       </div>

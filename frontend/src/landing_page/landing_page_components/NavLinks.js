@@ -78,8 +78,8 @@ const NavLinks = ({ open, setOpen }) => {
       link: "/faqs",
     },
     {
-      name: "Chat with Us",
-      link: "/gtmchatbot",
+      name: "Chatbots",
+      link: "/chatbots",
       new_tab: false,
     },
   ];

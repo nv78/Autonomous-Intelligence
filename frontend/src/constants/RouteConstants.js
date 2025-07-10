@@ -22,6 +22,9 @@ export const registryPath = "/registry";
 export const homePath = "/home";
 export const gtmPath = "/gtmchatbot";
 export const landing = "/landing";
+export const chatbots = "/chatbots";
+export const languages = "/languages";
+export const companies = "/companies";
 
 // Connector options with paths
 export const connectorOptions = [

@@ -24,7 +24,7 @@ import Workflows from "./components/Workflows"
 import Home from "./financeGPT/components/Home";
 import { APISKeyDashboard } from "./subcomponents/api/APISKeyDashboard";
 import DownloadPrivateGPT from "./components/DownloadPrivateGPT.js";
-import GTMChatbot from "./landing_page/landing_page_screens/GTMChatbot";
+import GTMChatbot from "./landing_page/landing_page_screens/Chatbots/companies/GTMChatbot";
 
 function Dashboard() {
   const [darkTheme, setDarkTheme] = useState(true);
