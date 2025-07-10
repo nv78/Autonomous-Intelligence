@@ -11,8 +11,10 @@ import shutil
 import time
 import numpy as np
 import PyPDF2
+import uuid
 from sec_api import QueryApi, RenderApi
 import requests
+from flask import jsonify
 
 # from openai import OpenAI
 
@@ -330,6 +332,10 @@ def change_chat_mode_db(chat_mode_to_change_to, chat_id, user_email):
 
 
 def add_document_to_db(text, document_name, chat_id=None, organization_id=None):
+    if chat_id == 0:
+        print(f"Guest session: Skipping database storage for document '{document_name}'")
+        return None, False
+    
     conn, cursor = get_db_connection()
 
     try:
@@ -338,8 +344,8 @@ def add_document_to_db(text, document_name, chat_id=None, organization_id=None):
             SELECT id, document_text
             FROM documents
             WHERE document_name = %s
-            AND (chat_id = %s OR organization_id = %s)
-        """, (document_name, chat_id, organization_id))
+            AND chat_id = %s 
+        """, (document_name, chat_id)) #organization_id #OR organization_id = %s)
         existing_doc = cursor.fetchone()
 
         if existing_doc:
@@ -350,9 +356,9 @@ def add_document_to_db(text, document_name, chat_id=None, organization_id=None):
         # If the document doesn't exist, create a new one
         storage_key = "temp"  # You can adjust how the storage key is generated
         cursor.execute("""
-            INSERT INTO documents (document_text, document_name, storage_key, chat_id, organization_id)
-            VALUES (%s, %s, %s, %s, %s)
-        """, (text, document_name, storage_key, chat_id, organization_id))
+            INSERT INTO documents (document_text, document_name, storage_key, chat_id)
+            VALUES (%s, %s, %s, %s)
+        """, (text, document_name, storage_key, chat_id))
 
         doc_id = cursor.lastrowid
 
@@ -642,6 +648,9 @@ def add_wf_sources_to_db(prompt_id, sources):
 
 
 def add_message_to_db(text, chat_id, isUser):
+
+    if chat_id == 0:
+        return None #don't save guest messages
     #If isUser is 0, it is a bot message, 1 is a user message
     conn, cursor = get_db_connection()
 
@@ -1179,3 +1188,4 @@ def get_organization_from_db(organization_id):
         return organization
     finally:
         conn.close()
+
