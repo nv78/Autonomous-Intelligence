@@ -85,6 +85,9 @@ app = Flask(__name__)
 if ray.is_initialized() == False:
   ray.init(logging_level="INFO", log_to_driver=True)
 
+
+
+
 # TODO: Replace with your URLs.
 config = {
   'ORIGINS': [
@@ -118,6 +121,7 @@ app.config['MAIL_DEFAULT_SENDER'] = 'vidranatan@gmail.com'
 mail = Mail(app)
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+
 
 
 def valid_api_key_required(fn):
@@ -185,46 +189,40 @@ flow = Flow.from_client_secrets_file(  #Flow is OAuth 2.0 a class that stores al
 )
 # postmessage
 
-@app.route("/login")  #the page where the user can login
+@app.route("/login")  # the page where the user can login
 @cross_origin(supports_credentials=True)
 def login():
-    if request.args.get('email') and len(request.args.get('email')) > 0:
-      return LoginHandler(request)
-    else:
-      o = urlparse(request.base_url)
-      netloc = o.netloc
-      scheme = "https"
-      if netloc == "localhost:5000" or netloc == "127.0.0.1:5000":
-        scheme = "http"
-      else:
-        netloc = "api.privatechatbot.ai"
-      flow.redirect_uri = f'{scheme}://{netloc}/callback'
-      # flow.redirect_uri = f'https://upreachapi.upreach.ai/callback'
-
-      state_dict = {
+    netloc = urlparse(request.base_url).netloc
+    scheme = "http"
+    if "localhost" in netloc:
+        flow.redirect_uri = f'{scheme}://{netloc}/callback'
+    # flow.redirect_uri = f'https://upreachapi.upreach.ai/callback'
+    # flow.redirect_uri = f'{scheme}://{netloc}/callback'
+    # flow.redirect_uri = f'https://upreachapi.upreach.ai/callback'
+    state_dict = {
         "redirect_uri": flow.redirect_uri
-      }
+    }
 
-      if request.args.get('product_hash'):
+    if request.args.get('product_hash'):
         print("during checking product hash")
         state_dict["product_hash"] = request.args.get('product_hash')
-      if request.args.get('free_trial_code'):
+    if request.args.get('free_trial_code'):
         print("during checking free_trial_code")
         state_dict["free_trial_code"] = request.args.get('free_trial_code')
 
-      state = jwt.encode(state_dict, app.config["JWT_SECRET_KEY"], algorithm="HS256")
+    state = jwt.encode(state_dict, app.config["JWT_SECRET_KEY"], algorithm="HS256")
 
-      # Generate the authorization URL and use the JWT as the state value
-      authorization_url, _ = flow.authorization_url(state=state)
+    # Generate the authorization URL and use the JWT as the state value
+    authorization_url, _ = flow.authorization_url(state=state)
 
-      response = Response(
-          response=json.dumps({'auth_url':authorization_url}),
-          status=200,
-          mimetype='application/json'
-      )
-      response.headers.add('Access-Control-Allow-Headers',
-                          'Origin, Content-Type, Accept')
-      return response
+    response = Response(
+        response=json.dumps({'auth_url':authorization_url}),
+        status=200,
+        mimetype='application/json'
+    )
+    response.headers.add('Access-Control-Allow-Headers',
+                        'Origin, Content-Type, Accept')
+    return response
 
 
 
@@ -331,8 +329,8 @@ def RefreshCredits():
     return jsonify({"error": "Invalid JWT"}), 401
   return jsonify(RefreshCreditsHandler(request, user_email))
 
-# Billing
 
+# Billing
 @app.route('/createCheckoutSession', methods=['POST'])
 @jwt_or_session_token_required
 def create_checkout_session():
