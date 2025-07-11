@@ -1,250 +1,226 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { Provider } from 'react-redux'
-import { BrowserRouter } from 'react-router-dom'
-import { configureStore } from '@reduxjs/toolkit'
-import LoginComponent from '../src/subcomponents/login/LoginComponent'
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { Provider } from "react-redux";
+import { configureStore } from "@reduxjs/toolkit";
+import LoginComponent from "../src/subcomponents/login/LoginComponent.jsx";
 
-// Mock the axios module
-vi.mock('axios', () => ({
-  default: {
-    post: vi.fn(),
-    get: vi.fn(),
-    defaults: {
-      headers: {
-        common: {}
-      }
-    }
-  }
-}))
+// Create mock function using vi.hoisted
+const { mockLogin } = vi.hoisted(() => ({
+  mockLogin: vi.fn(),
+}));
 
-// Mock react-router-dom hooks
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom')
-  return {
-    ...actual,
-    useNavigate: () => vi.fn(),
-    useLocation: () => ({ pathname: '/login' })
-  }
-})
+// Mock the UserSlice module
+vi.mock("../src/redux/UserSlice", () => ({
+  login: mockLogin,
+}));
 
-// Mock Redux store
-const createMockStore = (initialState = {}) => {
-  return configureStore({
+// Mock localStorage
+const mockLocalStorage = {
+  getItem: vi.fn(),
+  setItem: vi.fn(),
+  removeItem: vi.fn(),
+  clear: vi.fn(),
+};
+Object.defineProperty(window, "localStorage", {
+  value: mockLocalStorage,
+});
+
+// Mock window.location.reload
+Object.defineProperty(window, "location", {
+  value: {
+    reload: vi.fn(),
+  },
+  writable: true,
+});
+
+// Create test store
+const createTestStore = () =>
+  configureStore({
     reducer: {
-      auth: (state = { user: null, isAuthenticated: false }, action) => {
-        switch (action.type) {
-          case 'LOGIN_SUCCESS':
-            return { ...state, user: action.payload, isAuthenticated: true }
-          default:
-            return state
-        }
-      }
+      user: (state = { isAuthenticated: false, user: null }, action) => state,
     },
-    preloadedState: initialState
-  })
-}
+  });
 
-// Helper function to render component with providers
-const renderWithProviders = (component, initialState = {}) => {
-  const store = createMockStore(initialState)
-  return render(
-    <Provider store={store}>
-      <BrowserRouter>
-        {component}
-      </BrowserRouter>
-    </Provider>
-  )
-}
+// Helper to render with providers and required props
+const renderWithProviders = (component, store = createTestStore()) => {
+  return render(<Provider store={store}>{component}</Provider>);
+};
 
-describe('LoginComponent', () => {
+// Helper to create mock props
+const createMockProps = () => ({
+  setPageState: vi.fn(),
+  setStatusMessage: vi.fn(),
+  statusMessage: "",
+});
+
+describe("LoginComponent", () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-  })
+    vi.clearAllMocks();
+    // Setup default mock return value
+    mockLogin.mockReturnValue({
+      type: "user/login/pending",
+      then: vi.fn((callback) => {
+        // Simulate successful response
+        const mockResponse = {
+          payload: { status: "OK", token: "mock-token" },
+        };
+        callback(mockResponse);
+        return Promise.resolve(mockResponse);
+      }),
+    });
+  });
 
-  it('renders login form correctly', () => {
-    renderWithProviders(<LoginComponent />)
-    
+  it("renders login form correctly", () => {
+    const mockProps = createMockProps();
+    renderWithProviders(<LoginComponent {...mockProps} />);
+
     // Check if login form elements are present
-    expect(screen.getByRole('textbox', { name: /email/i })).toBeInTheDocument()
-    expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument()
-  })
+    expect(screen.getByPlaceholderText("Enter Email")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Enter Password")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Continue" })
+    ).toBeInTheDocument();
+    expect(screen.getByText("Log In")).toBeInTheDocument();
+    expect(screen.getByText("Forgot Password?")).toBeInTheDocument();
+    expect(screen.getByText("Sign Up")).toBeInTheDocument();
+  });
 
-  it('displays validation errors for empty fields', async () => {
-    renderWithProviders(<LoginComponent />)
-    
-    const submitButton = screen.getByRole('button', { name: /sign in/i })
-    fireEvent.click(submitButton)
-    
+  it("displays validation errors for empty fields", async () => {
+    const mockProps = createMockProps();
+    renderWithProviders(<LoginComponent {...mockProps} />);
+
+    const submitButton = screen.getByRole("button", { name: "Continue" });
+    fireEvent.click(submitButton);
+
     await waitFor(() => {
-      expect(screen.getByText(/email is required/i)).toBeInTheDocument()
-    })
-    
-    expect(screen.getByText(/password is required/i)).toBeInTheDocument()
-  })
+      expect(mockProps.setStatusMessage).toHaveBeenCalledWith(
+        "Must enter an email address"
+      );
+    });
+  });
 
-  it('handles email input changes', () => {
-    renderWithProviders(<LoginComponent />)
-    
-    const emailInput = screen.getByRole('textbox', { name: /email/i })
-    fireEvent.change(emailInput, { target: { value: 'test@example.com' } })
-    
-    expect(emailInput.value).toBe('test@example.com')
-  })
+  it("handles email input changes", () => {
+    const mockProps = createMockProps();
+    renderWithProviders(<LoginComponent {...mockProps} />);
 
-  it('handles password input changes', () => {
-    renderWithProviders(<LoginComponent />)
-    
-    const passwordInput = screen.getByLabelText(/password/i)
-    fireEvent.change(passwordInput, { target: { value: 'password123' } })
-    
-    expect(passwordInput.value).toBe('password123')
-  })
+    const emailInput = screen.getByPlaceholderText("Enter Email");
+    fireEvent.change(emailInput, { target: { value: "test@example.com" } });
 
-  it('submits form with valid credentials', async () => {
-    const axios = await import('axios')
-    const mockPost = vi.mocked(axios.default.post)
-    
-    mockPost.mockResolvedValueOnce({
-      data: {
-        success: true,
-        user: { id: 1, email: 'test@example.com' },
-        token: 'mock-token'
-      }
-    })
+    expect(emailInput.value).toBe("test@example.com");
+  });
 
-    renderWithProviders(<LoginComponent />)
-    
-    const emailInput = screen.getByRole('textbox', { name: /email/i })
-    const passwordInput = screen.getByLabelText(/password/i)
-    const submitButton = screen.getByRole('button', { name: /sign in/i })
-    
-    fireEvent.change(emailInput, { target: { value: 'test@example.com' } })
-    fireEvent.change(passwordInput, { target: { value: 'password123' } })
-    fireEvent.click(submitButton)
-    
+  it("handles password input changes", () => {
+    const mockProps = createMockProps();
+    renderWithProviders(<LoginComponent {...mockProps} />);
+
+    const passwordInput = screen.getByPlaceholderText("Enter Password");
+    fireEvent.change(passwordInput, { target: { value: "password123" } });
+
+    expect(passwordInput.value).toBe("password123");
+  });
+
+  it("submits form with valid credentials", async () => {
+    const mockProps = createMockProps();
+    renderWithProviders(<LoginComponent {...mockProps} />);
+
+    const emailInput = screen.getByPlaceholderText("Enter Email");
+    const passwordInput = screen.getByPlaceholderText("Enter Password");
+    const submitButton = screen.getByRole("button", { name: "Continue" });
+
+    fireEvent.change(emailInput, { target: { value: "test@example.com" } });
+    fireEvent.change(passwordInput, { target: { value: "password123" } });
+    fireEvent.click(submitButton);
+
     await waitFor(() => {
-      expect(mockPost).toHaveBeenCalledWith(
-        expect.stringContaining('/login'),
-        expect.objectContaining({
-          email: 'test@example.com',
-          password: 'password123'
-        })
-      )
-    })
-  })
+      expect(mockLogin).toHaveBeenCalledWith({
+        email: "test@example.com",
+        password: "password123",
+      });
+    });
 
-  it('displays error message on login failure', async () => {
-    const axios = await import('axios')
-    const mockPost = vi.mocked(axios.default.post)
-    
-    mockPost.mockRejectedValueOnce({
-      response: {
-        data: {
-          message: 'Invalid credentials'
-        }
-      }
-    })
+    expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
+      "sessionToken",
+      "mock-token"
+    );
+    expect(window.location.reload).toHaveBeenCalled();
+  });
 
-    renderWithProviders(<LoginComponent />)
-    
-    const emailInput = screen.getByRole('textbox', { name: /email/i })
-    const passwordInput = screen.getByLabelText(/password/i)
-    const submitButton = screen.getByRole('button', { name: /sign in/i })
-    
-    fireEvent.change(emailInput, { target: { value: 'test@example.com' } })
-    fireEvent.change(passwordInput, { target: { value: 'wrongpassword' } })
-    fireEvent.click(submitButton)
-    
+  it("displays error message on login failure", async () => {
+    // Mock login to return error
+    mockLogin.mockReturnValueOnce({
+      type: "user/login/pending",
+      then: vi.fn((callback) => {
+        const mockResponse = {
+          payload: { status: "Invalid credentials" },
+        };
+        callback(mockResponse);
+        return Promise.resolve(mockResponse);
+      }),
+    });
+
+    const mockProps = createMockProps();
+    renderWithProviders(<LoginComponent {...mockProps} />);
+
+    const emailInput = screen.getByPlaceholderText("Enter Email");
+    const passwordInput = screen.getByPlaceholderText("Enter Password");
+    const submitButton = screen.getByRole("button", { name: "Continue" });
+
+    fireEvent.change(emailInput, { target: { value: "test@example.com" } });
+    fireEvent.change(passwordInput, { target: { value: "wrongpassword" } });
+    fireEvent.click(submitButton);
+
     await waitFor(() => {
-      expect(screen.getByText(/invalid credentials/i)).toBeInTheDocument()
-    })
-  })
+      expect(mockProps.setStatusMessage).toHaveBeenCalledWith(
+        "Invalid credentials"
+      );
+    });
+  });
 
-  it('shows loading state during form submission', async () => {
-    const axios = await import('axios')
-    const mockPost = vi.mocked(axios.default.post)
-    
-    // Mock a delayed response
-    mockPost.mockImplementationOnce(() => 
-      new Promise(resolve => setTimeout(() => resolve({ data: { success: true } }), 100))
-    )
+  it("validates password is required", async () => {
+    const mockProps = createMockProps();
+    renderWithProviders(<LoginComponent {...mockProps} />);
 
-    renderWithProviders(<LoginComponent />)
-    
-    const emailInput = screen.getByRole('textbox', { name: /email/i })
-    const passwordInput = screen.getByLabelText(/password/i)
-    const submitButton = screen.getByRole('button', { name: /sign in/i })
-    
-    fireEvent.change(emailInput, { target: { value: 'test@example.com' } })
-    fireEvent.change(passwordInput, { target: { value: 'password123' } })
-    fireEvent.click(submitButton)
-    
-    // Check if loading state is shown (adjust based on your actual loading implementation)
-    expect(submitButton).toBeDisabled()
-  })
+    const emailInput = screen.getByPlaceholderText("Enter Email");
+    const submitButton = screen.getByRole("button", { name: "Continue" });
 
-  it('toggles password visibility', () => {
-    renderWithProviders(<LoginComponent />)
-    
-    const passwordInput = screen.getByLabelText(/password/i)
-    const toggleButton = screen.getByRole('button', { name: /toggle password visibility/i })
-    
-    // Initially password should be hidden
-    expect(passwordInput.type).toBe('password')
-    
-    // Click toggle button
-    fireEvent.click(toggleButton)
-    
-    // Password should now be visible
-    expect(passwordInput.type).toBe('text')
-    
-    // Click again to hide
-    fireEvent.click(toggleButton)
-    expect(passwordInput.type).toBe('password')
-  })
+    fireEvent.change(emailInput, { target: { value: "test@example.com" } });
+    fireEvent.click(submitButton);
 
-  it('validates email format', async () => {
-    renderWithProviders(<LoginComponent />)
-    
-    const emailInput = screen.getByRole('textbox', { name: /email/i })
-    const submitButton = screen.getByRole('button', { name: /sign in/i })
-    
-    fireEvent.change(emailInput, { target: { value: 'invalid-email' } })
-    fireEvent.click(submitButton)
-    
     await waitFor(() => {
-      expect(screen.getByText(/please enter a valid email/i)).toBeInTheDocument()
-    })
-  })
+      expect(mockProps.setStatusMessage).toHaveBeenCalledWith(
+        "Must enter a password"
+      );
+    });
+  });
 
-  it('handles Google OAuth login', () => {
-    renderWithProviders(<LoginComponent />)
-    
-    const googleButton = screen.getByRole('button', { name: /continue with google/i })
-    expect(googleButton).toBeInTheDocument()
-    
-    fireEvent.click(googleButton)
-    
-    // Verify that OAuth flow is initiated (adjust based on your implementation)
-    // This might involve checking if window.open was called or a redirect occurred
-  })
+  it("navigates to forgot password page", () => {
+    const mockProps = createMockProps();
+    renderWithProviders(<LoginComponent {...mockProps} />);
 
-  it('navigates to signup page', () => {
-    renderWithProviders(<LoginComponent />)
-    
-    const signupLink = screen.getByRole('link', { name: /don't have an account/i })
-    expect(signupLink).toHaveAttribute('href', '/signup')
-  })
+    const forgotPasswordLink = screen.getByText("Forgot Password?");
+    expect(forgotPasswordLink).toBeInTheDocument();
 
-  it('navigates to forgot password page', () => {
-    renderWithProviders(<LoginComponent />)
-    
-    const forgotPasswordLink = screen.getByText(/forgot password/i)
-    expect(forgotPasswordLink).toBeInTheDocument()
-    
-    fireEvent.click(forgotPasswordLink)
-    // Add assertions based on your forgot password implementation
-  })
-})
+    fireEvent.click(forgotPasswordLink);
+    expect(mockProps.setPageState).toHaveBeenCalledWith(3);
+  });
+
+  it("navigates to signup page", () => {
+    const mockProps = createMockProps();
+    renderWithProviders(<LoginComponent {...mockProps} />);
+
+    const signupSpan = screen.getByText("Sign Up");
+    expect(signupSpan).toBeInTheDocument();
+
+    fireEvent.click(signupSpan);
+    expect(mockProps.setPageState).toHaveBeenCalledWith(2);
+  });
+
+  it("displays status message when provided", () => {
+    const mockProps = createMockProps();
+    mockProps.statusMessage = "Test error message";
+
+    renderWithProviders(<LoginComponent {...mockProps} />);
+
+    expect(screen.getByText("Test error message")).toBeInTheDocument();
+  });
+});
