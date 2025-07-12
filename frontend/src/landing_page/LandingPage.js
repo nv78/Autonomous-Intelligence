@@ -24,8 +24,8 @@ import {
   pricingPath,
   registryPath,
   financeGPTPath,
-  gtmPath,
   homePath,
+  gtmPath,
 } from "../constants/RouteConstants";
 import Home from "./landing_page_screens/Home/Home";
 import Footer from "./landing_page_components/Footer";

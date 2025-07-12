@@ -41,7 +41,7 @@ services:
     container_name:  autonomous-intelligence-db
     restart: always
     ports:
-        - "3306:3306"
+      - "3307:3306"
     environment:
         - MYSQL_ALLOW_EMPTY_PASSWORD=true
         - MYSQL_DATABASE=autonomous_intelligence
