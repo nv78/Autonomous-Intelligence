@@ -2,6 +2,8 @@ from flask import Blueprint, request, jsonify
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
 import torch
 import os
+from dotenv import load_dotenv
+
 gpt2_blueprint = Blueprint('gpt2', __name__)
 
 model_name = "rfrey/fine_tuned_gpt2"
