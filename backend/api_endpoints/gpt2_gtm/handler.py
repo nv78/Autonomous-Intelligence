@@ -9,7 +9,7 @@ gpt2_blueprint = Blueprint('gpt2', __name__)
 model_name = "rfrey/fine_tuned_gpt2"
 token = os.getenv("HUGGINGFACE") # Or use os.getenv("HF_TOKEN")
 
-model = GPT2LMHeadModel.from_pretrained(model_name, token=token)
+model = GPT2LMHeadModel.from_pretrained(model_name, token=token);
 tokenizer = GPT2Tokenizer.from_pretrained(model_name, token=token)
 
 @gpt2_blueprint.route("/gtm/respond", methods=["POST"])
