@@ -1,4 +1,4 @@
-name: CI
+name: Backend CI
 
 on:
   push:
@@ -24,20 +24,8 @@ jobs:
         run: pip install --no-cache-dir tokenizers==0.13.3 anthropic==0.7.4
       - name: Install dependencies
         run: pip install --no-cache-dir -r requirements.txt
-
-  frontend:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-      - name: Install dependencies
-        run: npm install --force
+      - name: Run backend unit tests
+        run: pytest tests/ -v
 
 
         
