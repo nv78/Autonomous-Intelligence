@@ -1,0 +1,35 @@
+from flask import Blueprint, request, jsonify
+from openai import OpenAI
+import os
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+spanish_blueprint = Blueprint('spanish', __name__)
+
+MODEL_NAME = "gpt-3.5-turbo"
+
+@spanish_blueprint.route("/api/chat/spanish", methods=["POST"])
+def chat_spanish():
+    try:
+        messages = request.json.get("messages")
+        if not messages or not isinstance(messages, list):
+            return jsonify({"error": "Missing or invalid messages list"}), 400
+
+        SYSTEM_MSG = {
+            "role": "system",
+            "content": "You are a chatbot assistant meant to speak to the user in spanish. You should help to user to answer on any questions in spanish. Respond in spanish no matter the language of the user."
+        }
+        if not messages or messages[0].get("role") != "system":
+            messages.insert(0, SYSTEM_MSG)
+
+        completion = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=messages
+        )
+
+        reply = completion.choices[0].message.content
+        return jsonify({"response": reply})
+
+    except Exception as e:
+        print(f"[ERROR] {e}")
+        return jsonify({"error": str(e)}), 500

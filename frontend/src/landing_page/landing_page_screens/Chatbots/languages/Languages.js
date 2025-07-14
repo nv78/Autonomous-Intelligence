@@ -67,6 +67,20 @@ const Languages = () => {
         { message: "Thinking...", direction: "incoming", id: tempId },
       ]);
   
+    //Chatbot remembers convo
+    const openAIMessages = [
+
+      //Convert local messages to OpenAI format
+      ...messages
+        .filter(msg => !msg.id)
+        .map(msg => ({
+          role: msg.direction === "outgoing" ? "user" : "assistant",
+          content: msg.message,
+        })),
+      //Add the new message
+      { role: "user", content: text },
+    ];
+
       try {
         const apiUrl = LANGUAGE_API_ENDPOINTS[selectedLanguage] || "/api/chat/spanish";
 
@@ -74,7 +88,7 @@ const Languages = () => {
 
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt: text }),
+          body: JSON.stringify({ messages: openAIMessages }),
         });
   
         const data = await res.json();
@@ -98,7 +112,8 @@ const Languages = () => {
     };
   
     const handleKeyPress = (e) => {
-      if (e.key === "Enter") {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault(); // stops newline
         sendMessage(inputRef.current.value);
       }
     };
@@ -180,7 +195,7 @@ const Languages = () => {
   
             {/* Input */}
             <div className="flex items-center mt-4">
-              <input
+              <textarea
                 ref={inputRef}
                 type="text"
                 placeholder="Type your message..."
