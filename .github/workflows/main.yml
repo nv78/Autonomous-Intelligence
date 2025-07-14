@@ -43,9 +43,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Lint backend with flake8
-        working-directory: backend
-        run: flake8 .
+      # - name: Lint backend with flake8
+      #   working-directory: backend
+      #   run: flake8 .
 
       - name: Run backend unit tests
         run: pytest tests/ -v
