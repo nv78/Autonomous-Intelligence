@@ -1029,7 +1029,7 @@ def process_ticker_info_wf(user_email, workflow_id, ticker):
         # print("Doc Id: ", doc_id)
 
         if not doesExist:
-            chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+            chunk_document(text, MAX_CHUNK_SIZE, doc_id)
 
         if os.path.exists(filename):
             os.remove(filename)

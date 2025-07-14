@@ -106,8 +106,8 @@ function HomeChatbot() {
         handleChatSelect={handleChatSelect}
         forceUpdate={forceUpdate}
       />
-  
-      <div className="w-full h-full">
+
+      <div className="w-full lg:flex  h-full">
         {currTask === 0 && (
           <Chatbot
             chat_type={currTask}
@@ -128,6 +128,25 @@ function HomeChatbot() {
             setRelevantChunk={setRelevantChunk}
           />
         )}
+        <div className="w-72 hidden lg:block">
+          <SidebarChatbot
+            selectedChatId={selectedChatId}
+            chat_type={currTask}
+            createNewChat={createNewChat}
+            onChatSelect={handleChatSelect}
+            handleForceUpdate={handleForceUpdate}
+            forceUpdate={forceUpdate}
+            setIsPrivate={setIsPrivate}
+            setCurrChatName={setCurrChatName}
+            setcurrTask={setcurrTask}
+            setTicker={setTicker}
+            setShowChatbot={setShowChatbot}
+            setIsEdit={setIsEdit}
+            setConfirmedModelKey={setConfirmedModelKey}
+            relevantChunk={relevantChunk}
+            activeMessageIndex={activeMessageIndex}
+          />
+        </div>
         {/* {currTask === 1 && (
           <ChatbotEdgar
             chat_type={currTask}
@@ -151,25 +170,6 @@ function HomeChatbot() {
             setRelevantChunk={setRelevantChunk}
           />
         )} */}
-      </div>
-      <div className="mt-2">
-        {/* <SidebarChatbot
-          selectedChatId={selectedChatId}
-          chat_type={currTask}
-          createNewChat={createNewChat}
-          onChatSelect={handleChatSelect}
-          handleForceUpdate={handleForceUpdate}
-          forceUpdate={forceUpdate}
-          setIsPrivate={setIsPrivate}
-          setCurrChatName={setCurrChatName}
-          setcurrTask={setcurrTask}
-          setTicker={setTicker}
-          setShowChatbot={setShowChatbot}
-          setIsEdit={setIsEdit}
-          setConfirmedModelKey={setConfirmedModelKey}
-          relevantChunk={relevantChunk}
-          activeMessageIndex={activeMessageIndex}
-        /> */}
       </div>
     </div>
   );

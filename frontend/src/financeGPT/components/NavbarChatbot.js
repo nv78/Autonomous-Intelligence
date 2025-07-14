@@ -24,7 +24,7 @@ function NavbarChatbot(props) {
 
   return (
     <nav
-      className={`md:pt-16 md:relative ${
+      className={`md:relative transition-all bg-anoteblack-800 duration-300 ease-in-out ${
         props.menu ? "fixed inset-0" : "absolute"
       } left-0 z-50`}
     >
@@ -48,17 +48,14 @@ function NavbarChatbot(props) {
         </svg>
       </button>
       <div
-        className={` h-full   ${
+        className={` h-full transition-all duration-300 ease-in-out ${
           props.menu
-            ? "md:w-64  overflow-auto md:relative top-0 inset-0 left-0 shadow-lg z-50 w-64 relative backdrop-blur border rounded-r-xl bg-slate-50/50"
-            : "hidden"
+            ? "w-52 overflow-auto md:relative top-0 inset-0 left-0 shadow-lg z-50 relative backdrop-blur rounded-r-xl opacity-100"
+            : "w-0 h-0 overflow-hidden md:relative top-0 inset-0 left-0 z-50 hidden  opacity-0 pointer-events-none "
         } md:max-w-none`}
       >
-        <div className="flex bg-white mb-2  items-center sticky top-0 ">
+        <div className="flex mb-2  items-center sticky top-0 ">
           <div className="h-10 w-10 md:hidden bg-center bg-contain bg-[url('../public/logonew.png')] dark:bg-[url('../public/logonew.png')]"></div>
-          <span className="self-center md:hidden whitespace-nowrap text-xl font-semibold dark:text-white text-black pl-3">
-            Panacea
-          </span>
           <button
             onClick={() => props.handleMenu()}
             className={`flex md:p-3 p-5 ml-auto  cursor-w-resize ${
@@ -79,14 +76,6 @@ function NavbarChatbot(props) {
                 fill="#1C274C"
               />
             </svg>
-          </button>
-        </div>
-        <div className="mx-4">
-          <button
-            onClick={() => navigate("/")}
-            className="w-full font-bold hover:bg-slate-200 rounded-xl  py-1 bg-slate-300"
-          >
-            New chat
           </button>
         </div>
         <ChatHistory

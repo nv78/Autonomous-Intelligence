@@ -17,7 +17,7 @@ import { faCoins } from "@fortawesome/free-solid-svg-icons";
 import { useLocation } from "react-router-dom";
 import { useUser, viewUser } from "../redux/UserSlice";
 
-import { useHistory } from 'react-router-dom';
+import { useHistory } from "react-router-dom";
 import { Link } from "react-router-dom";
 
 function MainNav(props) {
@@ -27,7 +27,6 @@ function MainNav(props) {
   let user = useUser();
   console.log("user", user);
   let numCredits = useNumCredits();
-
 
   useEffect(() => {
     dispatch(viewUser());
@@ -51,25 +50,26 @@ function MainNav(props) {
   }
 
   return (
-    <Navbar className="navbar-fixed bg-black text-white border-b-2" fluid rounded>
+    <Navbar className="fixed w-full z-50 bg-black" fluid>
       {/* <Navbar.Brand href="https://privatechatbot.ai"> */}
       <Navbar.Brand onClick={() => navigate(landing)}>
-        <div className="h-10 w-10 bg-center bg-contain bg-[url('../public/logonew.png')] dark:bg-[url('../public/logonew.png')]"></div>
-        <span className="self-center whitespace-nowrap text-xl font-semibold dark:text-white text-black pl-3">
+        <div className="h-8 w-8 bg-center bg-contain bg-[url('../public/logonew.png')] dark:bg-[url('../public/logonew.png')]"></div>
+        <span className="self-center whitespace-nowrap text-lg font-semibold text-white pl-2">
           Panacea
         </span>
       </Navbar.Brand>
       <div className="flex items-center md:order-2">
-      <div className="mr-4 my-2 py-1 bg-gradient-to-r from-[#EDDC8F] to-[#F1CA57] text-black rounded-2xl cursor-pointer"
+        <div
+          className="mr-3 my-1 py-1 bg-gradient-to-r from-[#EDDC8F] to-[#F1CA57] text-black rounded-2xl cursor-pointer"
           onClick={() => navigate(downloadPrivateGPTPath)}
         >
-          <span className="px-4 text-sm font-bold text-black">
-            <FontAwesomeIcon icon={faCoins} className="mr-2" />
+          <span className="px-3 text-xs font-bold text-black">
+            <FontAwesomeIcon icon={faCoins} className="mr-1" />
             Download Private Version
           </span>
         </div>
         <div
-          className="text-white text-sm font-medium cursor-pointer mr-4"
+          className="text-white text-xs font-medium cursor-pointer mr-3"
           onClick={() => navigate(gtmPath)}
         >
           Chat with Us

@@ -14,9 +14,6 @@ import {
   homePath,
   gtmPath,
   connectorOptions, // Import connector options from RouteConstants
-  homePath,
-  gtmPath,
-  connectorOptions, // Import connector options from RouteConstants
 } from "./constants/RouteConstants";
 import PaymentsComponent from "./subcomponents/payments/PaymentsComponent";
 import PaymentsProduct from "./subcomponents/payments/PaymentsProduct";
@@ -28,7 +25,6 @@ import Workflows from "./components/Workflows";
 import Home from "./financeGPT/components/Home";
 import { APISKeyDashboard } from "./subcomponents/api/APISKeyDashboard";
 import DownloadPrivateGPT from "./components/DownloadPrivateGPT.js";
-import GTMChatbot from "./landing_page/landing_page_screens/GTMChatbot";
 import GTMChatbot from "./landing_page/landing_page_screens/GTMChatbot";
 
 function Dashboard() {
@@ -156,7 +152,7 @@ function Dashboard() {
     //   dark: darkTheme,
     // }}
     >
-      <div className="bg-white flex flex-col ">
+      <div className="bg-anoteblack-800 flex flex-col ">
         <div id="wrapperDiv" className="flex-grow">
           {/* {isLoggedIn && isFreeTrial && <div className="mt-2 mb-2 ml-6" style={{ color: "white" }}>
             Your free trial ends in {daysStr}

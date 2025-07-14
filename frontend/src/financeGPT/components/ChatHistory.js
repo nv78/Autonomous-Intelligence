@@ -191,18 +191,18 @@ function ChatHistory(props) {
 
       <div className="px-3 mt-2">
         <h2
-          className={`text-base ${
+          className={`text-xl text-anoteblack-100 ${
             chats.length === 0 ? "hidden" : ""
           } font-bold`}
         >
-          Chats
+          Chat History
         </h2>
         <ul className="flex-col py-2 justify-around w-full h-full flex overflow-y-auto">
           {[...chats].reverse().map((chat, index) => (
             <li
               key={index}
-              className={`group hover:bg-slate-200 mb-1 ${
-                chat.id === Number(id) ? "bg-slate-300" : ""
+              className={`group hover:bg-teal-800  mb-1 ${
+                chat.id === Number(id) ? "bg-turquoise-800" : ""
               } flex w-full items-center rounded-md px-2 py-1 text-gray-800`}
             >
               <span className="cursor-pointer w-5/6 truncate max-w-2xl">
@@ -211,7 +211,7 @@ function ChatHistory(props) {
                     props.handleChatSelect(chat.id);
                     await retrieveAllChats();
                   }}
-                  className="w-full block"
+                  className="w-full text-turquoise-200 block"
                   to={`/chat/${chat.id}`}
                 >
                   {chat.chat_name}

@@ -86,6 +86,8 @@ load_dotenv(override=True)
 
 app = Flask(__name__)
 app.register_blueprint(gpt4_blueprint)
+client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
 
 #if ray.is_initialized() == False:
    #ray.init(logging_level="INFO", log_to_driver=True)
@@ -476,7 +478,7 @@ def create_organization():
                 doc_id, doesExist = add_document_to_db(link_text, link, organization_id)
                 if not doesExist:
                     ensure_ray_started()
-                    chunk_document.remote(link_text, 1000, doc_id)
+                    chunk_document(link_text, 1000, doc_id)
 
         return jsonify({"organization_id": organization_id}), 201
 
@@ -675,7 +677,7 @@ def infer_chat_name():
     chat_messages = request.json.get('messages')
     chat_id = request.json.get('chat_id')
 
-    client = openai.OpenAI()
+    
     completion = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
@@ -758,7 +760,7 @@ def ingest_pdfs():
 
         if not doesExist:
             ensure_ray_started()
-            chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+            chunk_document(text, MAX_CHUNK_SIZE, doc_id)
 
 
     return jsonify({"error": "Invalid JWT"}), 200
@@ -787,7 +789,7 @@ def ingest_pdfs_wf():
 
         if not doesExist:
             ensure_ray_started()
-            chunk_document.remote(text_pages, MAX_CHUNK_SIZE, doc_id)
+            chunk_document(text_pages, MAX_CHUNK_SIZE, doc_id)
     return text, filename
 
 @app.route('/retrieve-current-docs', methods=['POST'])
@@ -886,7 +888,7 @@ def process_message_pdf():
            model_use = "gpt-4o-mini"
 
         print("using OpenAI and model is", model_use)
-        client = openai.OpenAI()
+        
         try:
             completion = client.chat.completions.create(
                 model=model_use,
@@ -960,7 +962,7 @@ def process_message_pdf_demo():
     print('sources_str is', sources_str)
 
 
-    client = openai.OpenAI()
+    
     completion = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
@@ -999,7 +1001,7 @@ def ingest_pdfs_demo():
         doc_id, doesExist = add_document_to_db(text, filename, chat_id=chat_id)
         if not doesExist:
             ensure_ray_started()
-            chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+            chunk_document(text, MAX_CHUNK_SIZE, doc_id)
 
     # This mapping is now redundant since we're using a static demo_chat_id, but you could maintain it if you plan to extend functionality
     chat_to_document_mapping[chat_id] = doc_id
@@ -1139,7 +1141,7 @@ def process_ticker_info():
         if not doesExist:
             print("test")
             ensure_ray_started()
-            chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+            chunk_document(text, MAX_CHUNK_SIZE, doc_id)
             #remote_task = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
             #result = ray.get(remote_task)
 
@@ -1389,7 +1391,7 @@ def upload():
             if not doesExist:
                 #chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
                 ensure_ray_started()
-                result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+                result_id = chunk_document(text, MAX_CHUNK_SIZE, doc_id)
                 ensure_ray_started()
                 result = ray.get(result_id)
         for path in paths:
@@ -1401,7 +1403,7 @@ def upload():
             if not doesExist:
                 #chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
                 ensure_ray_started()
-                result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+                result_id = chunk_document(text, MAX_CHUNK_SIZE, doc_id)
                 ensure_ray_started()
                 result = ray.get(result_id)
     elif chat_type == "edgar": #edgar
@@ -1433,7 +1435,7 @@ def upload():
                 #print("test")
                 #chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
                 ensure_ray_started()
-                result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+                result_id = chunk_document(text, MAX_CHUNK_SIZE, doc_id)
                 
                 result = ray.get(result_id)
     else:
@@ -1478,7 +1480,7 @@ def public_ingest_pdf():
            model_use = "gpt-4o-mini"
 
         print("using OpenAI and model is", model_use)
-        client = openai.OpenAI()
+        
         try:
             completion = client.chat.completions.create(
                 model=model_use,
