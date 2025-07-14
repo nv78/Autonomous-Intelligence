@@ -48,7 +48,7 @@ jobs:
       #   run: flake8 .
 
       - name: Run backend unit tests
-        run: pytest tests/ -v
+        run: pytest 
 
   codeql:
     name: CodeQL Analysis (Python)
