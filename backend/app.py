@@ -81,11 +81,21 @@ from datetime import datetime
 from database.db_auth import get_db_connection
 
 from api_endpoints.gpt4_gtm.handler import gpt4_blueprint
+from api_endpoints.languages.chinese import chinese_blueprint
+from api_endpoints.languages.japanese import japanese_blueprint
+from api_endpoints.languages.korean import korean_blueprint
+from api_endpoints.languages.spanish import spanish_blueprint
+from api_endpoints.languages.arabic import arabic_blueprint
 
 load_dotenv(override=True)
 
 app = Flask(__name__)
 app.register_blueprint(gpt4_blueprint)
+app.register_blueprint(chinese_blueprint)
+app.register_blueprint(japanese_blueprint)
+app.register_blueprint(korean_blueprint)
+app.register_blueprint(spanish_blueprint)
+app.register_blueprint(arabic_blueprint)
 
 #if ray.is_initialized() == False:
    #ray.init(logging_level="INFO", log_to_driver=True)
@@ -1566,20 +1576,6 @@ def evaluate():
     )
 
     return result
-
-@app.route("/gtm/respond", methods=["POST"])
-def gtm_respond():
-    data = request.get_json()
-    prompt = data.get("prompt", "").strip()
-    if not prompt:
-        return jsonify({"error": "Missing prompt"}), 400
-
-    try:
-        #reply = generate_response(prompt)
-        reply = "Testing!"
-        return jsonify({"response": reply})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
 @app.route("/test", methods=["GET"])
 def test():
