@@ -97,14 +97,21 @@ class TestFlaskApp(unittest.TestCase):
         # --- The test will now pass because it doesn't try to connect to a real DB ---
         self.assertIn(response.status_code, [200, 201])
 
-    def test_forgotpwd(self):
+    @patch('database.db.get_db_connection') 
+    def test_forgotpwd(self, mock_get_db_connection):
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_get_db_connection.return_value = (mock_conn, mock_cursor)
         data = {"email": "testuser@example.com"}
         response = self.app.post('/forgotPassword', json=data)
         print(response.status_code, response.get_json())
         self.assertIn(response.status_code, [200, 202])  # Accept either, depending on your API
        
-    
-    def test_resetpwd(self):
+    @patch('database.db.get_db_connection')
+    def test_resetpwd(self, mock_get_db_connection):
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_get_db_connection.return_value = (mock_conn, mock_cursor)
         data = {
             'email': 'test@example.com', 
             'password': "123456password",
