@@ -5,8 +5,9 @@ import openai
 from sec_api import QueryApi, RenderApi
 import requests
 import PyPDF2
-#import ray
+import ray
 import logging
+
 
 sec_api_key=os.environ.get('sec_api_key')
 
@@ -226,7 +227,7 @@ def add_document_to_db(text, document_name, chat_id):
 
 
 
-#@ray.remote
+@ray.remote
 def chunk_document(text, maxChunkSize, document_id):
     conn, cursor = get_db_connection()
 

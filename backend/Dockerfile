@@ -32,4 +32,4 @@ ENV FLASK_APP=app.py \
 EXPOSE 5000 6379 9998
 
 # Use the start script as the entrypoint
-CMD ["flask", "run", "--host=0.0.0.0", "--port=5000", "--no-reload"]
+CMD ["bash", "-c", "ray start --head --port=6379 --dashboard-port=9998 && flask run --host=0.0.0.0 --port=5000 --no-reload"]

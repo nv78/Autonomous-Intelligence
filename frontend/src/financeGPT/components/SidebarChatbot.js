@@ -67,18 +67,39 @@ function SidebarChatbot(props) {
   }, [props.confirmedModelKey]);
 
   // File upload handlers
-  const handleFileSelect = (event) => {
+  const handleFileSelect = async (event) => {
     console.log("File selection event triggered");
     const files = Array.from(event.target.files);
     console.log("Files selected:", files);
-    // Add new files to existing selection instead of replacing
-    setSelectedFiles((prev) => {
-      const newFiles = [...prev, ...files];
-      console.log("Updated selected files:", newFiles);
-      return newFiles;
-    });
+    
+    if (files.length === 0) {
+      return;
+    }
+
+    // Check if chat is selected before proceeding
+    if (!props.selectedChatId) {
+      alert("Please select or create a chat first before uploading files.");
+      return;
+    }
+
+    // Add new files to existing selection
+    const newFiles = [...selectedFiles, ...files];
+    setSelectedFiles(newFiles);
+    console.log("Updated selected files:", newFiles);
+    
     // Clear the input value so the same file can be selected again if needed
     event.target.value = "";
+
+    // Automatically upload the newly selected files
+    try {
+      await handleFileUpload(files, props.selectedChatId);
+      console.log("Files uploaded successfully");
+    } catch (error) {
+      console.error("Auto-upload failed:", error);
+      alert("Failed to upload files. Please try again.");
+      // Remove the files that failed to upload from selectedFiles
+      setSelectedFiles((prev) => prev.filter(file => !files.includes(file)));
+    }
   };
 
   // Reset file viewer when no files are selected
@@ -203,10 +224,6 @@ function SidebarChatbot(props) {
       setUploadProgress(0);
       throw error; // Re-throw to handle in calling function
     }
-  };
-
-  const removeFile = (index) => {
-    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const openFileDialog = () => {
@@ -786,7 +803,7 @@ function SidebarChatbot(props) {
 
   return (
     <>
-      <div className="flex flex-col py-4 my-12 bg-anoteblack-800 text-white">
+      <div className="flex flex-col py-4 mt-12 bg-anoteblack-800 text-white">
         {deleteConfirmationPopupDoc}
         <div className="flex flex-col flex-grow">
           <div className="bg-[#141414] rounded-xl">
@@ -865,18 +882,19 @@ function SidebarChatbot(props) {
               </h2>
               <button
                 onClick={openFileDialog}
-                disabled={isUploading}
+                disabled={isUploading || !props.selectedChatId}
                 className={`flex items-center gap-1 px-2 py-1 text-xs rounded-lg border transition-colors ${
-                  selectedFiles.length > 0
-                    ? "bg-blue-600 border-blue-500 text-white hover:bg-blue-700"
+                  isUploading 
+                    ? "bg-gray-500 border-gray-400 text-gray-300 cursor-not-allowed"
+                    : !props.selectedChatId
+                    ? "bg-gray-600 border-gray-500 text-gray-400 cursor-not-allowed"
                     : "bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600"
-                } ${isUploading ? "opacity-50 cursor-not-allowed" : ""}`}
+                }`}
+                title={!props.selectedChatId ? "Please select or create a chat first" : "Add files"}
               >
                 <FontAwesomeIcon icon={faDownload} />
                 <span>
-                  {selectedFiles.length > 0
-                    ? `Add Files (${selectedFiles.length})`
-                    : "Add Files"}
+                  {isUploading ? "Uploading..." : "Add Files"}
                 </span>
               </button>
             </div>
@@ -906,77 +924,10 @@ function SidebarChatbot(props) {
               </div>
             )}
 
-            {/* Selected files preview */}
-            {selectedFiles.length > 0 && (
-              <div className="mb-3">
-                <div className="flex items-center justify-between mb-1">
-                  <div className="text-xs text-gray-400">
-                    {selectedFiles.length} file
-                    {selectedFiles.length > 1 ? "s" : ""} selected
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleFileUpload()}
-                      disabled={isUploading || !props.selectedChatId}
-                      className="text-xs bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-2 py-1 rounded"
-                      title={
-                        !props.selectedChatId
-                          ? "Please select or create a chat first"
-                          : "Upload selected files"
-                      }
-                    >
-                      {isUploading ? "Uploading..." : "Upload"}
-                    </button>
-                    {selectedFiles.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedFiles([])}
-                        className="text-xs text-red-400 hover:text-red-300"
-                      >
-                        Clear all
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {!props.selectedChatId && (
-                  <div className="text-xs text-yellow-400 mb-2">
-                    ⚠️ Please select or create a chat to upload files
-                  </div>
-                )}
-                <div className="space-y-1 max-h-24 overflow-y-auto">
-                  {selectedFiles.map((file, index) => (
-                    <div
-                      key={`${file.name}-${index}`}
-                      className="flex items-center justify-between bg-gray-700 p-2 rounded text-sm"
-                    >
-                      <div className="flex items-center min-w-0 flex-1">
-                        <button
-                          type="button"
-                          onClick={() => handleLocalFileClick(file)}
-                          className="flex items-center min-w-0 flex-1 text-left hover:text-blue-400 transition-colors"
-                          title="Click to preview file"
-                        >
-                          <span className="text-gray-300 truncate">
-                            📎 {file.name}
-                          </span>
-                          <span className="text-gray-500 ml-2 text-xs flex-shrink-0">
-                            ({(file.size / 1024 / 1024).toFixed(2)} MB)
-                          </span>
-                          <span className="ml-1 text-blue-400 text-xs">👁</span>
-                        </button>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeFile(index)}
-                        className="text-red-400 hover:text-red-300 ml-2 flex-shrink-0"
-                        title="Remove file"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                </div>
+            {/* Show message when no chat is selected */}
+            {!props.selectedChatId && (
+              <div className="mb-2 text-xs text-yellow-400">
+                Please select or create a chat to upload files
               </div>
             )}
 

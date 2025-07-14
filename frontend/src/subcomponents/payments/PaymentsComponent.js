@@ -69,8 +69,7 @@ const PaymentsComponent = () => {
   }
 
   return (
-    <div className="text-black text-white bg-[#141414]
- min-h-screen">
+    <div className="mt-6 text-white bg-anoteblack-800">
       <div className="relative flex justify-center py-14">
         <div className="absolute left-10 flex flex-col text-left">
           <span>

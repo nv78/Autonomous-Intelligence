@@ -98,6 +98,7 @@ def ensure_ray_started():
             ray.init(
                 logging_level="INFO",
                 log_to_driver=True,
+                address="host.docker.internal:6379",
                 ignore_reinit_error=True  # Helpful when running in dev
             )
         except Exception as e:
@@ -478,7 +479,7 @@ def create_organization():
                 doc_id, doesExist = add_document_to_db(link_text, link, organization_id)
                 if not doesExist:
                     ensure_ray_started()
-                    chunk_document(link_text, 1000, doc_id)
+                    chunk_document.remote(link_text, 1000, doc_id)
 
         return jsonify({"organization_id": organization_id}), 201
 
@@ -760,7 +761,7 @@ def ingest_pdfs():
 
         if not doesExist:
             ensure_ray_started()
-            chunk_document(text, MAX_CHUNK_SIZE, doc_id)
+            chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
 
 
     return jsonify({"error": "Invalid JWT"}), 200
@@ -789,7 +790,7 @@ def ingest_pdfs_wf():
 
         if not doesExist:
             ensure_ray_started()
-            chunk_document(text_pages, MAX_CHUNK_SIZE, doc_id)
+            chunk_document.remote(text_pages, MAX_CHUNK_SIZE, doc_id)
     return text, filename
 
 @app.route('/retrieve-current-docs', methods=['POST'])
@@ -1001,7 +1002,7 @@ def ingest_pdfs_demo():
         doc_id, doesExist = add_document_to_db(text, filename, chat_id=chat_id)
         if not doesExist:
             ensure_ray_started()
-            chunk_document(text, MAX_CHUNK_SIZE, doc_id)
+            chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
 
     # This mapping is now redundant since we're using a static demo_chat_id, but you could maintain it if you plan to extend functionality
     chat_to_document_mapping[chat_id] = doc_id
@@ -1141,7 +1142,7 @@ def process_ticker_info():
         if not doesExist:
             print("test")
             ensure_ray_started()
-            chunk_document(text, MAX_CHUNK_SIZE, doc_id)
+            chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
             #remote_task = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
             #result = ray.get(remote_task)
 
@@ -1391,7 +1392,7 @@ def upload():
             if not doesExist:
                 #chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
                 ensure_ray_started()
-                result_id = chunk_document(text, MAX_CHUNK_SIZE, doc_id)
+                result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
                 ensure_ray_started()
                 result = ray.get(result_id)
         for path in paths:
@@ -1403,7 +1404,7 @@ def upload():
             if not doesExist:
                 #chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
                 ensure_ray_started()
-                result_id = chunk_document(text, MAX_CHUNK_SIZE, doc_id)
+                result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
                 ensure_ray_started()
                 result = ray.get(result_id)
     elif chat_type == "edgar": #edgar
@@ -1435,7 +1436,7 @@ def upload():
                 #print("test")
                 #chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
                 ensure_ray_started()
-                result_id = chunk_document(text, MAX_CHUNK_SIZE, doc_id)
+                result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
                 
                 result = ray.get(result_id)
     else:
