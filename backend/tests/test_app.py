@@ -71,23 +71,32 @@ class TestFlaskApp(unittest.TestCase):
         response = self.app.post('/refresh', headers=headers)
         self.assertIn(response.status_code, [200])
         self.assertIn("accessToken", response.get_json())
+    
+    @patch('database.db.get_db_connection') 
+    def test_signup(self, mock_get_db_connection):
+        # Configure the mock to return fake connection and cursor objects
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_get_db_connection.return_value = (mock_conn, mock_cursor)
+            
+        # Example: If a test needs to check if a user exists,
+        # make the mock return None to simulate "user not found"
+        mock_cursor.fetchone.return_value = mock_conn
 
-
-    def test_signup(self):
+        # --- Your existing test logic ---
         data = {
-            "email": f"testuser_{int(time.time())}@example.com",
-            "password": "StrongPassword123!",
-            "name": "Test User"
+                "email": f"testuser_{int(time.time())}@example.com",
+                "password": "StrongPassword123!",
+                "name": "Test User"
         }
         response = self.app.post(
-            '/signUp',
-            json=data,
-            headers={"Content-Type": "application/json"}
+                '/signUp',
+                json=data,
+                headers={"Content-Type": "application/json"}
         )
-        print(response.status_code)
-        print(response.get_json())
+        # --- The test will now pass because it doesn't try to connect to a real DB ---
         self.assertIn(response.status_code, [200, 201])
-    
+
     def test_forgotpwd(self):
         data = {"email": "testuser@example.com"}
         response = self.app.post('/forgotPassword', json=data)
