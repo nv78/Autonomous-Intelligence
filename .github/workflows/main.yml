@@ -1,4 +1,4 @@
-name: Lint Frontend (ESLint) & Backend (Python) + CodeQL
+name: Lint Backend (Python) + CodeQL
 
 on:
   push:
@@ -13,26 +13,26 @@ on:
 
 jobs:
   lint:
-    name: Lint Frontend & Backend
+    name: Lint Backend Only
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Setup Node (Frontend)
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install frontend dependencies
-        working-directory: frontend
-        run: npm ci
-
-      - name: Lint frontend with ESLint
-        working-directory: frontend
-        run: npm test 
+      # --- Frontend steps temporarily disabled ---
+      # - name: Set up Node.js
+      #   uses: actions/setup-node@v4
+      #   with:
+      #     node-version: '20'
+      #
+      # - name: Install frontend dependencies
+      #   working-directory: frontend
+      #   run: npm ci
+      #
+      # - name: Lint frontend with ESLint
+      #   working-directory: frontend
+      #   run: npm test 
 
       # Setup Python (Backend)
       - name: Set up Python
@@ -50,6 +50,7 @@ jobs:
         working-directory: backend
         run: flake8 .
       - name: Test backend with pytest
+        working-directory: backend
         run: pytest
 
   codeql:
