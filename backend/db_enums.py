@@ -1,6 +1,5 @@
 from enum import IntEnum
 
-
 class PaidUserStatus(IntEnum):
     FREE_TIER = 0
     BASIC_TIER = 1
