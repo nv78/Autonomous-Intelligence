@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPaperPlane, faDownload } from "@fortawesome/free-solid-svg-icons";
+import { faPaperPlane, faDownload, faFile } from "@fortawesome/free-solid-svg-icons";
 import "../styles/Chatbot.css";
 import fetcher from "../../http/RequestConfig";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -413,8 +413,8 @@ const Chatbot = (props) => {
               <div
                 className={`rounded-lg p-3 max-w-[80%] ${
                   msg.role === "user"
-                    ? "bg-blue-500 text-white ml-auto"
-                    : "bg-gray-100 text-gray-800"
+                    ? "from-[#40C6FF] to-[#5299D3] rounded-br-none bg-gradient-to-b text-white ml-auto"
+                    : "bg-transparent border rounded-bl-none text-white"
                 }`}
               >
                 <p className="whitespace-pre-wrap">{msg.content}</p>
@@ -446,102 +446,94 @@ const Chatbot = (props) => {
         )}
 
         {/* Input form */}
-        <div className="flex w-full justify-center">
-          <form
-            id="chat-form"
-            className={`w-full max-w-4xl mx-6 shadow-lg px-2 py-2 flex bg-anoteblack-600 overflow-hidden border border-gray-200 ${
-              uploadedDocs.length > 0 ? "" : "rounded-xl"
-            } transition-all duration-200`}
-            onSubmit={handleSendMessage}
-          >
-            <div className="w-full">
-              {/* Show uploaded files indicator */}
-              {uploadedDocs.length > 0 && (
-                <div className="mb-2 text-xs text-blue-400 flex items-center gap-1">
-                  <span>📄</span>
-                  <span>
-                    {uploadedDocs.length} file
-                    {uploadedDocs.length !== 1 ? "s" : ""} uploaded
-                  </span>
+        <div className="flex w-full justify-center px-4">
+          <div className="flex items-center gap-3 w-full max-w-4xl">
+            {/* Left side - Upload button */}
+            <button
+              type="button"
+              onClick={() => {
+                console.log("Upload button clicked in Chatbot");
+                console.log(
+                  "props.onUploadClick exists:",
+                  !!props.onUploadClick
+                );
+                console.log("Chat ID (id):", id);
+                if (props.onUploadClick) {
+                  console.log("Calling props.onUploadClick");
+                  setUploadButtonClicked(true);
+                  props.onUploadClick();
+                  // Reset the visual state after a short delay
+                  setTimeout(() => setUploadButtonClicked(false), 1000);
+                } else {
+                  console.log("props.onUploadClick is not available");
+                }
+              }}
+              disabled={props.isUploading || !id}
+              className={`flex items-center justify-center w-12 h-12 rounded-xl transition-colors flex-shrink-0 ${
+                uploadButtonClicked
+                  ? "bg-blue-600 text-white"
+                  : props.isUploading
+                  ? "bg-gray-500 text-gray-300 cursor-not-allowed"
+                  : !id
+                  ? "bg-gray-600 text-gray-400 cursor-not-allowed"
+                  : "bg-blue-500 hover:bg-blue-600 text-white"
+              }`}
+              title={!id ? "Please select or create a chat first" : "Add files"}
+            >
+              <FontAwesomeIcon icon={faFile} className="text-lg" />
+            </button>
+
+            {/* Center - Input form */}
+            <form
+              id="chat-form"
+              className="flex-1 mt-3"
+              onSubmit={handleSendMessage}
+            >
+              <div className="relative">
+                {/* Textarea with rounded design */}
+                <div className="relative  flex items-center bg-gray-700 rounded-3xl border border-gray-600 focus-within:border-gray-500 transition-colors">
+                  <textarea
+                    className="w-full border-none resize-none text-lg px-6 py-2 focus:ring-0 focus:outline-none text-white placeholder:text-gray-400 bg-anoteblack-800 rounded-3xl"
+                    rows={1}
+                    placeholder="Ask your document a question"
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    ref={inputRef}
+                  />
                 </div>
-              )}
 
-              {/* Textarea */}
-              <textarea
-                className="w-full border-none resize-none text-lg px-2 focus:ring-0 focus:outline-none text-gray-700 placeholder:text-gray-500 bg-transparent"
-                rows={1}
-                placeholder="Type a message..."
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyDown={handleKeyDown}
-                ref={inputRef}
-              />
-
-              {/* Action buttons */}
-              <div className="flex justify-between items-center mt-2">
-                {/* Left side - Upload button */}
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (props.onUploadClick) {
-                        setUploadButtonClicked(true);
-                        props.onUploadClick();
-                        // Reset the visual state after a short delay
-                        setTimeout(() => setUploadButtonClicked(false), 1000);
-                      }
-                    }}
-                    disabled={props.isUploading || !id}
-                    className={`flex items-center gap-1 px-2 py-1 text-xs rounded-lg border transition-colors ${
-                      uploadButtonClicked
-                        ? "bg-blue-500 border-blue-400 text-white"
-                        : props.isUploading
-                        ? "bg-gray-500 border-gray-400 text-gray-300 cursor-not-allowed"
-                        : !id
-                        ? "bg-gray-600 border-gray-500 text-gray-400 cursor-not-allowed"
-                        : "bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600"
-                    }`}
-                    title={
-                      !id ? "Please select or create a chat first" : "Add files"
-                    }
-                  >
-                    <FontAwesomeIcon icon={faDownload} />
-                    <span>
-                      {uploadButtonClicked
-                        ? "Opening..."
-                        : props.isUploading
-                        ? "Uploading..."
-                        : "Add Files"}
-                    </span>
-                  </button>
-
-                  {/* File upload progress */}
-                  {props.isUploading && props.uploadProgress !== undefined && (
-                    <div className="flex items-center gap-2">
-                      <div className="w-20 bg-gray-700 rounded-full h-1">
-                        <div
-                          className="bg-blue-600 h-1 rounded-full transition-all duration-300"
-                          style={{ width: `${props.uploadProgress}%` }}
-                        ></div>
-                      </div>
-                      <span className="text-xs text-gray-400">
-                        {props.uploadProgress}%
-                      </span>
+                {/* File upload progress */}
+                {props.isUploading && props.uploadProgress !== undefined && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <div className="flex-1 bg-gray-700 rounded-full h-1">
+                      <div
+                        className="bg-blue-600 h-1 rounded-full transition-all duration-300"
+                        style={{ width: `${props.uploadProgress}%` }}
+                      ></div>
                     </div>
-                  )}
-                </div>
-
-                {/* Right side - Send button */}
-                <button
-                  type="submit"
-                  disabled={!message || message.trim() === ""}
-                  className="hover:text-blue-500 disabled:hover:text-gray-400 disabled:text-gray-400 text-gray-600 transition-colors p-2 flex-shrink-0"
-                >
-                  <FontAwesomeIcon icon={faPaperPlane} />
-                </button>
+                    <span className="text-xs text-gray-400">
+                      {props.uploadProgress}%
+                    </span>
+                  </div>
+                )}
               </div>
-            </div>
-          </form>
+            </form>
+
+            {/* Right side - Send button */}
+            <button
+              type="submit"
+              onClick={handleSendMessage}
+              disabled={!message || message.trim() === ""}
+              className={`flex items-center justify-center w-12 h-12 rounded-xl transition-colors flex-shrink-0 ${
+                !message || message.trim() === ""
+                  ? "bg-gray-600 text-gray-400 cursor-not-allowed"
+                  : "bg-blue-500 hover:bg-blue-600 text-white"
+              }`}
+            >
+              <FontAwesomeIcon icon={faPaperPlane} className="text-lg" />
+            </button>
+          </div>
         </div>
       </div>
     </div>

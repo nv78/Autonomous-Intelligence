@@ -68,32 +68,35 @@ function Sources(props) {
           Sources
         </h2>
       </div>
-      {props.activeMessageIndex &&
-        sourcesInfo.map((info, index) => (
-          <div
-            key={index}
-            className="mb-2 bg-[#3A3B41] rounded-lg border border-gray-500"
-          >
+      <div className="border h-48 rounded-xl bg-anoteblack-900 border-gray-500">
+        {props.activeMessageIndex &&
+          sourcesInfo.map((info, index) => (
             <div
-              onClick={() => toggleExpansion(index)}
-              className="flex items-center p-2 my-1 justify-between hover:bg-[#3A3B41] rounded-xl cursor-pointer"
+              key={index}
+              className="mb-2 bg-[#3A3B41] rounded-lg border border-gray-500"
             >
-              <span className="text-white">
-                {info.docName}
-              </span>
-              {expandedIndex === index ? (
-                <FontAwesomeIcon icon={faChevronUp} className="text-white" />
-              ) : (
-                <FontAwesomeIcon icon={faChevronDown} className="text-white" />
+              <div
+                onClick={() => toggleExpansion(index)}
+                className="flex items-center p-2 my-1 justify-between hover:bg-[#3A3B41] rounded-xl cursor-pointer"
+              >
+                <span className="text-white">{info.docName}</span>
+                {expandedIndex === index ? (
+                  <FontAwesomeIcon icon={faChevronUp} className="text-white" />
+                ) : (
+                  <FontAwesomeIcon
+                    icon={faChevronDown}
+                    className="text-white"
+                  />
+                )}
+              </div>
+              {expandedIndex === index && (
+                <div className="text-white  p-2 rounded-xl">
+                  <p>{info.paragraph}</p>
+                </div>
               )}
             </div>
-            {expandedIndex === index && (
-              <div className="text-white  p-2 rounded-xl">
-                <p>{info.paragraph}</p>
-              </div>
-            )}
-          </div>
-        ))}
+          ))}
+      </div>
     </div>
   );
 }

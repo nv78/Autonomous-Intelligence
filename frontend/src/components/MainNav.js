@@ -50,7 +50,7 @@ function MainNav(props) {
   }
 
   return (
-    <Navbar className="fixed w-full z-50 bg-black" fluid>
+    <Navbar className="fixed w-full z-50 bg-anoteblack-800" fluid>
       {/* <Navbar.Brand href="https://privatechatbot.ai"> */}
       <Navbar.Brand onClick={() => navigate(landing)}>
         <div className="h-8 w-8 bg-center bg-contain bg-[url('../public/logonew.png')] dark:bg-[url('../public/logonew.png')]"></div>

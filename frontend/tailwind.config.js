@@ -7,6 +7,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        softBlue: "#94A1C2",
         yellow: {
           100: "#f8ffda",
           200: "#f2ffb5",
@@ -48,7 +49,7 @@ module.exports = {
           500: "#1e2224",
           600: "#181b1d",
           700: "#121416",
-          800: "#0c0e0e",
+          800: "#1E1E1E",
           900: "#060707",
         },
       },

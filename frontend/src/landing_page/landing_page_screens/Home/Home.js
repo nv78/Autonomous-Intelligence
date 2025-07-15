@@ -7,7 +7,7 @@ import FinanceGPT from "../FinanceGPT";
 
 function Home(props) {
   return (
-    <div className="bg-[#141414]
+    <div className="bg-anoteblack-800
  text-white flex flex-col justify-center">
       <LPHeader props={props}></LPHeader>
       <LPHighLevels></LPHighLevels>

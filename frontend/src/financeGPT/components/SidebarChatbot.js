@@ -788,7 +788,7 @@ const SidebarChatbot = forwardRef((props, ref) => {
         {deleteConfirmationPopupDoc}
         <div className="flex flex-col flex-grow">
           <div className="bg-[#141414] rounded-xl">
-            <h2 className="text-[#9C9C9C] uppercase tracking-wide font-semibold text-xs px-4">
+            <h2 className="text-[#9C9C9C] uppercase tracking-wide font-semibold text-xs pt-2 px-4">
               Model Selection
             </h2>
             {showConfirmPopup && <div style={overlayStyle}></div>}
@@ -886,11 +886,11 @@ const SidebarChatbot = forwardRef((props, ref) => {
             />
 
             {/* Map through docs */}
-            <div className="bg-black min-h-[30vh] h-[30vh] overflow-y-auto">
+            <div className="bg-anoteblack-900 rounded-xl border border-gray-600 h-48 overflow-y-auto">
               {docs.map((doc) => (
                 <div
                   key={doc.document_name}
-                  className="flex items-center justify-between mx-4 my-2 bg-[#141414] hover:bg-[#3A3B41] rounded-xl overflow-x-scroll"
+                  className="flex items-center justify-between mx-4 my-2 bg-[#7E7E7E]/10 hover:bg-[#3A3B41] rounded-xl overflow-x-scroll"
                 >
                   <button
                     key={doc.document_name}

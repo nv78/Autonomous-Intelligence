@@ -201,8 +201,8 @@ function ChatHistory(props) {
           {[...chats].reverse().map((chat, index) => (
             <li
               key={index}
-              className={`group hover:bg-teal-800  mb-1 ${
-                chat.id === Number(id) ? "bg-turquoise-800" : ""
+              className={`group hover:bg-softBlue/80  mb-1 ${
+                chat.id === Number(id) ? "bg-softBlue/30" : ""
               } flex w-full items-center rounded-md px-2 py-1 text-gray-800`}
             >
               <span className="cursor-pointer w-5/6 truncate max-w-2xl">
