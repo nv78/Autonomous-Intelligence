@@ -27,7 +27,8 @@ def generate_response_openai():
         return jsonify({"response": reply})
 
     except Exception as e:
-        print(f"[ERROR] {e}")
-        return jsonify({"error": str(e)}), 500
+        import logging
+        logging.error(f"An error occurred: {e}", exc_info=True)
+        return jsonify({"error": "An internal error has occurred."}), 500
 
 handler = gpt4_blueprint
