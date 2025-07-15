@@ -1,8 +1,6 @@
-
-
 import stripe
 
-stripe.api_key = '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'
+stripe.api_key = "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"
 
 # cancel_configuration = stripe.billing_portal.Configuration.create(
 #     features={
@@ -34,6 +32,7 @@ basic_price_id = "price_1Ne91bAuWN19h35KS9n8iokr"
 standard_price_id = "price_1Ne91NAuWN19h35KHFQtLZsQ"
 premier_price_id = "price_1Ne90vAuWN19h35Kb3DIpkfu"
 
+
 def create_upgrade(price_id):
     # Create the configuration
     config = stripe.billing_portal.Configuration.create(
@@ -42,18 +41,17 @@ def create_upgrade(price_id):
                 "enabled": True,
                 "products": [{"product": product_id, "prices": [price_id]}],
                 "proration_behavior": "create_prorations",
-                "default_allowed_updates": ["price"]
+                "default_allowed_updates": ["price"],
             },
-            "payment_method_update": {
-                "enabled": True
-            }
+            "payment_method_update": {"enabled": True},
         },
         business_profile={
-            'headline': 'privategpt',  # Replace with a suitable headline for your business or product.
+            "headline": "privategpt",  # Replace with a suitable headline for your business or product.
         },
     )
 
     return config
+
 
 def create_downgrade(price_id):
     # Create the configuration
@@ -63,18 +61,17 @@ def create_downgrade(price_id):
                 "enabled": True,
                 "products": [{"product": product_id, "prices": [price_id]}],
                 "proration_behavior": "none",
-                "default_allowed_updates": ["price"]
+                "default_allowed_updates": ["price"],
             },
-            "payment_method_update": {
-                "enabled": True
-            }
+            "payment_method_update": {"enabled": True},
         },
         business_profile={
-            'headline': 'privategpt',  # Replace with a suitable headline for your business or product.
+            "headline": "privategpt",  # Replace with a suitable headline for your business or product.
         },
     )
 
     return config
+
 
 # bpc_1Ne99AAuWN19h35KDOIITw1Z
 # bpc_1Ne99AAuWN19h35K7QhZh9OY
