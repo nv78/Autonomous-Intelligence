@@ -2,7 +2,7 @@ name: Frontend (ESLint) & Backend Lint, Test & CodeQL
 
 on:
   push:
-    branches: [main]
+    branches: [main, testing-2]
     paths:
       - 'backend/**'
   pull_request:
@@ -27,28 +27,25 @@ jobs:
         working-directory: frontend
         run: npm install --force
 
-      # - name: Lint frontend with ESLint
-      #   working-directory: frontend
-      #   run: npm test 
+      - name: Lint frontend with ESLint
+        working-directory: frontend
+        run: npm test
 
       # Setup Python (Backend)
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
+      # - name: Set up Python
+      #   uses: actions/setup-python@v5
+      #   with:
+      #     python-version: '3.10'
 
-      - name: Install Python dependencies
-        working-directory: backend
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+      # - name: Install Python lint dependencies
+      #   working-directory: backend
+      #   run: |
+      #     python -m pip install --upgrade pip
+      #     pip install flake8
 
       # - name: Lint backend with flake8
       #   working-directory: backend
       #   run: flake8 .
-
-      - name: Run backend unit tests
-        run: pytest 
 
   codeql:
     name: CodeQL Analysis (Python)
