@@ -152,7 +152,7 @@ function HomeChatbot() {
             onUploadClick={handleUploadClick}
           />
         )}
-        <div className=" hidden lg:block">
+        <div className="w-72 hidden lg:block">
           <SidebarChatbot
             ref={sidebarRef}
             selectedChatId={selectedChatId}
