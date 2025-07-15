@@ -7,7 +7,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 arabic_blueprint = Blueprint('arabic', __name__)
 
-MODEL_NAME = "gpt-3.5-turbo"
+MODEL_NAME = "ft:gpt-4.1-mini-2025-04-14:personal::BtL5Rskw"
 LANGUAGE_KEY = "arabic"
 
 @arabic_blueprint.route("/api/chat/arabic", methods=["POST"])

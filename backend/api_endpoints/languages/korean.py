@@ -6,8 +6,10 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 korean_blueprint = Blueprint('korean', __name__)
 
-MODEL_NAME = "gpt-3.5-turbo"
+
 LANGUAGE_KEY = "korean"
+MODEL_NAME = "ft:gpt-4.1-mini-2025-04-14:personal::BthVmuUX"
+
 
 @korean_blueprint.route("/api/chat/korean", methods=["POST"])
 def chat_korean():
