@@ -13,6 +13,7 @@ from constants.global_constants import dbName, dbHost, dbUser, dbPassword
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+
 def extractUserEmailFromRequest(request):
     # Get the JWT refresh token from the Authorization header
     authorization_header = request.headers["Authorization"]
@@ -20,15 +21,15 @@ def extractUserEmailFromRequest(request):
 
     if len(authorization_header_parts) >= 2:
         jwt_token = authorization_header_parts[1]
-        #print("extractUserEmailFromRequest1")
+        # print("extractUserEmailFromRequest1")
 
         try:
-            #print("extractUserEmailFromRequest2")
+            # print("extractUserEmailFromRequest2")
             # Try to decode the JWT
             decoded_jwt = decode_token(jwt_token)
-            #print("extractUserEmailFromRequest3")
+            # print("extractUserEmailFromRequest3")
             user_email = decoded_jwt["sub"]
-            #print("extractUserEmailFromRequest4")
+            # print("extractUserEmailFromRequest4")
             print(user_email)
             return user_email
         except InvalidTokenError:
@@ -46,23 +47,28 @@ def extractUserEmailFromRequest(request):
     else:
         raise InvalidTokenError()
 
+
 def get_db_connection():
     # print('in db_auth')
-    if ('.local' in socket.gethostname() or '.lan' in socket.gethostname() or 'Shadow' in socket.gethostname()) or ('APP_ENV' in os.environ and os.environ['APP_ENV'] == 'local'):
+    if (
+        ".local" in socket.gethostname()
+        or ".lan" in socket.gethostname()
+        or "Shadow" in socket.gethostname()
+    ) or ("APP_ENV" in os.environ and os.environ["APP_ENV"] == "local"):
         # print('in local')
-        if ('BL' in os.environ and os.environ['BL'] == 'bl'):
+        if "BL" in os.environ and os.environ["BL"] == "bl":
             # print("in daniel location")
             conn = mysql.connector.connect(
-                user='root',
-                password='1165205407',
-                host='localhost',
+                user="root",
+                password="1165205407",
+                host="localhost",
                 port=3306,
-                database=dbName
+                database=dbName,
             )
         else:
             conn = mysql.connector.connect(
-                user='root',
-                unix_socket='/tmp/mysql.sock',
+                user="root",
+                unix_socket="/tmp/mysql.sock",
                 database=dbName,
             )
     else:
@@ -74,9 +80,13 @@ def get_db_connection():
         )
     return conn, conn.cursor(dictionary=True)
 
+
 def user_email_for_session_token(session_token):
     conn, cursor = get_db_connection()
-    cursor.execute('SELECT email FROM users WHERE session_token=%s AND session_token_expiration > CURRENT_TIMESTAMP', [session_token])
+    cursor.execute(
+        "SELECT email FROM users WHERE session_token=%s AND session_token_expiration > CURRENT_TIMESTAMP",
+        [session_token],
+    )
     user = cursor.fetchone()
     conn.close()
     return user["email"]
@@ -84,14 +94,21 @@ def user_email_for_session_token(session_token):
 
 def user_email_for_api_key(api_key):
     conn, cursor = get_db_connection()
-    cursor.execute('SELECT p.email FROM users p JOIN apiKeys c ON c.user_id=p.id WHERE c.api_key=%s', [api_key])
+    cursor.execute(
+        "SELECT p.email FROM users p JOIN apiKeys c ON c.user_id=p.id WHERE c.api_key=%s",
+        [api_key],
+    )
     user = cursor.fetchone()
     conn.close()
     return user["email"]
 
+
 def is_session_token_valid(session_token):
     conn, cursor = get_db_connection()
-    cursor.execute('SELECT COUNT(*) FROM users WHERE session_token=%s AND session_token_expiration > CURRENT_TIMESTAMP', [session_token])
+    cursor.execute(
+        "SELECT COUNT(*) FROM users WHERE session_token=%s AND session_token_expiration > CURRENT_TIMESTAMP",
+        [session_token],
+    )
     user = cursor.fetchone()
     conn.close()
     if user and user["COUNT(*)"] > 0:
@@ -99,9 +116,13 @@ def is_session_token_valid(session_token):
     else:
         return False
 
+
 def is_api_key_valid(api_key):
     conn, cursor = get_db_connection()
-    cursor.execute('SELECT COUNT(*) FROM users p JOIN apiKeys c ON c.user_id=p.id WHERE c.api_key=%s', [api_key])
+    cursor.execute(
+        "SELECT COUNT(*) FROM users p JOIN apiKeys c ON c.user_id=p.id WHERE c.api_key=%s",
+        [api_key],
+    )
     user = cursor.fetchone()
     conn.close()
     print(user["COUNT(*)"])
@@ -110,20 +131,26 @@ def is_api_key_valid(api_key):
     else:
         return False
 
+
 def user_id_for_email(email):
     conn, cursor = get_db_connection()
-    cursor.execute('SELECT id FROM users WHERE email=%s', [email])
+    cursor.execute("SELECT id FROM users WHERE email=%s", [email])
     user = cursor.fetchone()
     conn.close()
     return user["id"]
 
+
 def paid_user_for_user_email_with_cursor(conn, cursor, user_email):
-    cursor.execute('SELECT paid_user FROM Subscriptions gc JOIN StripeInfo c ON c.id=gc.stripe_info_id JOIN users p ON p.id=c.user_id WHERE gc.start_date < CURRENT_TIMESTAMP AND (gc.end_date IS NULL OR gc.end_date > CURRENT_TIMESTAMP) AND p.email = %s', [user_email])
+    cursor.execute(
+        "SELECT paid_user FROM Subscriptions gc JOIN StripeInfo c ON c.id=gc.stripe_info_id JOIN users p ON p.id=c.user_id WHERE gc.start_date < CURRENT_TIMESTAMP AND (gc.end_date IS NULL OR gc.end_date > CURRENT_TIMESTAMP) AND p.email = %s",
+        [user_email],
+    )
     paidUser = cursor.fetchone()
     if paidUser:
         return paidUser["paid_user"]
     else:
         return 0
+
 
 # Example of auth function.  You would need to define one that
 # fits your SQL schema.
@@ -137,6 +164,7 @@ def paid_user_for_user_email_with_cursor(conn, cursor, user_email):
 #     conn.close()
 #     return access_invalid
 
+
 def verifyAuthForPaymentsTrustedTesters(user_email):
     return True
     # if user_email in EMAIL_WHITELIST:
@@ -146,13 +174,15 @@ def verifyAuthForPaymentsTrustedTesters(user_email):
     #     print("email not in whitelist")
     #     return False
 
+
 def send_new_users_alert_email(mail, newSubscriptionsCount):
-    msg = Message('Anote Private Chatbot New Users Alert', recipients=[
-        "t.clifford@wustl.edu",
-        "vidranatan@gmail.com"
-    ])
-    msg.body = f'{newSubscriptionsCount} users have created paid subscriptions in the last day.  Please check that no abuse is occurring.'
+    msg = Message(
+        "Anote Private Chatbot New Users Alert",
+        recipients=["t.clifford@wustl.edu", "vidranatan@gmail.com"],
+    )
+    msg.body = f"{newSubscriptionsCount} users have created paid subscriptions in the last day.  Please check that no abuse is occurring."
     mail.send(msg)
+
 
 def verifyAuthForNewSubscriptipns(conn, cursor, mail, userEmail, newPaymentTier):
     # Check for total subscriptions in the last day for the specified tier
@@ -160,13 +190,16 @@ def verifyAuthForNewSubscriptipns(conn, cursor, mail, userEmail, newPaymentTier)
         PaidUserStatus.BASIC_TIER: 1000,
         PaidUserStatus.STANDARD_TIER: 500,
         PaidUserStatus.PREMIUM_TIER: 25,
-        PaidUserStatus.ENTERPRISE_TIER: 5
+        PaidUserStatus.ENTERPRISE_TIER: 5,
     }
     if newPaymentTier not in limits:
         print("verifyAuthForNewSubscriptipns 111111")
         return False
 
-    cursor.execute('SELECT COUNT(*) from Subscriptions WHERE paid_user = %s AND start_date >= NOW() - INTERVAL 1 DAY', [int(newPaymentTier)])
+    cursor.execute(
+        "SELECT COUNT(*) from Subscriptions WHERE paid_user = %s AND start_date >= NOW() - INTERVAL 1 DAY",
+        [int(newPaymentTier)],
+    )
     newUsersCount = cursor.fetchone()
     newSubscriptionsCount = newUsersCount["COUNT(*)"]
 
@@ -179,13 +212,16 @@ def verifyAuthForNewSubscriptipns(conn, cursor, mail, userEmail, newPaymentTier)
         return False
 
     # Check if user changed subscriptions more than once in the past month
-    cursor.execute('''
+    cursor.execute(
+        """
         SELECT COUNT(*)
         from Subscriptions s
         JOIN StripeInfo c ON c.id = s.stripe_info_id
         JOIN users p ON p.id = c.user_id
         WHERE p.email = %s AND s.start_date >= NOW() - INTERVAL 1 MONTH
-    ''', [userEmail])
+    """,
+        [userEmail],
+    )
     userChangesCount = cursor.fetchone()
     if userChangesCount["COUNT(*)"] > 1:
         print("verifyAuthForNewSubscriptipns 33333")
@@ -193,18 +229,25 @@ def verifyAuthForNewSubscriptipns(conn, cursor, mail, userEmail, newPaymentTier)
     print("verifyAuthForNewSubscriptipns 44444")
     return True
 
+
 def verifyAuthForCheckoutSession(userEmail, mail):
     conn, cursor = get_db_connection()
     paid_user = paid_user_for_user_email_with_cursor(conn, cursor, userEmail)
     if paid_user == PaidUserStatus.FREE_TIER:
         new_price_id = productHashMap[request.json["product_hash"]]
-        if verifyAuthForNewSubscriptipns(conn, cursor, mail, userEmail, priceToPaymentPlan[new_price_id]) == False:
+        if (
+            verifyAuthForNewSubscriptipns(
+                conn, cursor, mail, userEmail, priceToPaymentPlan[new_price_id]
+            )
+            == False
+        ):
             conn.close()
             return False
         conn.close()
         return True
     else:
         return False
+
 
 def verifyAuthForPortalSession(request, userEmail, mail):
     conn, cursor = get_db_connection()
@@ -222,7 +265,10 @@ def verifyAuthForPortalSession(request, userEmail, mail):
         conn.close()
         return True
 
-    if verifyAuthForNewSubscriptipns(conn, cursor, mail, userEmail, newPaymentTier) == False:
+    if (
+        verifyAuthForNewSubscriptipns(conn, cursor, mail, userEmail, newPaymentTier)
+        == False
+    ):
         print("no verifyAuthForNewSubscriptipns")
         conn.close()
         return False
@@ -248,11 +294,14 @@ def verifyAuthForPortalSession(request, userEmail, mail):
     conn.close()
     return False
 
+
 def api_key_access_invalid(user_id, api_key_id):
     conn, cursor = get_db_connection()
-    cursor.execute('SELECT COUNT(*) FROM apiKeys WHERE user_id=%s AND id=%s', [user_id, api_key_id])
+    cursor.execute(
+        "SELECT COUNT(*) FROM apiKeys WHERE user_id=%s AND id=%s", [user_id, api_key_id]
+    )
     count = cursor.fetchone()
     conn.close()
-    if(count["COUNT(*)"] != 0):
+    if count["COUNT(*)"] != 0:
         return False
     return True
