@@ -31,5 +31,7 @@ def chat_chinese():
         return jsonify({"response": reply})
 
     except Exception as e:
-        print(f"[ERROR] {e}")
+        import traceback
+        traceback.print_exc()
+
         return jsonify({"error": str(e)}), 500
