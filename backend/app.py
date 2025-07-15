@@ -298,8 +298,6 @@ def login():
       return response
 
 
-
-
 # this is the page that will handle the callback process meaning process after the authorization
 @app.route("/callback")
 @cross_origin(supports_credentials=True)
