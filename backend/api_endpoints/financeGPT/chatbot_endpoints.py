@@ -28,6 +28,7 @@ from ratelimit import limits, sleep_and_retry
 import anthropic
 from anthropic import Anthropic, HUMAN_PROMPT, AI_PROMPT
 import sys
+
 if sys.version_info < (3, 8):
     from typing_extensions import Final
 else:
@@ -38,49 +39,64 @@ from tika import parser as p
 
 
 load_dotenv()
-API_KEY = os.getenv('OPENAI_API_KEY')
-embeddings = OpenAIEmbeddings(openai_api_key= API_KEY)
-sec_api_key = os.getenv('SEC_API_KEY')
+API_KEY = os.getenv("OPENAI_API_KEY")
+embeddings = OpenAIEmbeddings(openai_api_key=API_KEY)
+sec_api_key = os.getenv("SEC_API_KEY")
 
 MAX_CHUNK_SIZE = 1000
 
+
 ## General for all chatbots
 # Chat_type is an integer where 0=chatbot, 1=Edgar, 2=PDFUploader, etc
-def add_chat_to_db(user_email, chat_type, model_type): #intake the current userID and the model type into the chat table
+def add_chat_to_db(
+    user_email, chat_type, model_type
+):  # intake the current userID and the model type into the chat table
     conn, cursor = get_db_connection()
 
     cursor.execute("SELECT id FROM users WHERE email = %s", [user_email])
-    user_id = cursor.fetchone()['id']
+    user_id = cursor.fetchone()["id"]
 
-    cursor.execute('INSERT INTO chats (user_id, model_type, associated_task) VALUES (%s, %s, %s)', (user_id, model_type, chat_type))
+    cursor.execute(
+        "INSERT INTO chats (user_id, model_type, associated_task) VALUES (%s, %s, %s)",
+        (user_id, model_type, chat_type),
+    )
     chat_id = cursor.lastrowid
 
     name = f"Chat {chat_id}"
-    cursor.execute('UPDATE chats SET chat_name = %s WHERE id = %s', (name, chat_id))
+    cursor.execute("UPDATE chats SET chat_name = %s WHERE id = %s", (name, chat_id))
 
     conn.commit()
     conn.close()
 
     return chat_id
 
+
 ## General for all chatbots
 # Worflow_type is an integer where 2=FinancialReports
-def add_workflow_to_db(user_email, workflow_type): #intake the current userID into the workflow table
+def add_workflow_to_db(
+    user_email, workflow_type
+):  # intake the current userID into the workflow table
     conn, cursor = get_db_connection()
 
     cursor.execute("SELECT id FROM users WHERE email = %s", [user_email])
-    user_id = cursor.fetchone()['id']
+    user_id = cursor.fetchone()["id"]
 
-    cursor.execute('INSERT INTO workflows (user_id, associated_task) VALUES (%s, %s)', (user_id, workflow_type))
+    cursor.execute(
+        "INSERT INTO workflows (user_id, associated_task) VALUES (%s, %s)",
+        (user_id, workflow_type),
+    )
     workflow_id = cursor.lastrowid
 
     name = f"Workflow {workflow_id}"
-    cursor.execute('UPDATE workflows SET workflow_name = %s WHERE id = %s', (name, workflow_id))
+    cursor.execute(
+        "UPDATE workflows SET workflow_name = %s WHERE id = %s", (name, workflow_id)
+    )
 
     conn.commit()
     conn.close()
 
     return workflow_id
+
 
 def update_chat_name_db(user_email, chat_id, new_name):
     conn, cursor = get_db_connection()
@@ -97,6 +113,7 @@ def update_chat_name_db(user_email, chat_id, new_name):
     conn.close()
 
     return
+
 
 def update_workflow_name_db(user_email, workflow_id, new_name):
     print("update_workflow_name_db")
@@ -117,6 +134,7 @@ def update_workflow_name_db(user_email, workflow_id, new_name):
 
     return
 
+
 def retrieve_chats_from_db(user_email):
     conn, cursor = get_db_connection()
 
@@ -135,6 +153,7 @@ def retrieve_chats_from_db(user_email):
     conn.close()
 
     return chat_info
+
 
 def find_most_recent_chat_from_db(user_email):
     conn, cursor = get_db_connection()
@@ -169,7 +188,6 @@ def retrieve_message_from_db(user_email, chat_id, chat_type):
         WHERE chats.id = %s AND users.email = %s AND chats.associated_task = %s;
         """
 
-
     # Execute the query
     cursor.execute(query, (chat_id, user_email, chat_type))
     messages = cursor.fetchall()
@@ -178,6 +196,7 @@ def retrieve_message_from_db(user_email, chat_id, chat_type):
     conn.close()
 
     return messages
+
 
 def delete_chat_from_db(chat_id, user_email):
     print("delete chat from db")
@@ -225,12 +244,15 @@ def delete_chat_from_db(chat_id, user_email):
         print(f"Deleted chat with ID {chat_id} for user {user_email}.")
         conn.close()
         cursor.close()
-        return 'Successfully deleted'
+        return "Successfully deleted"
     else:
-        print(f"No chat deleted. Chat ID {chat_id} may not exist or does not belong to user {user_email}.")
+        print(
+            f"No chat deleted. Chat ID {chat_id} may not exist or does not belong to user {user_email}."
+        )
         conn.close()
         cursor.close()
-        return 'Could not delete'
+        return "Could not delete"
+
 
 def reset_chat_db(chat_id, user_email):
     print("reset chat")
@@ -251,12 +273,15 @@ def reset_chat_db(chat_id, user_email):
         print(f"Deleted chat with ID {chat_id} for user {user_email}.")
         conn.close()
         cursor.close()
-        return 'Successfully deleted'
+        return "Successfully deleted"
     else:
-        print(f"No chat deleted. Chat ID {chat_id} may not exist or does not belong to user {user_email}.")
+        print(
+            f"No chat deleted. Chat ID {chat_id} may not exist or does not belong to user {user_email}."
+        )
         conn.close()
         cursor.close()
-        return 'Could not delete'
+        return "Could not delete"
+
 
 def reset_uploaded_docs(chat_id, user_email):
     conn, cursor = get_db_connection()
@@ -285,6 +310,7 @@ def reset_uploaded_docs(chat_id, user_email):
     conn.close()
     cursor.close()
 
+
 def reset_uploaded_docs_for_workflow(workflow_id, user_email):
     conn, cursor = get_db_connection()
 
@@ -309,7 +335,6 @@ def reset_uploaded_docs_for_workflow(workflow_id, user_email):
     cursor.close()
 
 
-
 def change_chat_mode_db(chat_mode_to_change_to, chat_id, user_email):
     conn, cursor = get_db_connection()
 
@@ -328,31 +353,38 @@ def change_chat_mode_db(chat_mode_to_change_to, chat_id, user_email):
     cursor.close()
 
 
-
 def add_document_to_db(text, document_name, chat_id=None, organization_id=None):
     conn, cursor = get_db_connection()
 
     try:
         # Check if the document already exists for the given chat_id or organization_id
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT id, document_text
             FROM documents
             WHERE document_name = %s
             AND (chat_id = %s OR organization_id = %s)
-        """, (document_name, chat_id, organization_id))
+        """,
+            (document_name, chat_id, organization_id),
+        )
         existing_doc = cursor.fetchone()
 
         if existing_doc:
             existing_doc_id, existing_doc_text = existing_doc
-            print(f"Document '{document_name}' already exists. Not creating a new entry.")
+            print(
+                f"Document '{document_name}' already exists. Not creating a new entry."
+            )
             return existing_doc_id, True  # Returning the ID of the existing document
 
         # If the document doesn't exist, create a new one
         storage_key = "temp"  # You can adjust how the storage key is generated
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO documents (document_text, document_name, storage_key, chat_id, organization_id)
             VALUES (%s, %s, %s, %s, %s)
-        """, (text, document_name, storage_key, chat_id, organization_id))
+        """,
+            (text, document_name, storage_key, chat_id, organization_id),
+        )
 
         doc_id = cursor.lastrowid
 
@@ -366,7 +398,10 @@ def add_document_to_db(text, document_name, chat_id=None, organization_id=None):
 def add_document_to_wfs_db(text, document_name, workflow_id):
     conn, cursor = get_db_connection()
 
-    cursor.execute("SELECT id, document_text FROM documents WHERE document_name = %s AND workflow_id = %s", (document_name, workflow_id))
+    cursor.execute(
+        "SELECT id, document_text FROM documents WHERE document_name = %s AND workflow_id = %s",
+        (document_name, workflow_id),
+    )
     existing_doc = cursor.fetchone()
 
     if existing_doc:
@@ -375,9 +410,11 @@ def add_document_to_wfs_db(text, document_name, workflow_id):
         conn.close()
         return existing_doc_id, True  # Returning the ID of the existing document
 
-
     storage_key = "temp"
-    cursor.execute("INSERT INTO documents (workflow_id, document_name, document_text, storage_key) VALUES (%s, %s, %s, %s)", (workflow_id, document_name, text, storage_key))
+    cursor.execute(
+        "INSERT INTO documents (workflow_id, document_name, document_text, storage_key) VALUES (%s, %s, %s, %s)",
+        (workflow_id, document_name, text, storage_key),
+    )
 
     doc_id = cursor.lastrowid
 
@@ -403,29 +440,40 @@ def chunk_document_by_page(text_pages, maxChunkSize, document_id):
             chunkText = page_text[startIndex:endIndex]
             chunkText = chunkText.replace("\n", "")
 
-            embeddingVector = openai.embeddings.create(input=chunkText, model="text-embedding-ada-002").data[0].embedding
+            embeddingVector = (
+                openai.embeddings.create(
+                    input=chunkText, model="text-embedding-ada-002"
+                )
+                .data[0]
+                .embedding
+            )
             embeddingVector = np.array(embeddingVector)
             blob = embeddingVector.tobytes()
 
-            cursor.execute('INSERT INTO chunks (start_index, end_index, document_id, embedding_vector, page_number) VALUES (%s,%s,%s,%s,%s)',
-                           [globalStartIndex + startIndex, globalStartIndex + endIndex, document_id, blob, page_number])
+            cursor.execute(
+                "INSERT INTO chunks (start_index, end_index, document_id, embedding_vector, page_number) VALUES (%s,%s,%s,%s,%s)",
+                [
+                    globalStartIndex + startIndex,
+                    globalStartIndex + endIndex,
+                    document_id,
+                    blob,
+                    page_number,
+                ],
+            )
 
             startIndex += maxChunkSize
 
         globalStartIndex += len(page_text)
         page_number += 1
 
-
-
-
-    #chunks = []
-    #startIndex = 0
-#
-    #while startIndex < len(unchunkedText):
+    # chunks = []
+    # startIndex = 0
+    #
+    # while startIndex < len(unchunkedText):
     #    endIndex = startIndex + min(maxChunkSize, len(unchunkedText))
     #    chunkText = unchunkedText[startIndex:endIndex]
     #    chunkText = chunkText.replace("\n", "")
-#
+    #
     #    embeddingVector = openai.embeddings.create(input=chunkText, model="text-embedding-ada-002").data[0].embedding
     #    embeddingVector = np.array(embeddingVector)
     #    blob = embeddingVector.tobytes()
@@ -440,12 +488,12 @@ def chunk_document_by_page(text_pages, maxChunkSize, document_id):
 
     print("end chunk doc")
 
-
-    #for chunk in chunks:
+    # for chunk in chunks:
     #    cursor.execute('INSERT INTO chunks (start_index, end_index, document_id, embedding_vector) VALUES (%s,%s,%s,%s)', [chunk["start_index"], chunk["end_index"], document_id, chunk["embedding_vector_blob"]])
 
     conn.commit()
     conn.close()
+
 
 @ray.remote
 def chunk_document(text, maxChunkSize, document_id):
@@ -459,25 +507,38 @@ def chunk_document(text, maxChunkSize, document_id):
         chunkText = text[startIndex:endIndex]
         chunkText = chunkText.replace("\n", "")
 
-        embeddingVector = openai.embeddings.create(input=chunkText, model="text-embedding-ada-002").data[0].embedding
+        embeddingVector = (
+            openai.embeddings.create(input=chunkText, model="text-embedding-ada-002")
+            .data[0]
+            .embedding
+        )
         embeddingVector = np.array(embeddingVector)
         blob = embeddingVector.tobytes()
-        chunks.append({
-            "text": chunkText,
-            "start_index": startIndex,
-            "end_index": endIndex,
-            "embedding_vector": embeddingVector,
-            "embedding_vector_blob": blob,
-        })
+        chunks.append(
+            {
+                "text": chunkText,
+                "start_index": startIndex,
+                "end_index": endIndex,
+                "embedding_vector": embeddingVector,
+                "embedding_vector_blob": blob,
+            }
+        )
         startIndex += maxChunkSize
 
     for chunk in chunks:
-        cursor.execute('INSERT INTO chunks (start_index, end_index, document_id, embedding_vector) VALUES (%s,%s,%s,%s)', [chunk["start_index"], chunk["end_index"], document_id, chunk["embedding_vector_blob"]])
+        cursor.execute(
+            "INSERT INTO chunks (start_index, end_index, document_id, embedding_vector) VALUES (%s,%s,%s,%s)",
+            [
+                chunk["start_index"],
+                chunk["end_index"],
+                document_id,
+                chunk["embedding_vector_blob"],
+            ],
+        )
 
     print("CHUNKING DONE")
     conn.commit()
     conn.close()
-
 
 
 def knn(x, y):
@@ -492,11 +553,12 @@ def knn(x, y):
     for i in range(len(nearest_neighbors)):
         item = {
             "index": nearest_neighbors[i],
-            "similarity_score": distances[nearest_neighbors[i]]
+            "similarity_score": distances[nearest_neighbors[i]],
         }
         results.append(item)
 
     return results
+
 
 def get_relevant_chunks(k, question, chat_id, user_email):
     conn, cursor = get_db_connection()
@@ -519,7 +581,7 @@ def get_relevant_chunks(k, question, chat_id, user_email):
         embeddingVector = np.frombuffer(embeddingVectorBlob)
         embeddings.append(embeddingVector)
 
-    if (len(embeddings) == 0):
+    if len(embeddings) == 0:
         res_list = []
         for i in range(k):
             res_list.append("No text found")
@@ -527,28 +589,35 @@ def get_relevant_chunks(k, question, chat_id, user_email):
 
     embeddings = np.array(embeddings)
 
-    embeddingVector = openai.embeddings.create(input=question, model="text-embedding-ada-002").data[0].embedding
+    embeddingVector = (
+        openai.embeddings.create(input=question, model="text-embedding-ada-002")
+        .data[0]
+        .embedding
+    )
     embeddingVector = np.array(embeddingVector)
 
     res = knn(embeddingVector, embeddings)
     num_results = min(k, len(res))
 
-    #Get the k most relevant chunks
+    # Get the k most relevant chunks
     source_chunks = []
     for i in range(num_results):
-        source_id = res[i]['index']
+        source_id = res[i]["index"]
 
-        document_id = rows[source_id]['document_id']
-        #page_number = rows[source_id]['page_number']
-        document_name = rows[source_id]['document_name']
+        document_id = rows[source_id]["document_id"]
+        # page_number = rows[source_id]['page_number']
+        document_name = rows[source_id]["document_name"]
 
+        cursor.execute(
+            "SELECT document_text FROM documents WHERE id = %s", [document_id]
+        )
+        doc_text = cursor.fetchone()["document_text"]
 
-        cursor.execute('SELECT document_text FROM documents WHERE id = %s', [document_id])
-        doc_text = cursor.fetchone()['document_text']
-
-        source_chunk = doc_text[rows[source_id]['start_index']:rows[source_id]['end_index']]
+        source_chunk = doc_text[
+            rows[source_id]["start_index"] : rows[source_id]["end_index"]
+        ]
         source_chunks.append((source_chunk, document_name))
-        #source_chunks.append(source_chunk)
+        # source_chunks.append(source_chunk)
 
     return source_chunks
 
@@ -574,7 +643,7 @@ def get_relevant_chunks_wf(k, question, worflow_id, user_email):
         embeddingVector = np.frombuffer(embeddingVectorBlob)
         embeddings.append(embeddingVector)
 
-    if (len(embeddings) == 0):
+    if len(embeddings) == 0:
         res_list = []
         for i in range(k):
             res_list.append("No text found")
@@ -582,28 +651,35 @@ def get_relevant_chunks_wf(k, question, worflow_id, user_email):
 
     embeddings = np.array(embeddings)
 
-    embeddingVector = openai.embeddings.create(input=question, model="text-embedding-ada-002").data[0].embedding
+    embeddingVector = (
+        openai.embeddings.create(input=question, model="text-embedding-ada-002")
+        .data[0]
+        .embedding
+    )
     embeddingVector = np.array(embeddingVector)
 
     res = knn(embeddingVector, embeddings)
     num_results = min(k, len(res))
 
-    #Get the k most relevant chunks
+    # Get the k most relevant chunks
     source_chunks = []
     for i in range(num_results):
-        source_id = res[i]['index']
+        source_id = res[i]["index"]
 
-        document_id = rows[source_id]['document_id']
-        #page_number = rows[source_id]['page_number']
-        document_name = rows[source_id]['document_name']
+        document_id = rows[source_id]["document_id"]
+        # page_number = rows[source_id]['page_number']
+        document_name = rows[source_id]["document_name"]
 
+        cursor.execute(
+            "SELECT document_text FROM documents WHERE id = %s", [document_id]
+        )
+        doc_text = cursor.fetchone()["document_text"]
 
-        cursor.execute('SELECT document_text FROM documents WHERE id = %s', [document_id])
-        doc_text = cursor.fetchone()['document_text']
-
-        source_chunk = doc_text[rows[source_id]['start_index']:rows[source_id]['end_index']]
+        source_chunk = doc_text[
+            rows[source_id]["start_index"] : rows[source_id]["end_index"]
+        ]
         source_chunks.append((source_chunk, document_name))
-        #source_chunks.append(source_chunk)
+        # source_chunks.append(source_chunk)
 
     return source_chunks
 
@@ -617,12 +693,16 @@ def add_sources_to_db(message_id, sources):
 
     conn, cursor = get_db_connection()
 
-    cursor.execute('UPDATE messages SET relevant_chunks = %s WHERE id = %s', (combined_sources, message_id))
+    cursor.execute(
+        "UPDATE messages SET relevant_chunks = %s WHERE id = %s",
+        (combined_sources, message_id),
+    )
 
     conn.commit()
 
     cursor.close()
     conn.close()
+
 
 def add_wf_sources_to_db(prompt_id, sources):
     combined_sources = ""
@@ -633,7 +713,10 @@ def add_wf_sources_to_db(prompt_id, sources):
 
     conn, cursor = get_db_connection()
 
-    cursor.execute('UPDATE prompts SET relevant_chunks = %s WHERE id = %s', (combined_sources, prompt_id))
+    cursor.execute(
+        "UPDATE prompts SET relevant_chunks = %s WHERE id = %s",
+        (combined_sources, prompt_id),
+    )
 
     conn.commit()
 
@@ -642,10 +725,13 @@ def add_wf_sources_to_db(prompt_id, sources):
 
 
 def add_message_to_db(text, chat_id, isUser):
-    #If isUser is 0, it is a bot message, 1 is a user message
+    # If isUser is 0, it is a bot message, 1 is a user message
     conn, cursor = get_db_connection()
 
-    cursor.execute('INSERT INTO messages (message_text, chat_id, sent_from_user) VALUES (%s,%s,%s)', (text, chat_id, isUser))
+    cursor.execute(
+        "INSERT INTO messages (message_text, chat_id, sent_from_user) VALUES (%s,%s,%s)",
+        (text, chat_id, isUser),
+    )
     message_id = cursor.lastrowid
 
     conn.commit()
@@ -654,10 +740,14 @@ def add_message_to_db(text, chat_id, isUser):
 
     return message_id
 
+
 def add_prompt_to_db(prompt_text, workflow_id):
     conn, cursor = get_db_connection()
 
-    cursor.execute('INSERT INTO prompts (workflow_id, prompt_text) VALUES (%s, %s)', (workflow_id, prompt_text))
+    cursor.execute(
+        "INSERT INTO prompts (workflow_id, prompt_text) VALUES (%s, %s)",
+        (workflow_id, prompt_text),
+    )
 
     prompt_id = cursor.lastrowid
 
@@ -673,8 +763,8 @@ def add_answer_to_db(answer, workflow_id, citation_id):
 
     # Insert the answer into the prompt_answers table
     cursor.execute(
-        'INSERT INTO prompt_answers (prompt_id, citation_id, answer_text) VALUES (%s, %s, %s)',
-        (workflow_id, citation_id, answer)
+        "INSERT INTO prompt_answers (prompt_id, citation_id, answer_text) VALUES (%s, %s, %s)",
+        (workflow_id, citation_id, answer),
     )
     answer_id = cursor.lastrowid
 
@@ -683,6 +773,7 @@ def add_answer_to_db(answer, workflow_id, citation_id):
     cursor.close()
 
     return answer_id
+
 
 def retrieve_docs_from_db(chat_id, user_email):
     conn, cursor = get_db_connection()
@@ -704,8 +795,9 @@ def retrieve_docs_from_db(chat_id, user_email):
 
     return docs
 
+
 def delete_doc_from_db(doc_id, user_email):
-    #Deletes the document and the associated chunks in the db
+    # Deletes the document and the associated chunks in the db
     conn, cursor = get_db_connection()
 
     verification_query = """
@@ -732,6 +824,7 @@ def delete_doc_from_db(doc_id, user_email):
 
     return "success"
 
+
 def add_model_key_to_db(model_key, chat_id, user_email):
     conn, cursor = get_db_connection()
 
@@ -746,30 +839,32 @@ def add_model_key_to_db(model_key, chat_id, user_email):
 
     conn.commit()
 
-#For edgar
+
+# For edgar
 queryApi = QueryApi(api_key=sec_api_key)
+
 
 def check_valid_api(ticker):
     print("IN CHECK_VALID_API: ", ticker)
     year = 2023
 
-    ticker_query = 'ticker:({})'.format(ticker)
-    query_string = '{ticker_query} AND filedAt:[{year}-01-01 TO {year}-12-31] AND formType:"10-K" AND NOT formType:"10-K/A" AND NOT formType:NT'.format(ticker_query=ticker_query, year=year)
+    ticker_query = "ticker:({})".format(ticker)
+    query_string = '{ticker_query} AND filedAt:[{year}-01-01 TO {year}-12-31] AND formType:"10-K" AND NOT formType:"10-K/A" AND NOT formType:NT'.format(
+        ticker_query=ticker_query, year=year
+    )
 
     query = {
-        "query": { "query_string": {
-            "query": query_string,
-            "time_zone": "America/New_York"
-        } },
+        "query": {
+            "query_string": {"query": query_string, "time_zone": "America/New_York"}
+        },
         "from": "0",
         "size": "200",
-        "sort": [{ "filedAt": { "order": "desc" } }]
-      }
-
+        "sort": [{"filedAt": {"order": "desc"}}],
+    }
 
     response = queryApi.get_filings(query)
 
-    filings = response['filings']
+    filings = response["filings"]
 
     if not filings:
         return False
@@ -780,32 +875,33 @@ def check_valid_api(ticker):
 def download_10K_url_ticker(ticker):
     year = 2023
 
-    ticker_query = 'ticker:({})'.format(ticker)
-    query_string = '{ticker_query} AND filedAt:[{year}-01-01 TO {year}-12-31] AND formType:"10-K" AND NOT formType:"10-K/A" AND NOT formType:NT'.format(ticker_query=ticker_query, year=year)
+    ticker_query = "ticker:({})".format(ticker)
+    query_string = '{ticker_query} AND filedAt:[{year}-01-01 TO {year}-12-31] AND formType:"10-K" AND NOT formType:"10-K/A" AND NOT formType:NT'.format(
+        ticker_query=ticker_query, year=year
+    )
 
     query = {
-        "query": { "query_string": {
-            "query": query_string,
-            "time_zone": "America/New_York"
-        } },
+        "query": {
+            "query_string": {"query": query_string, "time_zone": "America/New_York"}
+        },
         "from": "0",
         "size": "200",
-        "sort": [{ "filedAt": { "order": "desc" } }]
-      }
-
+        "sort": [{"filedAt": {"order": "desc"}}],
+    }
 
     response = queryApi.get_filings(query)
 
-    filings = response['filings']
+    filings = response["filings"]
 
     if filings:
-       ticker=filings[0]['ticker']
-       url=filings[0]['linkToFilingDetails']
+        ticker = filings[0]["ticker"]
+        url = filings[0]["linkToFilingDetails"]
     else:
-       ticker = None
-       url = None
+        ticker = None
+        url = None
 
     return url, ticker
+
 
 def download_filing_as_pdf(url, ticker):
     API_ENDPOINT = "https://api.sec-api.io/filing-reader"
@@ -816,43 +912,45 @@ def download_filing_as_pdf(url, ticker):
 
     file_name = f"{ticker}.pdf"
 
-    with open(file_name, 'wb') as f:
+    with open(file_name, "wb") as f:
         f.write(response.content)
 
     return file_name
 
+
 def get_text_from_edgar(ticker):
     try:
-        text = get_form_by_ticker(ticker, '10-K', company='Anote', email='vidranatan@gmail.com')
+        text = get_form_by_ticker(
+            ticker, "10-K", company="Anote", email="vidranatan@gmail.com"
+        )
     except Exception as e:
         print(f"Error. This ticker is not valid. Please input a valid ticker")
         return
 
-    text = re.sub('<[^>]+>', '', text)
+    text = re.sub("<[^>]+>", "", text)
 
-    #get rid of blank lines
-    lines = text.split('\n')
+    # get rid of blank lines
+    lines = text.split("\n")
     non_blank_lines = [line for line in lines if line.strip()]
-    text = '\n'.join(non_blank_lines)
+    text = "\n".join(non_blank_lines)
 
-    #Get rid of certain sections
-    pattern = r'^X.*?\n-.*?\n(\+.*?\n)+.*?Period Type.*?\n'
-    text = re.sub(pattern, '', text, flags=re.DOTALL|re.MULTILINE)
+    # Get rid of certain sections
+    pattern = r'.*?\n-.*?\n.*?Period Type.*?\n'
+    text = re.sub(pattern, "", text, flags=re.DOTALL | re.MULTILINE)
 
-    #remove css
-    pattern = r'\..*?\{.*?\}'
-    text = re.sub(pattern, '', text, flags=re.DOTALL)
+    # remove css
+    pattern = r"\..*?\{.*?\}"
+    text = re.sub(pattern, "", text, flags=re.DOTALL)
 
-    #remove json like text
-    pattern = r'\{.*?\}'
-    text = re.sub(pattern, '', text, flags=re.DOTALL)
+    # remove json like text
+    pattern = r"\{.*?\}"
+    text = re.sub(pattern, "", text, flags=re.DOTALL)
 
     # pattern = r'\.xlsx.*'
-    #text = re.sub(pattern, '', text, flags=re.DOTALL)
-
-
+    # text = re.sub(pattern, '', text, flags=re.DOTALL)
 
     return text
+
 
 def add_ticker_to_chat_db(chat_id, ticker, user_email, isUpdate):
     conn, cursor = get_db_connection()
@@ -878,7 +976,7 @@ def add_ticker_to_chat_db(chat_id, ticker, user_email, isUpdate):
     return "Success"
 
 
-#specific to PDF reader
+# specific to PDF reader
 def get_text_from_single_file(file):
     reader = PyPDF2.PdfReader(file)
     text = ""
@@ -889,6 +987,7 @@ def get_text_from_single_file(file):
 
     return text
 
+
 def get_text_pages_from_single_file(file):
     reader = PyPDF2.PdfReader(file)
     pages_text = []
@@ -897,20 +996,26 @@ def get_text_pages_from_single_file(file):
         page_text = reader.pages[page_num].extract_text()
         pages_text.append(page_text)
 
+    return pages_text  # text
 
-    return pages_text #text
 
 def add_ticker_to_workflow_db(user_email, workflow_id, ticker):
     print("add_ticker_to_workflow_db")
     conn, cursor = get_db_connection()
 
     # Check if the ticker already exists
-    cursor.execute("SELECT id FROM tickers WHERE ticker_name = %s AND workflow_id = %s", (ticker, workflow_id))
+    cursor.execute(
+        "SELECT id FROM tickers WHERE ticker_name = %s AND workflow_id = %s",
+        (ticker, workflow_id),
+    )
     ticker_row = cursor.fetchone()
 
     if not ticker_row:
         # If the ticker doesn't exist for the workflow, insert it into the tickers table
-        cursor.execute("INSERT INTO tickers (ticker_name, workflow_id) VALUES (%s, %s)", (ticker, workflow_id))
+        cursor.execute(
+            "INSERT INTO tickers (ticker_name, workflow_id) VALUES (%s, %s)",
+            (ticker, workflow_id),
+        )
         conn.commit()
 
     cursor.close()
@@ -918,6 +1023,7 @@ def add_ticker_to_workflow_db(user_email, workflow_id, ticker):
     print("TICKER ADDED")
 
     return "Success"
+
 
 # Adding a prompt to a workflow
 def add_prompt_to_workflow_db(workflow_id, prompt_text):
@@ -931,6 +1037,7 @@ def add_prompt_to_workflow_db(workflow_id, prompt_text):
     conn.close()
 
     return "Success"
+
 
 def remove_ticker_from_workflow_db(workflow_id, ticker, user_email):
     conn, cursor = get_db_connection()
@@ -964,6 +1071,7 @@ def remove_ticker_from_workflow_db(workflow_id, ticker, user_email):
 
     return "Success"
 
+
 # Removing a prompt from a workflow
 def remove_prompt_from_workflow_db(prompt_id):
     conn, cursor = get_db_connection()
@@ -976,8 +1084,6 @@ def remove_prompt_from_workflow_db(prompt_id):
     conn.close()
 
     return "Success"
-
-
 
 
 def process_ticker_info_wf(user_email, workflow_id, ticker):
@@ -1015,31 +1121,32 @@ def process_prompt_answer(prompt, workflow_id, user_email):
     print(workflow_id)
     query = prompt.strip()
 
-    #This adds user message to db
+    # This adds user message to db
     add_prompt_to_db(query, workflow_id)
     print("SUCCESSFULLY ADDED PROMPT")
 
     # Get most relevant section from the document
     sources = get_relevant_chunks_wf(2, query, workflow_id, user_email)
     print("get_relevant_chunks")
-    sources_str = " ".join([", ".join(str(elem) for elem in source) for source in sources])
+    sources_str = " ".join(
+        [", ".join(str(elem) for elem in source) for source in sources]
+    )
 
     print("using existing chunks")
 
     print("using Claude")
-    anthropic = Anthropic(
-        api_key=os.environ.get("ANTHROPIC_API_KEY")
-    )
+    anthropic = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
     print("accessed Claude key")
     completion = anthropic.completions.create(
         model="claude-2",
         max_tokens_to_sample=700,
-        prompt = (
+        prompt=(
             f"{HUMAN_PROMPT} "
             f"You are a factual chatbot that answers questions about 10-K documents. You only answer with answers you find in the text, no outside information. "
             f"please address the question: {query}. "
             f"Consider the provided text as evidence: {sources_str}. "
-            f"{AI_PROMPT}")
+            f"{AI_PROMPT}"
+        ),
     )
     answer = completion.completion
     print("ANSWER: ", answer)
@@ -1055,14 +1162,14 @@ def process_prompt_answer(prompt, workflow_id, user_email):
     return jsonify(answer=answer)
 
 
-#for the demo
+# for the demo
 def ensure_demo_user_exists(user_email):
     conn, cursor = get_db_connection()
 
     cursor.execute("SELECT id FROM users WHERE email = %s", (user_email,))
     result = cursor.fetchone()
     if result:
-        return result['id']  # Assuming 'id' is the column name for user ID
+        return result["id"]  # Assuming 'id' is the column name for user ID
     else:
         # Insert demo user
         insert_query = """
@@ -1073,14 +1180,15 @@ def ensure_demo_user_exists(user_email):
         conn.commit()
         return cursor.lastrowid  # Return the newly created user ID
 
-#For the SDK
+
+# For the SDK
 def ensure_SDK_user_exists(user_email):
     conn, cursor = get_db_connection()
 
     cursor.execute("SELECT id FROM users WHERE email = %s", (user_email,))
     result = cursor.fetchone()
     if result:
-        return result['id']  # Assuming 'id' is the column name for user ID
+        return result["id"]  # Assuming 'id' is the column name for user ID
     else:
         # Insert demo user
         insert_query = """
@@ -1091,21 +1199,25 @@ def ensure_SDK_user_exists(user_email):
         conn.commit()
         return cursor.lastrowid  # Return the newly created user ID
 
+
 def get_chat_info(chat_id):
     conn, cursor = get_db_connection()
 
-    cursor.execute("SELECT model_type, associated_task FROM chats WHERE id = %s", (chat_id,))
+    cursor.execute(
+        "SELECT model_type, associated_task FROM chats WHERE id = %s", (chat_id,)
+    )
     result = cursor.fetchone()
 
     if result:
-        model_type = result['model_type']
-        associated_task = result['associated_task']
+        model_type = result["model_type"]
+        associated_task = result["associated_task"]
     else:
         model_type, associated_task = None, None
     cursor.close()
     conn.close()
 
     return model_type, associated_task
+
 
 def get_message_info(answer_id, user_email):
     conn, cursor = get_db_connection()
@@ -1124,16 +1236,18 @@ def get_message_info(answer_id, user_email):
     answer_data = cursor.fetchall()
 
     if not answer_data:
-        print("Either the answer does not exist or it doesn't belong to the specified user.")
+        print(
+            "Either the answer does not exist or it doesn't belong to the specified user."
+        )
         return None, None, None
 
     answer = answer_data[0]
-    #chunks = answer_data[0]['chunk_id'] and [{
+    # chunks = answer_data[0]['chunk_id'] and [{
     #    'id': chunk['chunk_id'],
     #    'start_index': chunk['start_index'],
     #    'end_index': chunk['end_index'],
     #    'page_number': chunk['page_number']
-    #} for chunk in answer_data if chunk['chunk_id']] or []
+    # } for chunk in answer_data if chunk['chunk_id']] or []
 
     # Query to find the previous message (question) in the same chat, sent from the user
     question_query = """
@@ -1144,37 +1258,41 @@ def get_message_info(answer_id, user_email):
     LIMIT 1
     """
 
-    cursor.execute(question_query, (answer_id, answer['chat_id']))
+    cursor.execute(question_query, (answer_id, answer["chat_id"]))
     question = cursor.fetchone()
 
     cursor.close()
     return question, answer
 
+
 def get_text_from_url(web_url):
     response = requests.get(web_url)
     result = p.from_buffer(response.content)
-    text = result["content"].strip()
+    text = result.get("content", "").strip()
     text = text.replace("\n", "").replace("\t", "")
-    #text = "".join(text)
     return text
+
 
 # Add a new organization to the database
 def add_organization_to_db(name, organization_type, website_url=None):
     conn, cursor = get_db_connection()
     try:
-        cursor.execute('INSERT INTO organizations (name, organization_type, website_url) VALUES (%s, %s, %s)',
-                       (name, organization_type, website_url))
+        cursor.execute(
+            "INSERT INTO organizations (name, organization_type, website_url) VALUES (%s, %s, %s)",
+            (name, organization_type, website_url),
+        )
         conn.commit()
         organization_id = cursor.lastrowid
         return organization_id
     finally:
         conn.close()
 
+
 # Get organization details from the database
 def get_organization_from_db(organization_id):
     conn, cursor = get_db_connection()
     try:
-        cursor.execute('SELECT * FROM organizations WHERE id = %s', [organization_id])
+        cursor.execute("SELECT * FROM organizations WHERE id = %s", [organization_id])
         organization = cursor.fetchone()
         return organization
     finally:

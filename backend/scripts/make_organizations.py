@@ -56,7 +56,9 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
-df = pd.read_csv("/Users/natanvidra/Workspace/FinanceGPT/backend/scripts/cleaned_enterprise_list.csv")
+df = pd.read_csv(
+    "/Users/natanvidra/Workspace/FinanceGPT/backend/scripts/cleaned_enterprise_list.csv"
+)
 
 
 # Helper function to scrape sub-URLs from the main website
@@ -66,20 +68,21 @@ def get_links(initial_url: str):
     initial_url = "https://www." + initial_url
     response = requests.get(initial_url)
     # Parse the HTML code with BeautifulSoup
-    soup = BeautifulSoup(response.text, 'html.parser')
+    soup = BeautifulSoup(response.text, "html.parser")
     # Find all <a> tags and extract the href attribute (the hyperlink)
     links = []
     links_text = []
-    for link in soup.find_all('a'):
-        if type(link.get('href')) == str:
-            if link.get('href')[0] == "/":
-                web_url = initial_url.rstrip("/") + link.get('href')  # Full URL
+    for link in soup.find_all("a"):
+        if type(link.get("href")) == str:
+            if link.get("href")[0] == "/":
+                web_url = initial_url.rstrip("/") + link.get("href")  # Full URL
                 # web_text = get_text_from_url(web_url)
                 # if len(web_text) > 0:
                 links.append(web_url)
                 # links_text.append(web_text)
     return links
     # return links, links_text
+
 
 # # Helper function to extract text from a URL
 # def get_text_from_url(web_url):
@@ -91,9 +94,18 @@ def get_links(initial_url: str):
 # call get_links for each row in the dataframe
 for index, row in df.iterrows():
     try:
-        links = get_links(row['domain'])
+        links = get_links(row["domain"])
         # save new csv with links, company name and domain for each company
-        df_links = pd.DataFrame({'links': links, 'company_name': row['Company Name'], 'domain': row['domain']})
-        df_links.to_csv(f"/Users/natanvidra/Workspace/FinanceGPT/backend/scripts/subdomains/{row['Company Name']}.csv", index=False)
+        df_links = pd.DataFrame(
+            {
+                "links": links,
+                "company_name": row["Company Name"],
+                "domain": row["domain"],
+            }
+        )
+        df_links.to_csv(
+            f"/Users/natanvidra/Workspace/FinanceGPT/backend/scripts/subdomains/{row['Company Name']}.csv",
+            index=False,
+        )
     except:
         continue
