@@ -104,7 +104,7 @@ const Chatbot = (props) => {
               );
 
               const pollData = await pollResponse.json();
-              console.log(`Poll response for chat ${id}:`, pollData);
+              console.log("Poll response for chat %s:", id, pollData);
 
               if (pollData.messages?.length > 0) {
                 // We got the response! Update messages

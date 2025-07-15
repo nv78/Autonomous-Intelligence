@@ -1582,7 +1582,8 @@ def gtm_respond():
         reply = "Testing!"
         return jsonify({"response": reply})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"Exception occurred: {e}")  # Log the exception details server-side
+        return jsonify({"error": "An internal server error occurred"}), 500
 
 @app.route("/test", methods=["GET"])
 def test():
