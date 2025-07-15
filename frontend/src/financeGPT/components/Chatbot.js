@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { createPortal } from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPaperPlane, faDownload, faFile } from "@fortawesome/free-solid-svg-icons";
+import { faPaperPlane, faFile } from "@fortawesome/free-solid-svg-icons";
 import "../styles/Chatbot.css";
 import fetcher from "../../http/RequestConfig";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -18,9 +17,6 @@ const Chatbot = (props) => {
   const [docsViewerOpen, setDocsViewerOpen] = useState(false);
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [uploadButtonClicked, setUploadButtonClicked] = useState(false);
-
-  // Reset model key state and confirmation popup
-  const [showConfirmResetKey, setShowConfirmResetKey] = useState(false);
 
   // Load existing chat messages
   const handleLoadChat = useCallback(async () => {
@@ -73,6 +69,51 @@ const Chatbot = (props) => {
               location.state.message
             );
           }
+
+          // Set up polling to check for the response
+          const pollForResponse = async () => {
+            try {
+              const pollResponse = await fetcher(
+                "retrieve-messages-from-chat",
+                {
+                  method: "POST",
+                  headers: {
+                    Accept: "application/json",
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    chat_id: id,
+                    chat_type: 0,
+                  }),
+                }
+              );
+
+              const pollData = await pollResponse.json();
+
+              if (pollData.messages?.length > 0) {
+                // We got the response! Update messages
+                localStorage.removeItem(`pending-message-${id}`);
+                const transformedMessages = pollData.messages.map((item) => ({
+                  id: item.id,
+                  chat_id: id,
+                  content: item.message_text,
+                  role: item.sent_from_user === 1 ? "user" : "assistant",
+                  relevant_chunks: item.relevant_chunks,
+                }));
+                setMessages(transformedMessages);
+                setIsFirstMessageSent(transformedMessages.length > 0);
+              } else {
+                // Still no response, poll again in 2 seconds
+                setTimeout(pollForResponse, 2000);
+              }
+            } catch (error) {
+              console.error("Error polling for response:", error);
+              // Stop polling on error
+            }
+          };
+
+          // Start polling after a short delay
+          setTimeout(pollForResponse, 2000);
         } else {
           // No messages and no pending message - empty chat
           setMessages([]);
@@ -446,7 +487,7 @@ const Chatbot = (props) => {
         )}
 
         {/* Input form */}
-        <div className="flex w-full justify-center px-4">
+        <div className="flex w-full justify-center my-5 px-4">
           <div className="flex items-center gap-3 w-full max-w-4xl">
             {/* Left side - Upload button */}
             <button
@@ -486,7 +527,7 @@ const Chatbot = (props) => {
             {/* Center - Input form */}
             <form
               id="chat-form"
-              className="flex-1 mt-3"
+              className="flex-1"
               onSubmit={handleSendMessage}
             >
               <div className="relative">
