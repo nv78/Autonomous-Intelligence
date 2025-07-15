@@ -569,7 +569,7 @@ def reset_everything():
 
         return "Reset was successful!"
     except Exception as e:
-        return f"Failed to delete DB folder: {str(e)}", 500
+        return f"Failed to delete DB folder",
 
 
 @app.route("/download-chat-history", methods=["POST"])
@@ -803,9 +803,7 @@ def ingest_pdfs():
 
     return jsonify({"error": "Invalid JWT"}), 200
 
-    # return text, filename
-
-
+    
 @app.route("/api/ingest-pdf-wf", methods=["POST"])
 def ingest_pdfs_wf():
     workflow_id = request.form["workflow_id"]

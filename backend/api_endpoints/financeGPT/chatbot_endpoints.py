@@ -935,7 +935,7 @@ def get_text_from_edgar(ticker):
     text = "\n".join(non_blank_lines)
 
     # Get rid of certain sections
-    pattern = r"^X.*?\n-.*?\n(\+.*?\n)+.*?Period Type.*?\n"
+    pattern = r'.*?\n-.*?\n.*?Period Type.*?\n'
     text = re.sub(pattern, "", text, flags=re.DOTALL | re.MULTILINE)
 
     # remove css
