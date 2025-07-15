@@ -1,14 +1,14 @@
 import { useNavigate } from "react-router-dom";
-import React, { useState, useEffect, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
 import fetcher from "../../http/RequestConfig";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faPen,
-  faTrashCan,
-  faCommentDots,
-  faPenToSquare,
-  faDownload,
-} from "@fortawesome/free-solid-svg-icons";
+import { faTrashCan } from "@fortawesome/free-solid-svg-icons";
 
 import Sources from "./Sources";
 import Select from "react-select";
@@ -17,7 +17,7 @@ import { Modal } from "flowbite-react";
 import { FaDatabase } from "react-icons/fa";
 import { connectorOptions } from "../../constants/RouteConstants";
 
-function SidebarChatbot(props) {
+const SidebarChatbot = forwardRef((props, ref) => {
   const [docs, setDocs] = useState([]);
   const [showConfirmPopup, setShowConfirmPopup] = useState(false);
 
@@ -43,6 +43,11 @@ function SidebarChatbot(props) {
   const [fileContent, setFileContent] = useState(null);
   const [loadingFile, setLoadingFile] = useState(false);
 
+  // Expose openFileDialog method to parent components
+  useImperativeHandle(ref, () => ({
+    openFileDialog,
+  }));
+
   const urlObject = new URL(window.location.origin);
 
   var hostname = urlObject.hostname;
@@ -66,12 +71,20 @@ function SidebarChatbot(props) {
     props.handleForceUpdate();
   }, [props.confirmedModelKey]);
 
+  // Handle upload trigger from chatbot
+  useEffect(() => {
+    if (props.triggerUpload) {
+      openFileDialog();
+      props.resetUploadTrigger();
+    }
+  }, [props.triggerUpload]);
+
   // File upload handlers
   const handleFileSelect = async (event) => {
     console.log("File selection event triggered");
     const files = Array.from(event.target.files);
     console.log("Files selected:", files);
-    
+
     if (files.length === 0) {
       return;
     }
@@ -86,7 +99,7 @@ function SidebarChatbot(props) {
     const newFiles = [...selectedFiles, ...files];
     setSelectedFiles(newFiles);
     console.log("Updated selected files:", newFiles);
-    
+
     // Clear the input value so the same file can be selected again if needed
     event.target.value = "";
 
@@ -98,7 +111,7 @@ function SidebarChatbot(props) {
       console.error("Auto-upload failed:", error);
       alert("Failed to upload files. Please try again.");
       // Remove the files that failed to upload from selectedFiles
-      setSelectedFiles((prev) => prev.filter(file => !files.includes(file)));
+      setSelectedFiles((prev) => prev.filter((file) => !files.includes(file)));
     }
   };
 
@@ -132,6 +145,10 @@ function SidebarChatbot(props) {
     setIsUploading(true);
     setUploadProgress(0);
 
+    // Update parent state
+    if (props.setIsUploading) props.setIsUploading(true);
+    if (props.setUploadProgress) props.setUploadProgress(0);
+
     try {
       const formData = new FormData();
       // Use the same format as the backend expects: files[]
@@ -148,6 +165,8 @@ function SidebarChatbot(props) {
           if (event.lengthComputable) {
             const progress = Math.round((event.loaded * 100) / event.total);
             setUploadProgress(progress);
+            // Update parent state
+            if (props.setUploadProgress) props.setUploadProgress(progress);
           }
         };
 
@@ -158,9 +177,14 @@ function SidebarChatbot(props) {
               setIsUploading(false);
               setUploadProgress(100);
 
+              // Update parent state
+              if (props.setIsUploading) props.setIsUploading(false);
+              if (props.setUploadProgress) props.setUploadProgress(100);
+
               // Clear progress after a short delay
               setTimeout(() => {
                 setUploadProgress(0);
+                if (props.setUploadProgress) props.setUploadProgress(0);
               }, 1000);
 
               // Return file info for display in chat
@@ -185,11 +209,17 @@ function SidebarChatbot(props) {
             } catch (e) {
               setIsUploading(false);
               setUploadProgress(0);
+              // Update parent state
+              if (props.setIsUploading) props.setIsUploading(false);
+              if (props.setUploadProgress) props.setUploadProgress(0);
               reject(new Error("Invalid response format"));
             }
           } else {
             setIsUploading(false);
             setUploadProgress(0);
+            // Update parent state
+            if (props.setIsUploading) props.setIsUploading(false);
+            if (props.setUploadProgress) props.setUploadProgress(0);
             reject(new Error(`Upload failed with status: ${xhr.status}`));
           }
         };
@@ -197,6 +227,9 @@ function SidebarChatbot(props) {
         xhr.onerror = () => {
           setIsUploading(false);
           setUploadProgress(0);
+          // Update parent state
+          if (props.setIsUploading) props.setIsUploading(false);
+          if (props.setUploadProgress) props.setUploadProgress(0);
           reject(new Error("Network error during upload"));
         };
 
@@ -222,14 +255,37 @@ function SidebarChatbot(props) {
       console.error("File upload error:", error);
       setIsUploading(false);
       setUploadProgress(0);
+      // Update parent state
+      if (props.setIsUploading) props.setIsUploading(false);
+      if (props.setUploadProgress) props.setUploadProgress(0);
       throw error; // Re-throw to handle in calling function
     }
   };
 
   const openFileDialog = () => {
-    console.log("Opening file dialog...");
-    console.log("File input ref:", fileInputRef.current);
-    fileInputRef.current?.click();
+    if (fileInputRef.current) {
+      // Try multiple approaches to ensure the file dialog opens
+      try {
+        // Method 1: Direct click
+        fileInputRef.current.click();
+      } catch (error) {
+        console.error("Direct click failed:", error);
+
+        // Method 2: Dispatch click event
+        try {
+          const clickEvent = new MouseEvent("click", {
+            bubbles: true,
+            cancelable: true,
+            view: window,
+          });
+          fileInputRef.current.dispatchEvent(clickEvent);
+        } catch (dispatchError) {
+          console.error("Event dispatch failed:", dispatchError);
+        }
+      }
+    } else {
+      console.error("File input ref is null!");
+    }
   };
 
   // Handle viewing uploaded documents
@@ -292,81 +348,6 @@ function SidebarChatbot(props) {
       console.error("Error viewing uploaded document:", error);
       setLoadingFile(false);
       setFileContent({ error: "Error loading document" });
-    }
-  };
-
-  const handleLocalFileClick = (file) => {
-    try {
-      setCurrentFile(file);
-      setFileModalOpen(true);
-      setLoadingFile(true);
-      setFileContent(null);
-
-      // For local files, we need to create a blob URL
-      const fileUrl = URL.createObjectURL(file);
-      const fileName = file.name || "";
-      const fileExtension = fileName.split(".").pop()?.toLowerCase();
-
-      setTimeout(() => {
-        if (
-          ["jpg", "jpeg", "png", "gif", "bmp", "webp"].includes(fileExtension)
-        ) {
-          // Image file
-          setFileContent({
-            type: "image",
-            url: fileUrl,
-            name: fileName,
-            isLocal: true,
-          });
-          setLoadingFile(false);
-        } else if (fileExtension === "pdf") {
-          // PDF file
-          setFileContent({
-            type: "pdf",
-            url: fileUrl,
-            name: fileName,
-            isLocal: true,
-          });
-          setLoadingFile(false);
-        } else if (["txt", "md", "csv"].includes(fileExtension)) {
-          // Text file - read content
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            setFileContent({
-              type: "text",
-              content: e.target.result,
-              name: fileName,
-              isLocal: true,
-            });
-            setLoadingFile(false);
-          };
-          reader.onerror = () => {
-            setFileContent({
-              type: "download",
-              url: fileUrl,
-              name: fileName,
-              isLocal: true,
-            });
-            setLoadingFile(false);
-          };
-          reader.readAsText(file);
-        } else {
-          // Other file types - show info but can't preview
-          setFileContent({
-            type: "download",
-            url: fileUrl,
-            name: fileName,
-            isLocal: true,
-            size: file.size,
-            lastModified: file.lastModified,
-          });
-          setLoadingFile(false);
-        }
-      }, 100); // Small delay to show loading state
-    } catch (error) {
-      console.error("Error opening local file:", error);
-      setLoadingFile(false);
-      setFileContent({ error: "Error loading file" });
     }
   };
 
@@ -880,24 +861,14 @@ function SidebarChatbot(props) {
               <h2 className="text-[#FFFFFF] uppercase tracking-wide font-semibold text-s">
                 Uploaded Files
               </h2>
-              <button
-                onClick={openFileDialog}
-                disabled={isUploading || !props.selectedChatId}
-                className={`flex items-center gap-1 px-2 py-1 text-xs rounded-lg border transition-colors ${
-                  isUploading 
-                    ? "bg-gray-500 border-gray-400 text-gray-300 cursor-not-allowed"
-                    : !props.selectedChatId
-                    ? "bg-gray-600 border-gray-500 text-gray-400 cursor-not-allowed"
-                    : "bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600"
-                }`}
-                title={!props.selectedChatId ? "Please select or create a chat first" : "Add files"}
-              >
-                <FontAwesomeIcon icon={faDownload} />
-                <span>
-                  {isUploading ? "Uploading..." : "Add Files"}
-                </span>
-              </button>
             </div>
+
+            {/* Show message when no chat is selected */}
+            {!props.selectedChatId && (
+              <div className="mb-2 text-xs text-yellow-400">
+                Please select or create a chat to view files
+              </div>
+            )}
 
             {/* Hidden file input */}
             <input
@@ -906,30 +877,13 @@ function SidebarChatbot(props) {
               onChange={handleFileSelect}
               multiple
               accept="image/*,.pdf,.doc,.docx,.txt"
-              className="hidden"
+              style={{
+                position: "absolute",
+                left: "-9999px",
+                opacity: 0,
+                pointerEvents: "none",
+              }}
             />
-
-            {/* File upload progress bar */}
-            {isUploading && (
-              <div className="mb-2">
-                <div className="text-xs text-gray-400 mb-1">
-                  Uploading files...
-                </div>
-                <div className="w-full bg-gray-700 rounded-full h-2">
-                  <div
-                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${uploadProgress}%` }}
-                  ></div>
-                </div>
-              </div>
-            )}
-
-            {/* Show message when no chat is selected */}
-            {!props.selectedChatId && (
-              <div className="mb-2 text-xs text-yellow-400">
-                Please select or create a chat to upload files
-              </div>
-            )}
 
             {/* Map through docs */}
             <div className="bg-black min-h-[30vh] h-[30vh] overflow-y-auto">
@@ -1259,6 +1213,6 @@ function SidebarChatbot(props) {
       )}
     </>
   );
-}
+});
 
 export default SidebarChatbot;

@@ -1,4 +1,4 @@
-import React, { Component, useState, useEffect } from "react";
+import React, { Component, useState, useEffect, useRef } from "react";
 import Navbarchatbot from "./NavbarChatbot";
 import Chatbot from "./Chatbot";
 import "../styles/Chatbot.css";
@@ -25,6 +25,12 @@ function HomeChatbot() {
   const [loading, setLoading] = useState(true);
   const { id } = useParams();
   const location = useLocation();
+
+  // Upload-related state
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [triggerUpload, setTriggerUpload] = useState(false);
+  const sidebarRef = useRef(null);
 
   const handleMenu = () => {
     setMenu((prev) => !prev);
@@ -54,6 +60,21 @@ function HomeChatbot() {
     const response_data = await response.json();
     handleChatSelect(response_data.chat_id);
     return response_data.chat_id;
+  };
+
+  // Handle upload trigger from chatbot - direct approach
+  const handleUploadClick = () => {
+    if (sidebarRef.current && sidebarRef.current.openFileDialog) {
+      sidebarRef.current.openFileDialog();
+    } else {
+      // Fallback to trigger approach
+      setTriggerUpload(true);
+    }
+  };
+
+  // Reset upload trigger (called by sidebar after handling)
+  const resetUploadTrigger = () => {
+    setTriggerUpload(false);
   };
 
   useEffect(() => {
@@ -126,10 +147,14 @@ function HomeChatbot() {
             activeMessageIndex={activeMessageIndex}
             setActiveMessageIndex={setActiveMessageIndex}
             setRelevantChunk={setRelevantChunk}
+            isUploading={isUploading}
+            uploadProgress={uploadProgress}
+            onUploadClick={handleUploadClick}
           />
         )}
         <div className="w-72 hidden lg:block">
           <SidebarChatbot
+            ref={sidebarRef}
             selectedChatId={selectedChatId}
             chat_type={currTask}
             createNewChat={createNewChat}
@@ -145,6 +170,10 @@ function HomeChatbot() {
             setConfirmedModelKey={setConfirmedModelKey}
             relevantChunk={relevantChunk}
             activeMessageIndex={activeMessageIndex}
+            triggerUpload={triggerUpload}
+            resetUploadTrigger={resetUploadTrigger}
+            setIsUploading={setIsUploading}
+            setUploadProgress={setUploadProgress}
           />
         </div>
         {/* {currTask === 1 && (

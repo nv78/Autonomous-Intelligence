@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPaperPlane } from "@fortawesome/free-solid-svg-icons";
+import { faPaperPlane, faDownload } from "@fortawesome/free-solid-svg-icons";
 import "../styles/Chatbot.css";
 import fetcher from "../../http/RequestConfig";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -17,6 +17,10 @@ const Chatbot = (props) => {
   const [uploadedDocs, setUploadedDocs] = useState([]);
   const [docsViewerOpen, setDocsViewerOpen] = useState(false);
   const [loadingDocs, setLoadingDocs] = useState(false);
+  const [uploadButtonClicked, setUploadButtonClicked] = useState(false);
+
+  // Reset model key state and confirmation popup
+  const [showConfirmResetKey, setShowConfirmResetKey] = useState(false);
 
   // Load existing chat messages
   const handleLoadChat = useCallback(async () => {
@@ -451,6 +455,17 @@ const Chatbot = (props) => {
             onSubmit={handleSendMessage}
           >
             <div className="w-full">
+              {/* Show uploaded files indicator */}
+              {uploadedDocs.length > 0 && (
+                <div className="mb-2 text-xs text-blue-400 flex items-center gap-1">
+                  <span>📄</span>
+                  <span>
+                    {uploadedDocs.length} file
+                    {uploadedDocs.length !== 1 ? "s" : ""} uploaded
+                  </span>
+                </div>
+              )}
+
               {/* Textarea */}
               <textarea
                 className="w-full border-none resize-none text-lg px-2 focus:ring-0 focus:outline-none text-gray-700 placeholder:text-gray-500 bg-transparent"
@@ -463,8 +478,60 @@ const Chatbot = (props) => {
               />
 
               {/* Action buttons */}
-              <div className="flex justify-end items-center mt-2">
-                {/* Send button */}
+              <div className="flex justify-between items-center mt-2">
+                {/* Left side - Upload button */}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (props.onUploadClick) {
+                        setUploadButtonClicked(true);
+                        props.onUploadClick();
+                        // Reset the visual state after a short delay
+                        setTimeout(() => setUploadButtonClicked(false), 1000);
+                      }
+                    }}
+                    disabled={props.isUploading || !id}
+                    className={`flex items-center gap-1 px-2 py-1 text-xs rounded-lg border transition-colors ${
+                      uploadButtonClicked
+                        ? "bg-blue-500 border-blue-400 text-white"
+                        : props.isUploading
+                        ? "bg-gray-500 border-gray-400 text-gray-300 cursor-not-allowed"
+                        : !id
+                        ? "bg-gray-600 border-gray-500 text-gray-400 cursor-not-allowed"
+                        : "bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600"
+                    }`}
+                    title={
+                      !id ? "Please select or create a chat first" : "Add files"
+                    }
+                  >
+                    <FontAwesomeIcon icon={faDownload} />
+                    <span>
+                      {uploadButtonClicked
+                        ? "Opening..."
+                        : props.isUploading
+                        ? "Uploading..."
+                        : "Add Files"}
+                    </span>
+                  </button>
+
+                  {/* File upload progress */}
+                  {props.isUploading && props.uploadProgress !== undefined && (
+                    <div className="flex items-center gap-2">
+                      <div className="w-20 bg-gray-700 rounded-full h-1">
+                        <div
+                          className="bg-blue-600 h-1 rounded-full transition-all duration-300"
+                          style={{ width: `${props.uploadProgress}%` }}
+                        ></div>
+                      </div>
+                      <span className="text-xs text-gray-400">
+                        {props.uploadProgress}%
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Right side - Send button */}
                 <button
                   type="submit"
                   disabled={!message || message.trim() === ""}
