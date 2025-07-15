@@ -56,6 +56,8 @@ import anthropic
 from anthropic import Anthropic, HUMAN_PROMPT, AI_PROMPT
 from datasets import Dataset
 import re
+import os 
+from flask import session
 import ragas
 from ragas.metrics import (
     faithfulness,
@@ -96,6 +98,8 @@ app.register_blueprint(japanese_blueprint)
 app.register_blueprint(korean_blueprint)
 app.register_blueprint(spanish_blueprint)
 app.register_blueprint(arabic_blueprint)
+
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret")
 
 #if ray.is_initialized() == False:
    #ray.init(logging_level="INFO", log_to_driver=True)
