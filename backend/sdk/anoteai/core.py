@@ -6,12 +6,10 @@ import csv
 from handlers.public_handlers import *
 from handlers.private_handlers import *
 
-
 class ModelType(IntEnum):
     FTGPT = 0
     LLAMA3 = 1
     MLM = 2
-
 
 def _open_files(document_files):
     files = []
@@ -20,21 +18,19 @@ def _open_files(document_files):
     else:
         for file_path in document_files:
             file_name = os.path.basename(file_path)
-            files.append(("files[]", (file_name, open(file_path, "rb"), "text/plain")))
+            files.append(('files[]', (file_name, open(file_path, 'rb'), 'text/plain')))
         return files
 
-
 def _open_training_data(x_train_csv, y_train_csv):
-    with open(x_train_csv, mode="r", encoding="utf-8") as csvfile:
+    with open(x_train_csv, mode='r', encoding='utf-8') as csvfile:
         csv_reader = csv.reader(csvfile)
         x_train = [row[0] for row in csv_reader]
 
-    with open(y_train_csv, mode="r", encoding="utf-8") as csvfile:
+    with open(y_train_csv, mode='r', encoding='utf-8') as csvfile:
         csv_reader = csv.reader(csvfile)
         y_train = [row[0] for row in csv_reader]
 
     return x_train, y_train
-
 
 def _close_files(files):
     # Close files that were opened for document paths
@@ -42,16 +38,15 @@ def _close_files(files):
         file_obj = file_tuple[1]  # Closing the file object
         file_obj.close()
 
-
 class PrivateChatbot:
     def __init__(self, api_key, is_private, model_id):
-        self.API_BASE_URL = "http://localhost:5000"
-        # self.API_BASE_URL = 'https://api.privatechatbot.ai'
+        self.API_BASE_URL = 'http://localhost:5000'
+        #self.API_BASE_URL = 'https://api.privatechatbot.ai'
         self.is_private = is_private
         self.model_id = model_id
         self.headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}",
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {api_key}'
         }
 
     def upload(self, task_type, model_type, ticker=None, file_paths=None):
@@ -74,40 +69,18 @@ class PrivateChatbot:
             return {"error": "Model type is not set. Please enter a model type"}
 
         if ticker is None and file_paths is None:
-            return {
-                "error": "You must enter at least one of the following: ticker or file_paths"
-            }
+             return {"error": "You must enter at least one of the following: ticker or file_paths"}
 
         if self.is_private == False:
             if model_type != "gpt" and model_type != "claude":
-                return {
-                    "error": "Model type is not valid. Please enter a valid model type"
-                }
-            return upload_public(
-                self.API_BASE_URL,
-                self.headers,
-                task_type,
-                model_type,
-                ticker,
-                file_paths,
-            )
+                return {"error": "Model type is not valid. Please enter a valid model type"}
+            return upload_public(self.API_BASE_URL, self.headers, task_type, model_type, ticker, file_paths)
         else:
             if model_type != "llama" and model_type != "mistral":
-                return {
-                    "error": "Model type is not valid. Please enter a valid model type"
-                }
+                return {"error": "Model type is not valid. Please enter a valid model type"}
             return upload_private(task_type, model_type, ticker, file_paths)
 
-    def train(
-        self,
-        model_name,
-        fine_tuning_type,
-        x_train_csv,
-        y_train_csv,
-        document_files,
-        model_type=ModelType.FTGPT,
-        is_private=False,
-    ):
+    def train(self, model_name, fine_tuning_type, x_train_csv, y_train_csv, document_files, model_type = ModelType.FTGPT, is_private=False):
         """
         Train or Fine Tune a model via supervised or unsupervised fine tuning
 
@@ -145,14 +118,12 @@ class PrivateChatbot:
             if response.status_code == 200:
                 try:
                     response_data = response.json()
-                    self.model_id = response_data.get("modelId")
+                    self.model_id = response_data.get('modelId')
                     return response_data
                 except requests.exceptions.JSONDecodeError:
                     print("Failed to decode JSON response for Train Supervised")
             else:
-                print(
-                    f"Supervised fine tuning request failed with status code {response.status_code}"
-                )
+                print(f"Supervised fine tuning request failed with status code {response.status_code}")
             return {}
 
         elif fine_tuning_type == "unsupervised":
@@ -171,26 +142,15 @@ class PrivateChatbot:
             if response.status_code == 200:
                 try:
                     response_data = response.json()
-                    self.model_id = response_data.get("modelId")
+                    self.model_id = response_data.get('modelId')
                     return response_data
                 except requests.exceptions.JSONDecodeError:
                     print("Failed to decode JSON response for Train Unsupervised")
             else:
-                print(
-                    f"Unsupervised fine tuning request failed with status code {response.status_code}"
-                )
+                print(f"Unsupervised fine tuning request failed with status code {response.status_code}")
             return {}
 
-    def predict(
-        self,
-        model_name,
-        model_id,
-        question_text,
-        context_text=None,
-        question_csv=None,
-        document_files=None,
-        model_type=ModelType.GPT,
-    ):
+    def predict(self, model_name, model_id, question_text, context_text=None, question_csv=None, document_files = None, model_type = ModelType.GPT):
         """Make predictions based on a dataset uploaded.
 
         Args:
@@ -213,7 +173,7 @@ class PrivateChatbot:
             "modelType": model_type,
             "questionText": question_text,
             "additionalText": context_text,
-            "questionCSV": question_csv,
+            "questionCSV": question_csv
         }
         response = requests.post(url, files=files, data=data, headers=self.headers)
 
@@ -241,9 +201,7 @@ class PrivateChatbot:
         """
 
         if not chat_id:
-            return {
-                "error": "Chat ID is not set. Please upload documents first and enter the chat ID."
-            }
+            return {"error": "Chat ID is not set. Please upload documents first and enter the chat ID."}
 
         if not message:
             return {"error": "Message is not set. Please enter a message to send."}
@@ -253,12 +211,13 @@ class PrivateChatbot:
             data = {
                 "chat_id": chat_id,
                 "message": message,
-                "model_key": finetuned_model_key,
+                "model_key": finetuned_model_key
             }
             response = requests.post(url, json=data, headers=self.headers)
             return response.json()
         else:
             return chat_private(chat_id, message, finetuned_model_key)
+
 
     def evaluate(self, message_id):
         """Evaluate predictions on one or multiple documents/text.
@@ -275,7 +234,7 @@ class PrivateChatbot:
 
         if self.is_private == False:
             url = f"{self.API_BASE_URL}/public/evaluate"
-            data = {"message_id": message_id}
+            data = {'message_id': message_id}
             response = requests.post(url, json=data, headers=self.headers)
             return response.json()
         else:
