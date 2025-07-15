@@ -189,7 +189,7 @@ function ChatHistory(props) {
           document.body
         )}
 
-      <div className="px-3 mt-2">
+      <div className="px-3 mt-12">
         <h2
           className={`text-xl text-anoteblack-100 ${
             chats.length === 0 ? "hidden" : ""

@@ -54,7 +54,7 @@ function NavbarChatbot(props) {
             : "w-0 h-0 overflow-hidden md:relative top-0 inset-0 left-0 z-50 hidden  opacity-0 pointer-events-none "
         } md:max-w-none`}
       >
-        <div className="flex mb-2 bg-transparent items-center sticky top-0 ">
+        <div className="flex items-center bg-anoteblack-800 w-full  fixed top-0 ">
           <div className="h-10 w-10  bg-center bg-contain bg-[url('../public/logonew.png')] dark:bg-[url('../public/logonew.png')]"></div>
           <div className="text-anoteblack-100 font-bold text-xl">Panacea</div>
           <button

@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPaperPlane, faFile } from "@fortawesome/free-solid-svg-icons";
+import {
+  faPaperPlane,
+  faFile,
+} from "@fortawesome/free-solid-svg-icons";
 import "../styles/Chatbot.css";
 import fetcher from "../../http/RequestConfig";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -17,6 +20,7 @@ const Chatbot = (props) => {
   const [docsViewerOpen, setDocsViewerOpen] = useState(false);
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [uploadButtonClicked, setUploadButtonClicked] = useState(false);
+  const pollingTimeoutRef = useRef(null);
 
   // Load existing chat messages
   const handleLoadChat = useCallback(async () => {
@@ -71,7 +75,18 @@ const Chatbot = (props) => {
           }
 
           // Set up polling to check for the response
+          let pollAttempts = 0;
+          const maxPollAttempts = 30; // 60 seconds maximum (30 * 2 seconds)
+          
+          // Clear any existing polling timeout
+          if (pollingTimeoutRef.current) {
+            clearTimeout(pollingTimeoutRef.current);
+          }
+          
           const pollForResponse = async () => {
+            pollAttempts++;
+            console.log(`Polling attempt ${pollAttempts}/${maxPollAttempts} for chat ${id}`);
+            
             try {
               const pollResponse = await fetcher(
                 "retrieve-messages-from-chat",
@@ -89,9 +104,11 @@ const Chatbot = (props) => {
               );
 
               const pollData = await pollResponse.json();
+              console.log(`Poll response for chat ${id}:`, pollData);
 
               if (pollData.messages?.length > 0) {
                 // We got the response! Update messages
+                console.log(`Messages received for chat ${id}, stopping polling`);
                 localStorage.removeItem(`pending-message-${id}`);
                 const transformedMessages = pollData.messages.map((item) => ({
                   id: item.id,
@@ -102,18 +119,50 @@ const Chatbot = (props) => {
                 }));
                 setMessages(transformedMessages);
                 setIsFirstMessageSent(transformedMessages.length > 0);
+                pollingTimeoutRef.current = null; // Clear the ref
+                return; // Stop polling
+              } else if (pollAttempts < maxPollAttempts) {
+                // Still no response, poll again in 2 seconds if we haven't exceeded max attempts
+                console.log(`No messages yet for chat ${id}, continuing polling...`);
+                pollingTimeoutRef.current = setTimeout(pollForResponse, 2000);
               } else {
-                // Still no response, poll again in 2 seconds
-                setTimeout(pollForResponse, 2000);
+                // Max attempts reached, show error message
+                console.warn("Polling timeout: No response received after maximum attempts");
+                setMessages((prevMessages) => {
+                  return prevMessages.map((msg) => {
+                    if (msg.content === "Thinking...") {
+                      return {
+                        ...msg,
+                        content: "Sorry, the request is taking longer than expected. Please try again.",
+                      };
+                    }
+                    return msg;
+                  });
+                });
+                localStorage.removeItem(`pending-message-${id}`);
+                pollingTimeoutRef.current = null; // Clear the ref
               }
             } catch (error) {
               console.error("Error polling for response:", error);
-              // Stop polling on error
+              // Show error message and stop polling
+              setMessages((prevMessages) => {
+                return prevMessages.map((msg) => {
+                  if (msg.content === "Thinking...") {
+                    return {
+                      ...msg,
+                      content: "Sorry, I couldn't connect to the server. Please check your connection and try again.",
+                    };
+                  }
+                  return msg;
+                });
+              });
+              localStorage.removeItem(`pending-message-${id}`);
+              pollingTimeoutRef.current = null; // Clear the ref
             }
           };
 
           // Start polling after a short delay
-          setTimeout(pollForResponse, 2000);
+          pollingTimeoutRef.current = setTimeout(pollForResponse, 2000);
         } else {
           // No messages and no pending message - empty chat
           setMessages([]);
@@ -159,24 +208,31 @@ const Chatbot = (props) => {
 
       const response_data = await response.json();
       if (response_data.doc_info) {
-        const previousCount = uploadedDocs.length;
+        setUploadedDocs((prevDocs) => {
+          const previousCount = prevDocs.length;
+          // Auto-open documents viewer when first document is uploaded
+          if (previousCount === 0 && response_data.doc_info.length > 0) {
+            setDocsViewerOpen(true);
+          }
+          return response_data.doc_info;
+        });
         console.log(response_data.doc_info);
-        setUploadedDocs(response_data.doc_info);
-
-        // Auto-open documents viewer when first document is uploaded
-        if (previousCount === 0 && response_data.doc_info.length > 0) {
-          setDocsViewerOpen(true);
-        }
       }
     } catch (error) {
       console.error("Error loading documents:", error);
       setUploadedDocs([]);
     }
     setLoadingDocs(false);
-  }, [id, uploadedDocs.length]);
+  }, [id]);
 
   // Load chat when component mounts or ID changes
   useEffect(() => {
+    // Clear any existing polling when chat changes
+    if (pollingTimeoutRef.current) {
+      clearTimeout(pollingTimeoutRef.current);
+      pollingTimeoutRef.current = null;
+    }
+
     if (id) {
       handleLoadChat();
       handleLoadDocs();
@@ -185,6 +241,14 @@ const Chatbot = (props) => {
       setIsFirstMessageSent(false);
       setUploadedDocs([]);
     }
+
+    // Cleanup function to clear polling on unmount or chat change
+    return () => {
+      if (pollingTimeoutRef.current) {
+        clearTimeout(pollingTimeoutRef.current);
+        pollingTimeoutRef.current = null;
+      }
+    };
   }, [id, handleLoadChat, handleLoadDocs]);
 
   // Main message sending function
