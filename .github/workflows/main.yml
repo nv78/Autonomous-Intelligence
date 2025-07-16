@@ -2,7 +2,7 @@ name: Lint Frontend (ESLint) & Backend (Python) + CodeQL
 
 on:
   push:
-    branches: [main, testing-2]
+    branches: [main]
     paths:
       - 'frontend/**'
       - 'backend/**'
@@ -34,7 +34,6 @@ jobs:
         working-directory: frontend
         run: npm test
 
-      # Setup Python (Backend)
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -44,7 +43,7 @@ jobs:
         working-directory: backend
         run: pip install -r requirements.txt
 
-      - name: Test with pytest
+      - name: Unit Tests 
         run: pytest 
 
   codeql:
