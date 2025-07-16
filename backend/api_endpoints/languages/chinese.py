@@ -35,4 +35,4 @@ def chat_chinese():
         import traceback
         traceback.print_exc()
 
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
