@@ -23,8 +23,6 @@ export const registryPath = "/registry";
 export const homePath = "/home";
 export const gtmPath = "/gtmchatbot";
 export const landing = "/landing";
-<<<<<<< HEAD
-=======
 export const chatbots = "/chatbots";
 export const languages = "/languages";
 export const companies = "/companies";
@@ -35,7 +33,6 @@ export const LANGUAGE_ROUTES = {
   chinese: "/languages/chinese",
   arabic: "/languages/arabic",
 };
->>>>>>> main
 
 // Connector options with paths
 export const connectorOptions = [
