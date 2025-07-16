@@ -80,12 +80,22 @@ from datetime import datetime
 
 from database.db_auth import get_db_connection
 
+from api_endpoints.gpt4_gtm.handler import gpt4_blueprint
+from api_endpoints.languages.chinese import chinese_blueprint
+from api_endpoints.languages.japanese import japanese_blueprint
+from api_endpoints.languages.korean import korean_blueprint
+from api_endpoints.languages.spanish import spanish_blueprint
+from api_endpoints.languages.arabic import arabic_blueprint
 
 load_dotenv(override=True)
 
 app = Flask(__name__)
-client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
+app.register_blueprint(gpt4_blueprint)
+app.register_blueprint(chinese_blueprint)
+app.register_blueprint(japanese_blueprint)
+app.register_blueprint(korean_blueprint)
+app.register_blueprint(spanish_blueprint)
+app.register_blueprint(arabic_blueprint)
 
 #if ray.is_initialized() == False:
    #ray.init(logging_level="INFO", log_to_driver=True)
@@ -96,7 +106,6 @@ def ensure_ray_started():
             ray.init(
                 logging_level="INFO",
                 log_to_driver=True,
-                address="host.docker.internal:6379",
                 ignore_reinit_error=True  # Helpful when running in dev
             )
         except Exception as e:
@@ -1568,6 +1577,7 @@ def evaluate():
 
     return result
 
+
 if __name__ == '__main__':
-    debug_mode = os.getenv('FLASK_ENV', 'production') == 'development'
+    debug_mode = os.getenv("FLASK_ENV") == "development"
     app.run(host="0.0.0.0", port=5000, debug=debug_mode)
