@@ -33,8 +33,8 @@ planToSearches = {
 
 chatgptLimit = 10000
 
-dbName = "autonomous_intelligence"
-dbHost = "db"
+dbName = "agents"
+dbHost = "db"  # Docker service name for the database container
 dbPassword = ""
 dbUser = "root"
 
