@@ -13,6 +13,14 @@ DROP TABLE IF EXISTS workflows;
 DROP TABLE IF EXISTS apiKeys;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS freeTrialAllowlist;
+DROP TABLE IF EXISTS organizations;
+
+CREATE TABLE organizations (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    organization_type VARCHAR(50) NOT NULL,
+    website_url VARCHAR(255)
+);
 
 CREATE TABLE users (
     id INTEGER PRIMARY KEY AUTO_INCREMENT,
@@ -114,11 +122,13 @@ CREATE TABLE documents (
     created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     workflow_id INTEGER,
     chat_id INTEGER,
+    organization_id INTEGER,
     storage_key TEXT NOT NULL,
     document_name VARCHAR(255) NOT NULL,
     document_text LONGTEXT NOT NULL,
     FOREIGN KEY (workflow_id) REFERENCES workflows(id),
-    FOREIGN KEY (chat_id) REFERENCES chats(id)
+    FOREIGN KEY (chat_id) REFERENCES chats(id),
+    FOREIGN KEY (organization_id) REFERENCES organizations(id)
 );
 
 CREATE TABLE chunks (
@@ -182,3 +192,4 @@ CREATE INDEX idx_prompt_answers_prompt_id ON prompt_answers(prompt_id);
 CREATE INDEX idx_prompt_answers_citation_id ON prompt_answers(citation_id);
 CREATE INDEX idx_reports_workflow_id ON reports(workflow_id);
 CREATE INDEX idx_tickers_workflow_id ON tickers(workflow_id);
+CREATE INDEX idx_organizations_name ON organizations(name);
