@@ -34,4 +34,4 @@ def chat_spanish():
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error has occurred. Please try again later."}), 500
