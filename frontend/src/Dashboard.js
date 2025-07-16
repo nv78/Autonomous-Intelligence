@@ -10,7 +10,9 @@ import {
   chatbotPath,
   apiKeyDashboardPath,
   downloadPrivateGPTPath,
-  connectorOptions // Import connector options from RouteConstants
+  homePath,
+  gtmPath,
+  connectorOptions, // Import connector options from RouteConstants
 } from "./constants/RouteConstants";
 import PaymentsComponent from "./subcomponents/payments/PaymentsComponent";
 import PaymentsProduct from "./subcomponents/payments/PaymentsProduct";
@@ -22,6 +24,7 @@ import Workflows from "./components/Workflows"
 import Home from "./financeGPT/components/Home";
 import { APISKeyDashboard } from "./subcomponents/api/APISKeyDashboard";
 import DownloadPrivateGPT from "./components/DownloadPrivateGPT.js";
+import GTMChatbot from "./landing_page/landing_page_screens/Chatbots/companies/GTMChatbot";
 
 function Dashboard() {
   const [darkTheme, setDarkTheme] = useState(true);
@@ -87,7 +90,12 @@ function Dashboard() {
     <Route key={option.value} path={option.path} element={<Home />} />
   ));
 
-  var routes = [
+  var publicRoutes = [
+    <Route key="root" index element={<CheckLogin darkTheme={darkTheme} setIsLoggedInParent={setIsLoggedIn} />} />,
+    <Route path={homePath} element={<Home />} />,
+    <Route path={gtmPath} element={<GTMChatbot />} />,
+  ]
+  var privateRoutes = [
     <Route
       index
       element={
@@ -131,9 +139,9 @@ function Dashboard() {
 
   return (
     <Flowbite
-      // theme={{
-      //   dark: darkTheme,
-      // }}
+    // theme={{
+    //   dark: darkTheme,
+    // }}
     >
       <div className="DashboardView flex flex-col min-h-screen">
         <div id="wrapperDiv" className="flex-grow">
@@ -152,7 +160,8 @@ function Dashboard() {
             <title>Panacea</title>
           </Helmet>
           <Routes>
-            {routes}
+            {publicRoutes}
+            {privateRoutes}
             {connectorRoutes}
             <Route path="*" element={<Navigate replace to="/" />} />
           </Routes>
