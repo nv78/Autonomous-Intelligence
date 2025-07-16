@@ -35,5 +35,8 @@ def chat_korean():
 
     except Exception as e:
         import traceback
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
+        error_details = traceback.format_exc()
+        # Log the stack trace for debugging purposes
+        print(error_details)  # You may replace this with an actual logging mechanism
+        # Return a generic error message to the client
+        return jsonify({"error": "An internal error has occurred"}), 500
