@@ -685,7 +685,7 @@ def infer_chat_name():
     chat_messages = request.json.get('messages')
     chat_id = request.json.get('chat_id')
 
-    client = openai.OpenAI()
+    
     completion = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
@@ -896,7 +896,7 @@ def process_message_pdf():
            model_use = "gpt-4o-mini"
 
         print("using OpenAI and model is", model_use)
-        client = openai.OpenAI()
+        
         try:
             completion = client.chat.completions.create(
                 model=model_use,
@@ -970,7 +970,7 @@ def process_message_pdf_demo():
     print('sources_str is', sources_str)
 
 
-    client = openai.OpenAI()
+    
     completion = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
@@ -1488,7 +1488,7 @@ def public_ingest_pdf():
            model_use = "gpt-4o-mini"
 
         print("using OpenAI and model is", model_use)
-        client = openai.OpenAI()
+        
         try:
             completion = client.chat.completions.create(
                 model=model_use,
@@ -1577,9 +1577,6 @@ def evaluate():
 
     return result
 
-@app.route("/test", methods=["GET"])
-def test():
-    return jsonify({"message": "Test works!"})
 
 if __name__ == '__main__':
     debug_mode = os.getenv("FLASK_ENV") == "development"

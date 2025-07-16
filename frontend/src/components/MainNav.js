@@ -17,8 +17,8 @@ import { faCoins } from "@fortawesome/free-solid-svg-icons";
 import { useLocation } from "react-router-dom";
 import { useUser, viewUser } from "../redux/UserSlice";
 
-import { useHistory } from 'react-router-dom';
-
+import { useHistory } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 function MainNav(props) {
   const location = useLocation();
@@ -28,22 +28,21 @@ function MainNav(props) {
   console.log("user", user);
   let numCredits = useNumCredits();
 
-
   useEffect(() => {
     dispatch(viewUser());
   }, []);
 
-  useEffect(() => {
-    if (user && "id" in user) {
-      // Start polling when the component mounts
-      const intervalId = setInterval(() => {
-        // dispatch(refreshCredits());
-      }, 5000); // Poll every 5 seconds
+  // useEffect(() => {
+  //   if (user && "id" in user) {
+  //     // Start polling when the component mounts
+  //     const intervalId = setInterval(() => {
+  //       // dispatch(refreshCredits());
+  //     }, 5000); // Poll every 5 seconds
 
-      // Clear the polling interval when the component unmounts
-      return () => clearInterval(intervalId);
-    }
-  }, [user]);
+  //     // Clear the polling interval when the component unmounts
+  //     return () => clearInterval(intervalId);
+  //   }
+  // }, [user]);
 
   var imageUrl = null;
   if (user && "profile_pic_url" in user) {
@@ -63,8 +62,8 @@ function MainNav(props) {
       <div className="mr-4 my-2 py-1 bg-gradient-to-r from-[#EDDC8F] to-[#F1CA57] text-black rounded-2xl cursor-pointer"
           onClick={() => navigate(downloadPrivateGPTPath)}
         >
-          <span className="px-4 text-sm font-bold  text-black">
-            <FontAwesomeIcon icon={faCoins} className="mr-2" />
+          <span className="px-3 text-xs font-bold text-black">
+            <FontAwesomeIcon icon={faCoins} className="mr-1" />
             Download Private Version
           </span>
         </div>
@@ -82,9 +81,9 @@ function MainNav(props) {
           inline
           label={
             imageUrl == "" ? (
-              <Avatar rounded></Avatar>
+              <Avatar rounded />
             ) : (
-              <Avatar img={imageUrl} rounded></Avatar>
+              <Avatar img={imageUrl} rounded />
             )
           }
         >
@@ -97,16 +96,22 @@ function MainNav(props) {
               <FontAwesomeIcon icon={faCoins} className="ml-2" />
             </span>
           </Dropdown.Header>
-          <Dropdown.Item onClick={() => navigate(accountPath)} className="text-white hover:text-black">
+          <Dropdown.Item
+            onClick={() => navigate(accountPath)}
+            className="text-white hover:text-black"
+          >
             Account
           </Dropdown.Item>
-          <Dropdown.Item onClick={() => navigate(apiKeyDashboardPath)} className="text-white hover:text-black">
+          <Dropdown.Item
+            onClick={() => navigate(apiKeyDashboardPath)}
+            className="text-white hover:text-black"
+          >
             API
-          </Dropdown.Item> 
-          <Dropdown.Divider/>
+          </Dropdown.Item>
+          <Dropdown.Divider />
           <Dropdown.Item
             onClick={() =>
-              dispatch(logout()).then((resp) => {
+              dispatch(logout()).then(() => {
                 navigate("/");
                 props.setIsLoggedInParent(false);
               })
