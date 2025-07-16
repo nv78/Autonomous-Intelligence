@@ -34,5 +34,5 @@ def chat_arabic():
 
     except Exception as e:
         import traceback
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
+        app.logger.error("An error occurred: %s", traceback.format_exc())
+        return jsonify({"error": "An internal error has occurred."}), 500
