@@ -93,7 +93,7 @@ class TestFlaskApp(unittest.TestCase):
 
         # --- Your existing test logic ---
         data = {
-            "email": f"testuser_{int(time.time())}@example.com",
+            "email": f"nvidra10@anote.ai",
             "password": "StrongPassword123!",
             "name": "Test User",
         }
@@ -108,7 +108,7 @@ class TestFlaskApp(unittest.TestCase):
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_get_db_connection.return_value = (mock_conn, mock_cursor)
-        data = {"email": "testuser@example.com"}
+        data = {"email": "nvidra10@anote.ai"}
         response = self.app.post("/forgotPassword", json=data)
         print(response.status_code, response.get_json())
         self.assertIn(
