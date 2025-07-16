@@ -99,7 +99,7 @@ app.register_blueprint(arabic_blueprint)
 
 #if ray.is_initialized() == False:
    #ray.init(logging_level="INFO", log_to_driver=True)
-
+client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 def ensure_ray_started():
     if not ray.is_initialized():
         try:
