@@ -32,6 +32,6 @@ def chat_japanese():
         return jsonify({"response": reply})
 
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
+        import logging
+        logging.exception("An error occurred while processing the request.")
+        return jsonify({"error": "An internal error has occurred"}), 500
