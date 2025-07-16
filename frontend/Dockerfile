@@ -11,4 +11,8 @@ COPY . ./app
 
 EXPOSE 3000
 
+<<<<<<< HEAD
 CMD ["npm", "run", "start"]
+=======
+CMD ["npm", "run", "start"]
+>>>>>>> main
