@@ -7,6 +7,7 @@ import {
   faPaperPlane,
   faUndoAlt,
   faEye,
+  faLink
 } from "@fortawesome/free-solid-svg-icons";
 import "../styles/Chatbot.css";
 import fetcher from "../../http/RequestConfig";
@@ -34,7 +35,13 @@ const Chatbot = (props) => {
   }, []);
 
   useEffect(() => {
-    handleLoadChat();
+    if (props.selectedChatId === 0) {
+      if (messages.length ===0) {
+          handleLoadChat();
+      }
+    }else{
+      handleLoadChat();
+    }
     setIsFirstMessageSent(false);
   }, [props.selectedChatId, props.forceUpdate]);
 
@@ -43,6 +50,31 @@ const Chatbot = (props) => {
       behavior: "smooth",
       block: "end",
     });
+  };
+
+  const handleGenerateShareableUrl = async () => {
+    if (!props.selectedChatId) {
+      alert("No chat selected");
+      return;
+    }
+    try {
+      const response = await fetcher(
+        `generate-playbook/${props.selectedChatId}`,
+        {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+          },
+        }, 
+      );
+      const data = await response.json();
+      const shareableUrl = data.url || `/playbook/${data.share_uuid}`;
+      alert(`Your shareable URL: ${shareableUrl}`);
+    } catch (error) {
+      console.error("Error generating shareable URL:", error);
+      alert("Failed to generate shareable URL.");
+    }
   };
 
   const loadLatestChat = async () => {
@@ -195,6 +227,21 @@ const Chatbot = (props) => {
   };
 
   const handleLoadChat = async () => {
+
+    if (props.selectedChatId === 0) {
+      console.log("Guest session - not loading from database");
+      // Only reset to welcome message if this is the initial load
+      if (messages.length === 0) {
+        setMessages([
+          {
+            message: "Hello, I am your Panacea, your agentic AI assistant. What can I do to help?",
+            sentTime: "just now",
+            direction: "incoming",
+          },
+        ]);
+      }
+      return;
+    }
     try {
       const response = await fetcher("retrieve-messages-from-chat", {
         method: "POST",
@@ -217,6 +264,11 @@ const Chatbot = (props) => {
       ]);
 
       const response_data = await response.json();
+
+      if (!response_data.messages || response_data.messages.length === 0) {
+      console.log("⚠️ No messages returned from API");
+      return;
+      }
 
       const transformedMessages = response_data.messages.map((item) => ({
         message: item.message_text,
@@ -256,22 +308,29 @@ const Chatbot = (props) => {
  p-4 w-full rounded-2xl border-[#9B9B9B] border-2">
         {props.currChatName ? (
           <>
-            <div className="flex flex-row justify-between">
-              <FontAwesomeIcon
-                icon={faUndoAlt}
-                onClick={resetServer}
-                className="reset-icon"
-              />
-              <div className="text-white font-bold">{props.currChatName}</div>
-              <div className="download-button send-button">
-                <FontAwesomeIcon
-                  icon={faFileDownload}
-                  onClick={handleDownload}
-                  className="file-upload"
-                />
-              </div>
-            </div>
-            <hr />
+        <div className="flex flex-row justify-between">
+          <FontAwesomeIcon
+            icon={faUndoAlt}
+            onClick={resetServer}
+            className="reset-icon"
+          />
+          <div className="text-white font-bold">{props.currChatName}</div>
+          <div className="flex flex-row space-x-4">
+            <FontAwesomeIcon
+              icon={faLink}
+              onClick={handleGenerateShareableUrl}
+              className="cursor-pointer text-white hover:text-blue-400"
+              title="Generate Shareable URL"
+            />
+            <FontAwesomeIcon
+              icon={faFileDownload}
+              onClick={handleDownload}
+              className="file-upload text-white hover:text-blue-400"
+              title="Download Chat"
+            />
+          </div>
+        </div>
+                    <hr />
             <div className="flex flex-col mt-4 space-y-2 h-[70vh] overflow-y-scroll relative">
               {messages.map((msg, index) => (
                 <div
