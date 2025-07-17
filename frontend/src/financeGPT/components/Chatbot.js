@@ -58,8 +58,8 @@ const Chatbot = (props) => {
       return;
     }
     try {
-      const response = await fetch(
-        `http://localhost:8000/generate-playbook/${props.selectedChatId}`,
+      const response = await fetcher(
+        `generate-playbook/${props.selectedChatId}`,
         {
           method: "GET",
           credentials: "include",
