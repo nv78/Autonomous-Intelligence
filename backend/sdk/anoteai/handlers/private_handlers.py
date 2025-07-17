@@ -29,7 +29,7 @@ def upload_private(task_type, model_type, ticker, file_paths):
     task_type_mapping = {"documents": 0, "edgar": 1}
     task_type_number = task_type_mapping.get(task_type, task_type)
     
-    model_type_mapping = {"llama": 0, "mistral": 1}
+    model_type_mapping = {"llama": 0, "mistral": 1, "magistral": 2}
     model_type_number = model_type_mapping.get(model_type, model_type)
 
     cursor.execute('INSERT INTO chats (user_id, model_type, associated_task) VALUES (?, ?, ?)', (user_id, model_type_number, task_type_number))
@@ -78,7 +78,7 @@ def chat_private(chat_id, message, finetuned_model_key=None):
             },
         ])
         answer = response['message']['content']
-    else:
+    elif (model_type == 1):
         response = ollama.chat(model='mistral', messages=[
             {
             'role': 'user',
@@ -86,6 +86,15 @@ def chat_private(chat_id, message, finetuned_model_key=None):
             
             },
         ])
+        answer = response['message']['content']
+    elif (model_type == 2):
+        response = ollama.chat(
+            model='magistral',
+            messages=[{
+                'role': 'user',
+                'content': f'You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. These are the sources from the text:{sources_str} And this is the question:{message}.',
+            }],
+        )
         answer = response['message']['content']
 
     #This adds bot message

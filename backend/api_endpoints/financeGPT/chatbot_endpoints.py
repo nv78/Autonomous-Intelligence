@@ -1056,19 +1056,13 @@ def process_prompt_answer(prompt, workflow_id, user_email):
     print("using existing chunks")
 
     print("using Claude")
-    anthropic = Anthropic(
-        api_key=os.environ.get("ANTHROPIC_API_KEY")
-    )
-    print("accessed Claude key")
-    completion = anthropic.completions.create(
-        model="claude-2",
+    import anthropic
+    client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+    prompt = f"\n\nHuman: You are a factual chatbot that answers questions about 10-K documents. You only answer with answers you find in the text, no outside information. Please address the question: {query}. Consider the provided text as evidence: {sources_str}.\n\nAssistant:"
+    completion = client.completions.create(
+        model="claude-2.1",
         max_tokens_to_sample=700,
-        prompt = (
-            f"{HUMAN_PROMPT} "
-            f"You are a factual chatbot that answers questions about 10-K documents. You only answer with answers you find in the text, no outside information. "
-            f"please address the question: {query}. "
-            f"Consider the provided text as evidence: {sources_str}. "
-            f"{AI_PROMPT}")
+        prompt=prompt
     )
     answer = completion.completion
     print("ANSWER: ", answer)

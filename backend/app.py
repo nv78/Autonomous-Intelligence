@@ -867,9 +867,11 @@ def reset_chat():
 
 @app.route('/process-message-pdf', methods=['POST'])
 def process_message_pdf():
+    print("RAW request.json:", request.json)
+    model_type = request.json.get('model_type')
+    print("Received model_type:", model_type, type(model_type))
     message = request.json.get('message')
     chat_id = request.json.get('chat_id')
-    model_type = request.json.get('model_type')
     model_key = request.json.get('model_key')
 
     try:
@@ -917,24 +919,33 @@ def process_message_pdf():
                 ]
             )
             answer = str(completion.choices[0].message.content)
-    else:
+    elif (model_type == 1):
         print("using Claude")
 
-        anthropic = Anthropic(
-            api_key=os.getenv("ANTHROPIC_API_KEY")
-        )
-
-        completion = anthropic.completions.create(
-            model="claude-2",
+        import anthropic
+        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        prompt = f"\n\nHuman: You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. Please address the question: {query}. Consider the provided text as evidence: {sources_str}.\n\nAssistant:"
+        completion = client.completions.create(
+            model="claude-2.1",
             max_tokens_to_sample=700,
-            prompt = (
-              f"{HUMAN_PROMPT} "
-              f"You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. "
-              f"please address the question: {query}. "
-              f"Consider the provided text as evidence: {sources_str}. "
-              f"{AI_PROMPT}")
+            prompt=prompt
         )
         answer = completion.completion
+    elif (model_type == 2):
+        print("using Magistral")
+        import ollama
+        response = ollama.chat(
+            model="magistral",
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. These are the sources from the text:{sources_str} And this is the question:{query}."
+                }
+            ]
+        )
+        answer = response['message']['content']
+    else: 
+        return jsonify({"error": "Invalid model type"}), 400
 
     #This adds bot message
     message_id = add_message_to_db(answer, chat_id, 0)
@@ -1174,20 +1185,23 @@ def temp_test():
 
     query = "What are some of the risk factors from the company?"
 
-    sources = ["The Company’s business, reputation, results of operations, financial condition and stock price can be affected by a number of factors, whether currently known or unknown, including those described below. When any one or more of these risks materialize from time to time, the Company’s business, reputation, results of operations, financial condition and stock price can be materially and adversely affected. Because of the following factors, as well as other factors affecting the Company’s results of operations and financial condition, past financial performance should not be considered to be a reliable indicator of future performance, and investors should not use historical trends to anticipate results or trends in future periods. This discussion of risk factors contains forward-looking statements. This section should be read in conjunction with Part II, Item 7, “Management’s Discussion and Analysis of Financial Condition and Results of Operations” and the consolidated financial statements and accompanying notes in Part II, Item 8, “Financial Statements and Supplementary Data” of this Form 10-K.", "The Company’s operations and performance depend significantly on global and regional economic conditions and adverse economic conditions can materially adversely affect the Company’s business, results of operations and financial condition. The Company has international operations with sales outside the U.S. representing a majority of the Company’s total net sales. In addition, the Company’s global supply chain is large and complex and a majority of the Company’s supplier facilities, including manufacturing and assembly sites, are located outside the U.S. As a result, the Company’s operations and performance depend significantly on global and regional economic conditions."]
+    sources = [
+        """The Company's business, reputation, results of operations, financial condition and stock price can be affected by a number of factors, whether currently known or unknown, including those described below. When any one or more of these risks materialize from time to time, the Company's business, reputation, results of operations, financial condition and stock price can be materially and adversely affected. Because of the following factors, as well as other factors affecting the Company's results of operations and financial condition, past financial performance should not be considered to be a reliable indicator of future performance, and investors should not use historical trends to anticipate results or trends in future periods. This discussion of risk factors contains forward-looking statements. This section should be read in conjunction with Part II, Item 7, "Management's Discussion and Analysis of Financial Condition and Results of Operations" and the consolidated financial statements and accompanying notes in Part II, Item 8, "Financial Statements and Supplementary Data" of this Form 10-K.""",
+        """The Company's operations and performance depend significantly on global and regional economic conditions and adverse economic conditions can materially adversely affect the Company's business, results of operations and financial condition. The Company has international operations with sales outside the U.S. representing a majority of the Company's total net sales. In addition, the Company's global supply chain is large and complex and a majority of the Company's supplier facilities, including manufacturing and assembly sites, are located outside the U.S. As a result, the Company's operations and performance depend significantly on global and regional economic conditions."""
+    ]
 
-    completion = anthropic.completions.create(
-      model="claude-2",
-      max_tokens_to_sample=700,
-      prompt = (
-        f"{HUMAN_PROMPT} "
-        f"You are a factual chatbot that answers questions about 10-K documents. You only answer with answers you find in the text, no outside information. "
-        f"please address the question: {query}. "
-        f"Consider the provided text as evidence: {sources[0]}{sources[1]}. "
-        f"{AI_PROMPT}")
+    completion = anthropic.messages.create(
+      model="claude-3-haiku-20240307",
+      max_tokens=700,
+      messages=[
+        {
+            "role": "user",
+            "content": f"You are a factual chatbot that answers questions about 10-K documents. You only answer with answers you find in the text, no outside information. Please address the question: {query}. Consider the provided text as evidence: {sources[0]}{sources[1]}."
+        }
+      ]
     )
 
-    print("anthropic result", completion.completion)
+    print("anthropic result", completion.content[0].text)
 
     return 'success'
 
@@ -1380,7 +1394,12 @@ def upload():
         ensure_SDK_user_exists(user_email)
 
         #create new chat
-        model_number = 0 if model_type == "gpt" else 1 if model_type == "claude" else None
+        model_number = (
+    0 if model_type == "gpt"
+    else 1 if model_type == "claude"
+    else 2 if model_type == "magistral"
+    else None
+    )
         chat_number = 0 if chat_type == "documents" else 1 if chat_type == "edgar" else None
         chat_id = add_chat_to_db(user_email, chat_number, model_number)
 
@@ -1481,7 +1500,7 @@ def public_ingest_pdf():
     sources_swapped = [[str(elem) for elem in source[::-1]] for source in sources]
     print('sources swapped', sources_swapped)
 
-    if (model_type == 0):
+    if model_type == 0:
         if model_key:
            model_use = model_key
         else:
@@ -1509,7 +1528,7 @@ def public_ingest_pdf():
                 ]
             )
             answer = str(completion.choices[0].message.content)
-    else:
+    elif model_type == 1:
         print("using Claude")
 
         if model_key:
@@ -1519,17 +1538,32 @@ def public_ingest_pdf():
             api_key = os.getenv("ANTHROPIC_API_KEY")
         )
 
-        completion = anthropic.completions.create(
-            model="claude-2",
-            max_tokens_to_sample=700,
-            prompt = (
-              f"{HUMAN_PROMPT} "
-              f"You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. "
-              f"please address the question: {query}. "
-              f"Consider the provided text as evidence: {sources_str}. "
-              f"{AI_PROMPT}")
+        completion = anthropic.messages.create(
+            model="claude-3-haiku-20240307",
+            max_tokens=700,
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. Please address the question: {query}. Consider the provided text as evidence: {sources_str}."
+                }
+            ]
         )
-        answer = completion.completion
+        answer = completion.content[0].text
+    elif model_type == 2:
+        print("using Magistral")
+        import ollama
+        response = ollama.chat(
+            model="magistral",
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. These are the sources from the text:{sources_str} And this is the question:{query}."
+                }
+            ]
+        )
+        answer = response['message']['content']
+    else:
+        return jsonify({"error": "Invalid model type"}), 400
 
     #This adds bot message
     message_id = add_message_to_db(answer, chat_id, 0)

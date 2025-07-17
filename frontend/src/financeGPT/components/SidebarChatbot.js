@@ -741,9 +741,7 @@ const SidebarChatbot = forwardRef((props, ref) => {
   };
 
   var modelOptions = [];
-  modelOptions.push(
-    { value: 0, label: "OpenAI" },
-    { value: 1, label: "Claude" }
+  modelOptions.push({ value: 0, label: "OpenAI" }, { value: 1, label: "Claude" }, {value: 2, label: "Magistral"}
   );
 
   const taskoptions = [
@@ -781,6 +779,11 @@ const SidebarChatbot = forwardRef((props, ref) => {
   const selectedTaskValue = taskoptions.find(
     (option) => option.value === props.currTask
   );
+
+  const handleModelSelect = (selectedOption) => {
+    props.setIsPrivate(Number(selectedOption.value)); // value will be 0, 1, or 2
+    // Optionally, you can call changeChatMode(selectedOption.value) here if you want to update the backend immediately.
+  };
 
   return (
     <>
