@@ -6,7 +6,7 @@ services:
     container_name: anote-backend
     restart: unless-stopped
     ports:
-      - "8000:5000"  # Map container's 5000 to host's 8000
+      - "5000:5000"  # Map container's 5000 to host's 8000
       - "6379:6379"  # Ray
       - "9998:9998"  # Tika
     volumes:
@@ -15,7 +15,6 @@ services:
       - ./models:/app/models
       - tika-data:/tmp  # Persist Tika server data
       - ./database/schema.sql:/docker-entrypoint-initdb.d/init.sql
-      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
     env_file:
       - .env
     environment:
@@ -49,7 +48,7 @@ services:
       - MYSQL_ROOT_PASSWORD=
     volumes:
       - mysql-data:/var/lib/mysql
-      - ./sdk/anoteai/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/init.sql
     command: --default-authentication-plugin=mysql_native_password
     networks:
       - anote-network

@@ -1,13 +1,14 @@
 import { useNavigate } from "react-router-dom";
-import React, { useState, useEffect } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
 import fetcher from "../../http/RequestConfig";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faPen,
-  faTrashCan,
-  faCommentDots,
-  faPenToSquare,
-} from "@fortawesome/free-solid-svg-icons";
+import { faTrashCan } from "@fortawesome/free-solid-svg-icons";
 
 import Sources from "./Sources";
 import Select from "react-select";
@@ -16,7 +17,7 @@ import { Modal } from "flowbite-react";
 import { FaDatabase } from "react-icons/fa";
 import { connectorOptions } from "../../constants/RouteConstants";
 
-function SidebarChatbot(props) {
+const SidebarChatbot = forwardRef((props, ref) => {
   const [docs, setDocs] = useState([]);
   const [showConfirmPopup, setShowConfirmPopup] = useState(false);
 
@@ -31,6 +32,21 @@ function SidebarChatbot(props) {
   const [docToDeleteId, setDocToDeleteId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTaskType, setSelectedTaskType] = useState("");
+
+  // Upload-related state
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const fileInputRef = useRef(null);
+  const [fileModalOpen, setFileModalOpen] = useState(false);
+  const [currentFile, setCurrentFile] = useState(null);
+  const [fileContent, setFileContent] = useState(null);
+  const [loadingFile, setLoadingFile] = useState(false);
+
+  // Expose openFileDialog method to parent components
+  useImperativeHandle(ref, () => ({
+    openFileDialog,
+  }));
 
   const urlObject = new URL(window.location.origin);
 
@@ -54,6 +70,296 @@ function SidebarChatbot(props) {
     setModelKey(props.confirmedModelKey);
     props.handleForceUpdate();
   }, [props.confirmedModelKey]);
+
+  // Handle upload trigger from chatbot
+  useEffect(() => {
+    if (props.triggerUpload) {
+      openFileDialog();
+      props.resetUploadTrigger();
+    }
+  }, [props.triggerUpload]);
+
+  // File upload handlers
+  const handleFileSelect = async (event) => {
+    console.log("File selection event triggered");
+    const files = Array.from(event.target.files);
+    console.log("Files selected:", files);
+
+    if (files.length === 0) {
+      return;
+    }
+
+    // Check if chat is selected before proceeding
+    if (!props.selectedChatId) {
+      alert("Please select or create a chat first before uploading files.");
+      return;
+    }
+
+    // Add new files to existing selection
+    const newFiles = [...selectedFiles, ...files];
+    setSelectedFiles(newFiles);
+    console.log("Updated selected files:", newFiles);
+
+    // Clear the input value so the same file can be selected again if needed
+    event.target.value = "";
+
+    // Automatically upload the newly selected files
+    try {
+      await handleFileUpload(files, props.selectedChatId);
+      console.log("Files uploaded successfully");
+    } catch (error) {
+      console.error("Auto-upload failed:", error);
+      alert("Failed to upload files. Please try again.");
+      // Remove the files that failed to upload from selectedFiles
+      setSelectedFiles((prev) => prev.filter((file) => !files.includes(file)));
+    }
+  };
+
+  // Reset file viewer when no files are selected
+  React.useEffect(() => {
+    if (selectedFiles.length === 0) {
+      // Files cleared, no additional state to reset
+    }
+  }, [selectedFiles.length]);
+
+  const handleFileUpload = async (
+    filesToUpload = selectedFiles,
+    chatId = props.selectedChatId
+  ) => {
+    console.log("Upload button clicked!");
+    console.log("Files to upload:", filesToUpload);
+    console.log("Chat ID:", chatId);
+    console.log("Selected Chat ID from props:", props.selectedChatId);
+
+    if (filesToUpload.length === 0) {
+      console.log("No files selected");
+      return null;
+    }
+
+    if (!chatId) {
+      console.log("No chat ID available");
+      alert("Please select or create a chat first before uploading files.");
+      return null;
+    }
+
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    // Update parent state
+    if (props.setIsUploading) props.setIsUploading(true);
+    if (props.setUploadProgress) props.setUploadProgress(0);
+
+    try {
+      const formData = new FormData();
+      // Use the same format as the backend expects: files[]
+      filesToUpload.forEach((file) => {
+        formData.append("files[]", file);
+      });
+      formData.append("chat_id", chatId);
+
+      // Use XMLHttpRequest for real progress tracking with correct endpoint
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const progress = Math.round((event.loaded * 100) / event.total);
+            setUploadProgress(progress);
+            // Update parent state
+            if (props.setUploadProgress) props.setUploadProgress(progress);
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status === 200) {
+            try {
+              // We don't need to parse the result since we're not using it
+              setIsUploading(false);
+              setUploadProgress(100);
+
+              // Update parent state
+              if (props.setIsUploading) props.setIsUploading(false);
+              if (props.setUploadProgress) props.setUploadProgress(100);
+
+              // Clear progress after a short delay
+              setTimeout(() => {
+                setUploadProgress(0);
+                if (props.setUploadProgress) props.setUploadProgress(0);
+              }, 1000);
+
+              // Return file info for display in chat
+              const uploadedFiles = filesToUpload.map((file, index) => ({
+                name: file.name,
+                size: file.size,
+                type: file.type,
+                id: `uploaded-${Date.now()}-${index}`,
+              }));
+
+              // Auto-refresh documents list after successful upload
+              setTimeout(() => {
+                if (props.selectedChatId) {
+                  retrieveDocs();
+                }
+              }, 500);
+
+              // Clear selected files after successful upload
+              setSelectedFiles([]);
+
+              resolve(uploadedFiles);
+            } catch (e) {
+              setIsUploading(false);
+              setUploadProgress(0);
+              // Update parent state
+              if (props.setIsUploading) props.setIsUploading(false);
+              if (props.setUploadProgress) props.setUploadProgress(0);
+              reject(new Error("Invalid response format"));
+            }
+          } else {
+            setIsUploading(false);
+            setUploadProgress(0);
+            // Update parent state
+            if (props.setIsUploading) props.setIsUploading(false);
+            if (props.setUploadProgress) props.setUploadProgress(0);
+            reject(new Error(`Upload failed with status: ${xhr.status}`));
+          }
+        };
+
+        xhr.onerror = () => {
+          setIsUploading(false);
+          setUploadProgress(0);
+          // Update parent state
+          if (props.setIsUploading) props.setIsUploading(false);
+          if (props.setUploadProgress) props.setUploadProgress(0);
+          reject(new Error("Network error during upload"));
+        };
+
+        // Use the existing ingest-pdf endpoint
+        xhr.open(
+          "POST",
+          `${process.env.REACT_APP_BACK_END_HOST || ""}/ingest-pdf`
+        );
+
+        // Add authentication headers using the same pattern as fetcher
+        const accessToken = localStorage.getItem("accessToken");
+        const sessionToken = localStorage.getItem("sessionToken");
+
+        if (accessToken) {
+          xhr.setRequestHeader("Authorization", `Bearer ${accessToken}`);
+        } else if (sessionToken) {
+          xhr.setRequestHeader("Authorization", `Bearer ${sessionToken}`);
+        }
+
+        xhr.send(formData);
+      });
+    } catch (error) {
+      console.error("File upload error:", error);
+      setIsUploading(false);
+      setUploadProgress(0);
+      // Update parent state
+      if (props.setIsUploading) props.setIsUploading(false);
+      if (props.setUploadProgress) props.setUploadProgress(0);
+      throw error; // Re-throw to handle in calling function
+    }
+  };
+
+  const openFileDialog = () => {
+    if (fileInputRef.current) {
+      // Try multiple approaches to ensure the file dialog opens
+      try {
+        // Method 1: Direct click
+        fileInputRef.current.click();
+      } catch (error) {
+        console.error("Direct click failed:", error);
+
+        // Method 2: Dispatch click event
+        try {
+          const clickEvent = new MouseEvent("click", {
+            bubbles: true,
+            cancelable: true,
+            view: window,
+          });
+          fileInputRef.current.dispatchEvent(clickEvent);
+        } catch (dispatchError) {
+          console.error("Event dispatch failed:", dispatchError);
+        }
+      }
+    } else {
+      console.error("File input ref is null!");
+    }
+  };
+
+  // Handle viewing uploaded documents
+  const handleViewUploadedDoc = async (doc) => {
+    try {
+      setCurrentFile(doc);
+      setFileModalOpen(true);
+      setLoadingFile(true);
+      setFileContent(null);
+
+      // Try to fetch actual document content
+      try {
+        const response = await fetcher("get-doc-content", {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            doc_id: doc.doc_id,
+          }),
+        });
+
+        if (response.ok) {
+          const docData = await response.json();
+          setFileContent({
+            type: "document-content",
+            name: docData.document_name,
+            content: docData.document_text,
+            uploadDate: doc.upload_date,
+            docId: doc.doc_id,
+            isUploaded: true,
+          });
+        } else {
+          // Fallback to document info if content fetch fails
+          setFileContent({
+            type: "document-info",
+            name: doc.doc_name,
+            uploadDate: doc.upload_date,
+            docId: doc.doc_id,
+            isUploaded: true,
+            error: "Could not load document content",
+          });
+        }
+      } catch (contentError) {
+        console.error("Error fetching document content:", contentError);
+        // Fallback to document info
+        setFileContent({
+          type: "document-info",
+          name: doc.doc_name,
+          uploadDate: doc.upload_date,
+          docId: doc.doc_id,
+          isUploaded: true,
+          error: "Could not load document content",
+        });
+      }
+
+      setLoadingFile(false);
+    } catch (error) {
+      console.error("Error viewing uploaded document:", error);
+      setLoadingFile(false);
+      setFileContent({ error: "Error loading document" });
+    }
+  };
+
+  // Clean up blob URLs when modal closes
+  const closeModal = () => {
+    if (fileContent?.isLocal && fileContent?.url) {
+      URL.revokeObjectURL(fileContent.url);
+    }
+    setFileModalOpen(false);
+    setCurrentFile(null);
+    setFileContent(null);
+  };
 
   {
     /* Delete doc section */
@@ -142,7 +448,10 @@ function SidebarChatbot(props) {
         Accept: "application/json",
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ chat_id: props.selectedChatId, delete_docs: false }),
+      body: JSON.stringify({
+        chat_id: props.selectedChatId,
+        delete_docs: false,
+      }),
     });
     props.handleForceUpdate();
   };
@@ -170,7 +479,6 @@ function SidebarChatbot(props) {
 
     //props.handleForceUpdate();
   };
-
 
   const retrieveDocs = async () => {
     const response = await fetcher("retrieve-current-docs", {
@@ -433,11 +741,14 @@ function SidebarChatbot(props) {
   };
 
   var modelOptions = [];
-  modelOptions.push({ value: 0, label: "OpenAI" }, { value: 1, label: "Claude" });
+  modelOptions.push(
+    { value: 0, label: "OpenAI" },
+    { value: 1, label: "Claude" }
+  );
 
   const taskoptions = [
-    { value: 0, label: 'File Uploader' },
-    { value: 1, label: '10-K Edgar' }
+    { value: 0, label: "File Uploader" },
+    { value: 1, label: "10-K Edgar" },
   ];
 
   // Function to handle when an option is selected
@@ -453,53 +764,31 @@ function SidebarChatbot(props) {
     setIsModalOpen(false);
   };
 
+  const handleDatasetSelect = async (datasetName) => {
+    // navigate to the filePath
+    handleCloseModal(); // Close the modal after download
+  };
 
-const handleDatasetSelect = async (datasetName) => {
-  // navigate to the filePath
-  handleCloseModal(); // Close the modal after download
-};
+  const filteredOptions = connectorOptions.filter(
+    (option) => selectedTaskType === "" || option.taskType === selectedTaskType
+  );
 
-const filteredOptions = connectorOptions.filter(
-  (option) =>
-    selectedTaskType === "" || option.taskType === selectedTaskType
-);
-
-const onConnectorCardClick = (value) => {
-  handleDatasetSelect(value);
-};
-
+  const onConnectorCardClick = (value) => {
+    handleDatasetSelect(value);
+  };
 
   // Determine the current selected value based on props.currTask
-  const selectedTaskValue = taskoptions.find(option => option.value === props.currTask);
+  const selectedTaskValue = taskoptions.find(
+    (option) => option.value === props.currTask
+  );
 
   return (
     <>
-    <div className="flex flex-col bg-[#141414]
- rounded-xl text-white">
-      {deleteConfirmationPopupDoc}
-      <div className="flex flex-col flex-grow">
-        <div className="flex-1 bg-[#141414]
- my-2 rounded-xl">
-            <ul className="my-4">
-              <div className="mx-4 my-2">
-                <h2 className="text-[#9C9C9C] uppercase tracking-wide font-semibold text-xs">
-                  Agent Selection
-                </h2>
-              </div>
-              <div className="mx-4 my-2">
-                <Select
-                  className="text-black" // Adjust this class to style the select dropdown as needed
-                  value={selectedTaskValue}
-                  onChange={handleChange}
-                  options={taskoptions}
-                  styles={SelectStyles}
-                  isSearchable={false}
-                />
-              </div>
-            </ul>
-          </div>
+      <div className="flex flex-col py-4 mt-12 bg-anoteblack-800 text-white">
+        {deleteConfirmationPopupDoc}
+        <div className="flex flex-col flex-grow">
           <div className="bg-[#141414] rounded-xl">
-            <h2 className="text-[#9C9C9C] uppercase tracking-wide font-semibold text-xs px-4">
+            <h2 className="text-[#9C9C9C] uppercase tracking-wide font-semibold text-xs pt-2 px-4">
               Model Selection
             </h2>
             {showConfirmPopup && <div style={overlayStyle}></div>}
@@ -509,18 +798,17 @@ const onConnectorCardClick = (value) => {
             {confirmResetModelPopup}
             <div className="rounded py-3 mx-4">
               <div className="flex-1 bg-[#141414] rounded-xl">
-              <ul className="">
-                <Select
-                  name="publicOptions"
-                  id="publicOptions"
-                  className="bg-[#3A3B41] rounded-lg focus:ring-0 hover:ring-0 hover:border-white border-none text-white cursor-pointer"
-                  onChange={handleSwitchChange}
-                  options={modelOptions}
-                  styles={SelectStyles}
-                  isSearchable={false}
-                  // value={props.isPrivate === 0 ? "OpenAI" : "Claude"}
-                >
-                </Select>
+                <ul className="">
+                  <Select
+                    name="publicOptions"
+                    id="publicOptions"
+                    className="bg-[#3A3B41] rounded-lg focus:ring-0 hover:ring-0 hover:border-white border-none text-white cursor-pointer"
+                    onChange={handleSwitchChange}
+                    options={modelOptions}
+                    styles={SelectStyles}
+                    isSearchable={false}
+                    // value={props.isPrivate === 0 ? "OpenAI" : "Claude"}
+                  ></Select>
                 </ul>
               </div>
             </div>
@@ -568,55 +856,81 @@ const onConnectorCardClick = (value) => {
               )}
             </div>
           </div>
-        <div className="flex flex-col px-4 mt-4">
-          <h2 className="text-[#FFFFFF] uppercase tracking-wide font-semibold text-s mb-2">
-            Uploaded Files
-          </h2>
-          {/* Map through docs */}
-          <div className="bg-black min-h-[30vh] h-[30vh] overflow-y-auto">
-          {docs.map((doc) => (
-            <div
-              key={doc.document_name}
-              className="flex items-center justify-between mx-4 my-2 bg-[#141414]
- hover:bg-[#3A3B41] rounded-xl overflow-x-scroll"
-            >
-              <button
-                key={doc.document_name}
-                className="flex items-center p-2 my-1 rounded-lg "
-              >
-                <span className="text-lg">📄</span>{" "}
-                {/* Replace with actual icon */}
-                <span className="ml-2">{doc.document_name}</span>
-              </button>
-              <button
-                onClick={() => handleDeleteDoc(doc.document_name, doc.id)}
-                className="p-2 ml-4 rounded-full "
-              >
-                <FontAwesomeIcon icon={faTrashCan} />
-              </button>
+          <div className="flex flex-col px-4 mt-4">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-[#FFFFFF] uppercase tracking-wide font-semibold text-s">
+                Uploaded Files
+              </h2>
             </div>
-          ))}
-        </div>
+
+            {/* Show message when no chat is selected */}
+            {!props.selectedChatId && (
+              <div className="mb-2 text-xs text-yellow-400">
+                Please select or create a chat to view files
+              </div>
+            )}
+
+            {/* Hidden file input */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileSelect}
+              multiple
+              accept="image/*,.pdf,.doc,.docx,.txt"
+              style={{
+                position: "absolute",
+                left: "-9999px",
+                opacity: 0,
+                pointerEvents: "none",
+              }}
+            />
+
+            {/* Map through docs */}
+            <div className="bg-anoteblack-900 rounded-xl border border-gray-600 h-48 overflow-y-auto">
+              {docs.map((doc) => (
+                <div
+                  key={doc.document_name}
+                  className="flex items-center justify-between mx-4 my-2 bg-[#7E7E7E]/10 hover:bg-[#3A3B41] rounded-xl overflow-x-scroll"
+                >
+                  <button
+                    key={doc.document_name}
+                    className="flex items-center p-2 my-1 rounded-lg"
+                    onClick={() => handleViewUploadedDoc(doc)}
+                    title="Click to view document"
+                  >
+                    <span className="text-lg">📄</span>{" "}
+                    {/* Replace with actual icon */}
+                    <span className="ml-2">{doc.document_name}</span>
+                  </button>
+                  <button
+                    onClick={() => handleDeleteDoc(doc.document_name, doc.id)}
+                    className="p-2 ml-4 rounded-full "
+                  >
+                    <FontAwesomeIcon icon={faTrashCan} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-    <div className="mt-4 min-h-[30vh] h-[30vh] overflow-y-auto">
-      <Sources
-        onChatSelect={props.onChatSelect}
-        setIsPrivate={props.setIsPrivate}
-        setTicker={props.setTicker}
-        setConfirmedModelKey={props.setConfirmedModelKey}
-        setcurrTask={props.setcurrTask}
-        setCurrChatName={props.setCurrChatName}
-        setIsEdit={props.setIsEdit}
-        setShowChatbot={props.setShowChatbot}
-        handleForceUpdate={props.handleForceUpdate}
-        createNewChat={props.createNewChat}
-        relevantChunk={props.relevantChunk}
-        activeMessageIndex={props.activeMessageIndex}
-      />
-  </div>
-  {isModalOpen && (
+      <div className="overflow-y-auto">
+        <Sources
+          onChatSelect={props.onChatSelect}
+          setIsPrivate={props.setIsPrivate}
+          setTicker={props.setTicker}
+          setConfirmedModelKey={props.setConfirmedModelKey}
+          setcurrTask={props.setcurrTask}
+          setCurrChatName={props.setCurrChatName}
+          setIsEdit={props.setIsEdit}
+          setShowChatbot={props.setShowChatbot}
+          handleForceUpdate={props.handleForceUpdate}
+          createNewChat={props.createNewChat}
+          relevantChunk={props.relevantChunk}
+          activeMessageIndex={props.activeMessageIndex}
+        />
+      </div>
+      {isModalOpen && (
         <Modal
           size="3xl"
           show={isModalOpen}
@@ -629,45 +943,51 @@ const onConnectorCardClick = (value) => {
             },
             content: {
               base: "relative h-full w-full p-4 md:h-auto",
-              inner: "relative rounded-lg shadow bg-gray-950 flex flex-col max-h-[90vh] text-white",
+              inner:
+                "relative rounded-lg shadow bg-gray-950 flex flex-col max-h-[90vh] text-white",
             },
           }}
         >
           <Modal.Header className="border-b border-gray-600 pb-1 text-center">
             <div className="flex justify-center items-center w-full text-center">
-              <h2 className="font-bold text-xl text-center text-white ml-[70vh]">Organization Chatbots</h2>
+              <h2 className="font-bold text-xl text-center text-white ml-[70vh]">
+                Organization Chatbots
+              </h2>
             </div>
           </Modal.Header>
           <Modal.Body className="w-full overflow-y-auto">
-
             <div className="text-center mb-4 text-sm">
-              Supported organization datasets include enterprise or individual fine tuned chatbots.
+              Supported organization datasets include enterprise or individual
+              fine tuned chatbots.
             </div>
 
             <div className="flex justify-center space-x-4 mb-6">
               <button
-                className={`px-4 py-2 rounded-lg transition-all duration-300 transform hover:scale-105 ${selectedTaskType === "Classification"
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-600 text-gray-200 hover:bg-gray-500"
-                  }`}
+                className={`px-4 py-2 rounded-lg transition-all duration-300 transform hover:scale-105 ${
+                  selectedTaskType === "Classification"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-600 text-gray-200 hover:bg-gray-500"
+                }`}
                 onClick={() => setSelectedTaskType("Organization")}
               >
                 Organization
               </button>
               <button
-                className={`px-4 py-2 rounded-lg transition-all duration-300 transform hover:scale-105 ${selectedTaskType === "Chatbot"
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-600 text-gray-200 hover:bg-gray-500"
-                  }`}
+                className={`px-4 py-2 rounded-lg transition-all duration-300 transform hover:scale-105 ${
+                  selectedTaskType === "Chatbot"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-600 text-gray-200 hover:bg-gray-500"
+                }`}
                 onClick={() => setSelectedTaskType("Individual")}
               >
                 Individual
               </button>
               <button
-                className={`px-4 py-2 rounded-lg transition-all duration-300 transform hover:scale-105 ${selectedTaskType === ""
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-600 text-gray-200 hover:bg-gray-500"
-                  }`}
+                className={`px-4 py-2 rounded-lg transition-all duration-300 transform hover:scale-105 ${
+                  selectedTaskType === ""
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-600 text-gray-200 hover:bg-gray-500"
+                }`}
                 onClick={() => setSelectedTaskType("")}
               >
                 All
@@ -683,18 +1003,216 @@ const onConnectorCardClick = (value) => {
                 >
                   <div className="flex flex-col items-center text-center">
                     <FaDatabase className="mb-2" size={20} />
-                    <div className="text-sm font-semibold mb-1">{option.label}</div>
-                    <div className="text-xs text-gray-300">{option.taskType}</div>
+                    <div className="text-sm font-semibold mb-1">
+                      {option.label}
+                    </div>
+                    <div className="text-xs text-gray-300">
+                      {option.taskType}
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
-
           </Modal.Body>
         </Modal>
- )}
-  </>
+      )}
+
+      {/* File Modal */}
+      {fileModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75"
+          onClick={closeModal}
+        >
+          <div
+            className="bg-white rounded-lg max-w-4xl max-h-[90vh] w-full mx-4 flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-semibold truncate text-black">
+                {currentFile?.name || currentFile?.filename || "File Preview"}
+                {fileContent?.isLocal && (
+                  <span className="text-sm text-gray-500 ml-2">
+                    (Local File)
+                  </span>
+                )}
+              </h3>
+              <button
+                onClick={closeModal}
+                className="text-gray-500 hover:text-gray-700 text-xl"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 p-4 overflow-auto">
+              {loadingFile ? (
+                <div className="flex items-center justify-center h-32">
+                  <div className="text-gray-500">Loading file...</div>
+                </div>
+              ) : fileContent?.error ? (
+                <div className="flex items-center justify-center h-32">
+                  <div className="text-red-500">{fileContent.error}</div>
+                </div>
+              ) : fileContent?.type === "image" ? (
+                <div className="flex justify-center">
+                  <img
+                    src={fileContent.url}
+                    alt={fileContent.name}
+                    className="max-w-full max-h-[60vh] object-contain"
+                  />
+                </div>
+              ) : fileContent?.type === "pdf" ? (
+                <iframe
+                  src={fileContent.url}
+                  className="w-full h-[60vh] border-0"
+                  title={fileContent.name}
+                />
+              ) : fileContent?.type === "text" ? (
+                <div className="bg-gray-50 p-4 rounded border">
+                  <pre className="whitespace-pre-wrap text-sm text-gray-800 max-h-[50vh] overflow-auto">
+                    {fileContent.content}
+                  </pre>
+                </div>
+              ) : fileContent?.type === "download" ? (
+                <div className="flex flex-col items-center justify-center h-32 space-y-4">
+                  <div className="text-gray-600 text-center">
+                    <div className="text-2xl mb-2">📄</div>
+                    <div>
+                      {fileContent.isLocal
+                        ? "File ready for upload"
+                        : "Preview not available for this file type"}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {fileContent.name}
+                    </div>
+                    {fileContent.isLocal && fileContent.size && (
+                      <div className="text-xs text-gray-400 mt-1">
+                        Size: {(fileContent.size / 1024 / 1024).toFixed(2)} MB
+                        {fileContent.lastModified && (
+                          <span className="ml-2">
+                            Modified:{" "}
+                            {new Date(
+                              fileContent.lastModified
+                            ).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {!fileContent.isLocal && (
+                    <button
+                      onClick={() => window.open(fileContent.url, "_blank")}
+                      className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+                    >
+                      Download File
+                    </button>
+                  )}
+                </div>
+              ) : fileContent?.type === "document-info" ? (
+                <div className="flex flex-col items-center justify-center h-64 space-y-4">
+                  <div className="text-gray-600 text-center">
+                    <div className="text-4xl mb-4">📄</div>
+                    <div className="text-lg font-medium text-gray-800 mb-2">
+                      Uploaded Document
+                    </div>
+                    <div className="text-sm text-gray-500 mb-4">
+                      {fileContent.name}
+                    </div>
+
+                    <div className="bg-gray-50 p-4 rounded-lg border space-y-2 text-left max-w-md">
+                      <div className="flex justify-between">
+                        <span className="font-medium">Document ID:</span>
+                        <span className="text-gray-600">
+                          {fileContent.docId}
+                        </span>
+                      </div>
+                      {fileContent.uploadDate && (
+                        <div className="flex justify-between">
+                          <span className="font-medium">Upload Date:</span>
+                          <span className="text-gray-600">
+                            {new Date(
+                              fileContent.uploadDate
+                            ).toLocaleDateString()}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex justify-between">
+                        <span className="font-medium">Status:</span>
+                        <span className="text-green-600">✓ Processed</span>
+                      </div>
+                    </div>
+
+                    <div className="text-xs text-gray-400 mt-4">
+                      This document has been uploaded and processed for
+                      chatting. The content is available for questions and
+                      analysis.
+                    </div>
+                  </div>
+                </div>
+              ) : fileContent?.type === "document-content" ? (
+                <div className="bg-gray-50 p-4 rounded border">
+                  <div className="text-sm font-medium text-gray-800 mb-2">
+                    Document Content:
+                  </div>
+                  <pre className="whitespace-pre-wrap text-sm text-gray-800 max-h-[50vh] overflow-auto">
+                    {fileContent.content}
+                  </pre>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-32">
+                  <div className="text-gray-500">Unable to load file</div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            {fileContent && !fileContent.error && (
+              <div className="border-t p-4 flex justify-between items-center">
+                <div className="text-sm text-gray-500">
+                  {fileContent.name}
+                  {fileContent.isLocal && (
+                    <span className="ml-2 text-blue-500">
+                      (Ready to upload)
+                    </span>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  {fileContent.url && !fileContent.isLocal && (
+                    <>
+                      <button
+                        onClick={() => window.open(fileContent.url, "_blank")}
+                        className="text-blue-500 hover:text-blue-700 text-sm"
+                      >
+                        Open in New Tab
+                      </button>
+                      <button
+                        onClick={() => {
+                          const link = document.createElement("a");
+                          link.href = fileContent.url;
+                          link.download = fileContent.name || "download";
+                          link.click();
+                        }}
+                        className="text-blue-500 hover:text-blue-700 text-sm"
+                      >
+                        Download
+                      </button>
+                    </>
+                  )}
+                  {fileContent.isLocal && (
+                    <span className="text-xs text-gray-400">
+                      File will be uploaded when you click the Upload button
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   );
-}
+});
 
 export default SidebarChatbot;
