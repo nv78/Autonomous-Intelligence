@@ -62,39 +62,41 @@ function Sources(props) {
   //))}
 
   return (
-    <div className="flex flex-col px-4 mt-4 bg-[#141414]
- rounded-xl py-4 my-4 min-h-[35vh] h-[35vh] overflow-y-scroll">
+    <div className="flex flex-col px-4 bg-anoteblack-800 py-4  overflow-y-scroll">
       <div className="flex flex-row justify-between items-center">
         <h2 className="text-[#FFFFFF] uppercase tracking-wide font-semibold text-s mb-2">
           Sources
         </h2>
       </div>
-      {props.activeMessageIndex &&
-        sourcesInfo.map((info, index) => (
-          <div
-            key={index}
-            className="mb-2 bg-[#3A3B41] rounded-lg border border-gray-500"
-          >
+      <div className="border h-48 rounded-xl bg-anoteblack-900 border-gray-500">
+        {props.activeMessageIndex &&
+          sourcesInfo.map((info, index) => (
             <div
-              onClick={() => toggleExpansion(index)}
-              className="flex items-center p-2 my-1 justify-between hover:bg-[#3A3B41] rounded-xl cursor-pointer"
+              key={index}
+              className="mb-2 bg-[#3A3B41] rounded-lg border border-gray-500"
             >
-              <span className="text-white">
-                {info.docName}
-              </span>
-              {expandedIndex === index ? (
-                <FontAwesomeIcon icon={faChevronUp} className="text-white" />
-              ) : (
-                <FontAwesomeIcon icon={faChevronDown} className="text-white" />
+              <div
+                onClick={() => toggleExpansion(index)}
+                className="flex items-center p-2 my-1 justify-between hover:bg-[#3A3B41] rounded-xl cursor-pointer"
+              >
+                <span className="text-white">{info.docName}</span>
+                {expandedIndex === index ? (
+                  <FontAwesomeIcon icon={faChevronUp} className="text-white" />
+                ) : (
+                  <FontAwesomeIcon
+                    icon={faChevronDown}
+                    className="text-white"
+                  />
+                )}
+              </div>
+              {expandedIndex === index && (
+                <div className="text-white  p-2 rounded-xl">
+                  <p>{info.paragraph}</p>
+                </div>
               )}
             </div>
-            {expandedIndex === index && (
-              <div className="text-white  p-2 rounded-xl">
-                <p>{info.paragraph}</p>
-              </div>
-            )}
-          </div>
-        ))}
+          ))}
+      </div>
     </div>
   );
 }
