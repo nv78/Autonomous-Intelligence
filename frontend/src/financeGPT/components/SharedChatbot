@@ -57,7 +57,7 @@ const SharedChatbot = (props) => {
       return;
     }
     try {
-      const response = await fetch(
+      const response = await fetcher(
         `generate-playbook/${props.selectedChatId}`,
         {
           method: "GET",
