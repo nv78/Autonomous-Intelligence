@@ -65,6 +65,11 @@ from ragas.metrics import (
 )
 from bs4 import BeautifulSoup
 
+#WESLEY
+from api_endpoints.financeGPT.chatbot_endpoints import create_chat_shareable_url, access_sharable_chat
+
+from database.db import get_db_connection
+
 from api_endpoints.financeGPT.chatbot_endpoints import add_prompt_to_workflow_db, add_workflow_to_db, \
     add_chat_to_db, add_message_to_db, chunk_document, get_text_from_single_file, add_document_to_db, get_relevant_chunks,  \
     remove_prompt_from_workflow_db, remove_ticker_from_workflow_db, reset_uploaded_docs_for_workflow, retrieve_chats_from_db, \
@@ -74,7 +79,7 @@ from api_endpoints.financeGPT.chatbot_endpoints import add_prompt_to_workflow_db
     retrieve_chats_from_db, delete_chat_from_db, retrieve_message_from_db, retrieve_docs_from_db, add_sources_to_db, delete_doc_from_db, reset_chat_db, \
     change_chat_mode_db, update_chat_name_db, find_most_recent_chat_from_db, process_prompt_answer, \
     ensure_SDK_user_exists, get_chat_info, ensure_demo_user_exists, get_message_info, get_text_from_url, \
-    add_organization_to_db, get_organization_from_db
+    add_organization_to_db, get_organization_from_db, update_workflow_name_db, retrieve_messages_from_share_uuid
 
 from datetime import datetime
 
@@ -192,6 +197,21 @@ def verifyAuthForIDs(table, non_user_id):
   if access_denied:
     abort(401)
 
+#WESLEY
+@app.route('/generate-playbook/<int:chat_id>', methods = ["GET"])
+@jwt_or_session_token_required
+def create_shareable_playbook(chat_id):
+    url = create_chat_shareable_url(chat_id)
+    return jsonify({
+            "url": url,
+            "success": True,
+            "message": "Shareable URL generated successfully"
+        }), 200
+
+@app.route('/playbook/<string:playbook_url>', methods=["POST"])
+@cross_origin(supports_credentials=True)
+def import_shared_chat(playbook_url):
+    return access_sharable_chat(playbook_url) 
 
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -608,8 +628,6 @@ def download_chat_history():
         return jsonify({"error": str(e)}), 500
 
 
-
-
 @app.route('/create-new-chat', methods=['POST'])
 def create_new_chat():
     try:
@@ -656,7 +674,15 @@ def retrieve_messages_from_chat():
 
     return jsonify(messages=messages)
 
+@app.route('/retrieve-shared-messages-from-chat', methods=['POST'])
+def get_playbook_messages():
+    chat_type = 0
+    chat_id = request.json.get('chat_id')
 
+    messages = retrieve_message_from_db("anon@anote.ai", chat_id, chat_type)
+
+    return jsonify(messages=messages)
+    
 @app.route('/update-chat-name', methods=['POST'])
 def update_chat_name():
     try:
@@ -872,21 +898,31 @@ def process_message_pdf():
     model_type = request.json.get('model_type')
     model_key = request.json.get('model_key')
 
-    try:
-        user_email = extractUserEmailFromRequest(request)
-    except InvalidTokenError:
-    # If the JWT is invalid, return an error
-        return jsonify({"error": "Invalid JWT"}), 401
 
-    ##Include part where we verify if user actually owns the chat_id later
+    is_guest = chat_id == 0
 
+    if not is_guest:
+        try:
+            user_email = extractUserEmailFromRequest(request)
+        except InvalidTokenError:
+        # If the JWT is invalid, return an error
+            return jsonify({"error": "Invalid JWT"}), 401
+
+        ##Include part where we verify if user actually owns the chat_id later
+    else:
+        user_email = "guest@gmail.com"
     query = message.strip()
 
     #This adds user message to db
-    add_message_to_db(query, chat_id, 1)
+    if not is_guest:
+        add_message_to_db(query, chat_id, 1)
 
     #Get most relevant section from the document
-    sources = get_relevant_chunks(2, query, chat_id, user_email)
+    if not is_guest:
+        sources = get_relevant_chunks(2, query, chat_id, user_email)
+    else: 
+        sources = []
+    
     sources_str = " ".join([", ".join(str(elem) for elem in source) for source in sources])
 
     if (model_type == 0):
@@ -937,12 +973,15 @@ def process_message_pdf():
         answer = completion.completion
 
     #This adds bot message
-    message_id = add_message_to_db(answer, chat_id, 0)
+    message_id = None
+    if not is_guest:
+        message_id = add_message_to_db(answer, chat_id, 0)
+        if message_id:
 
-    try:
-        add_sources_to_db(message_id, sources)
-    except:
-        print("no sources")
+            try:
+                add_sources_to_db(message_id, sources)
+            except:
+                print("no sources")
 
     return jsonify(answer=answer)
 

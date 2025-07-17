@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPaperPlane, faFile } from "@fortawesome/free-solid-svg-icons";
+import {
+  faPaperPlane,
+  faFile,
+  faDownload,
+  faShareAlt,
+} from "@fortawesome/free-solid-svg-icons";
 import "../styles/Chatbot.css";
 import fetcher from "../../http/RequestConfig";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -11,7 +16,7 @@ const Chatbot = (props) => {
   const navigate = useNavigate();
   const { id } = useParams();
   const location = useLocation();
-  const [isFirstMessageSent, setIsFirstMessageSent] = useState(false);
+  const [chatNameGenerated, setChatNameGenerated] = useState(false);
   const [messages, setMessages] = useState([]);
   const [uploadedDocs, setUploadedDocs] = useState([]);
   const [docsViewerOpen, setDocsViewerOpen] = useState(false);
@@ -39,7 +44,10 @@ const Chatbot = (props) => {
       });
 
       const response_data = await response.json();
-
+      if (!props.currChatName && !chatNameGenerated) {
+        props.setCurrChatName(response.chat_name);
+        setChatNameGenerated(true);
+      }
       // If no messages, this could be a new chat or a chat still processing
       if (!response_data.messages?.length) {
         // Check for pending message from navigation state or localStorage
@@ -61,7 +69,6 @@ const Chatbot = (props) => {
             content: "Thinking...",
           };
           setMessages([userMessage, thinkingMessage]);
-          setIsFirstMessageSent(false);
 
           // Store in localStorage for refresh persistence
           if (location.state?.message) {
@@ -119,7 +126,6 @@ const Chatbot = (props) => {
                   relevant_chunks: item.relevant_chunks,
                 }));
                 setMessages(transformedMessages);
-                setIsFirstMessageSent(transformedMessages.length > 0);
                 pollingTimeoutRef.current = null; // Clear the ref
                 return; // Stop polling
               } else if (pollAttempts < maxPollAttempts) {
@@ -173,7 +179,6 @@ const Chatbot = (props) => {
         } else {
           // No messages and no pending message - empty chat
           setMessages([]);
-          setIsFirstMessageSent(false);
         }
         return;
       }
@@ -190,12 +195,34 @@ const Chatbot = (props) => {
       }));
       console.log(transformedMessages);
       setMessages(transformedMessages);
-      setIsFirstMessageSent(transformedMessages.length > 0);
     } catch (error) {
       console.error("Error loading chat:", error);
     }
   }, [id, location.state?.message]);
+  const inferChatName = async (text, answer, chatId) => {
+    const combined_text = text + " " + answer;
+    console.log("infer chat with chatId:", chatId);
+    try {
+      const response = await fetcher("infer-chat-name", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messages: combined_text,
+          chat_id: chatId,
+        }),
+      });
+      const response_data = await response.json();
+      console.log("response data 123", response_data.chat_name);
+      props.setCurrChatName(response_data.chat_name);
 
+      props.handleForceUpdate();
+    } catch (error) {
+      console.error("Error inferring chat name:", error);
+    }
+  };
   // Load uploaded documents for the current chat
   const handleLoadDocs = useCallback(async () => {
     if (!id) return;
@@ -245,7 +272,7 @@ const Chatbot = (props) => {
       handleLoadDocs();
     } else {
       setMessages([]);
-      setIsFirstMessageSent(false);
+      setChatNameGenerated(false);
       setUploadedDocs([]);
     }
 
@@ -318,16 +345,36 @@ const Chatbot = (props) => {
     }
 
     // Send to API
-    await sendToAPI(currentMessage, targetChatId, false, thinkingId);
+    await sendToAPI(currentMessage, targetChatId, thinkingId);
+  };
+
+  const handleGenerateShareableUrl = async () => {
+    if (!props.selectedChatId) {
+      alert("No chat selected");
+      return;
+    }
+    try {
+      const response = await fetcher(
+        `generate-playbook/${props.selectedChatId}`,
+        {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+          },
+        }
+      );
+      const data = await response.json();
+      const shareableUrl = data.url || `/playbook/${data.share_uuid}`;
+      alert(`Your shareable URL: ${shareableUrl}`);
+    } catch (error) {
+      console.error("Error generating shareable URL:", error);
+      alert("Failed to generate shareable URL.");
+    }
   };
 
   // Send message to API and handle response
-  const sendToAPI = async (
-    messageText,
-    chatId,
-    hadFiles = false,
-    thinkingId = null
-  ) => {
+  const sendToAPI = async (messageText, chatId, thinkingId = null) => {
     try {
       const response = await fetcher("process-message-pdf", {
         method: "POST",
@@ -391,10 +438,11 @@ const Chatbot = (props) => {
         ];
       });
 
-      // Update chat name for first message
-      if (!isFirstMessageSent) {
-        props.setCurrChatName?.(messageText);
-        setIsFirstMessageSent(true);
+      // Update chat name for first message (only if chat name hasn't been generated yet)
+      if (!chatNameGenerated) {
+        console.log("Generating chat name for chat:", chatId);
+        await inferChatName(messageText, answer, chatId);
+        setChatNameGenerated(true);
         props.handleForceUpdate?.();
       }
 
@@ -505,7 +553,6 @@ const Chatbot = (props) => {
           {props.currChatName}
         </span>
       </div>
-      {/* Messages container */}
       <div
         ref={(ref) =>
           ref && ref.scrollTo({ top: ref.scrollHeight, behavior: "smooth" })
@@ -514,7 +561,31 @@ const Chatbot = (props) => {
           messages.length > 0 ? "block" : "hidden"
         } flex justify-center`}
       >
-        <div className="py-3 flex-col mt-4 px-4 flex gap-3 w-full max-w-4xl mx-6">
+        <div className="py-3 flex-col mt-0 md:mt-4 px-4 flex gap-3 w-full max-w-4xl mx-6">
+          <div className="bg-anoteblack-800 flex justify-between">
+            <h1>{props.currChatName}</h1>
+            <div className="flex gap-2">
+              <button
+                onClick={handleGenerateShareableUrl}
+                className="p-2 hover:bg-gray-700 rounded transition-colors"
+                title="Share chat"
+              >
+                <FontAwesomeIcon
+                  icon={faShareAlt}
+                  className="text-lg text-[#DFDFDF]"
+                />
+              </button>
+              <button
+                className="p-2 hover:bg-gray-700 rounded transition-colors"
+                title="Download chat"
+              >
+                <FontAwesomeIcon
+                  icon={faDownload}
+                  className="text-lg text-[#DFDFDF]"
+                />
+              </button>
+            </div>
+          </div>
           {messages.map((msg, index) => (
             <div
               key={`${msg.chat_id}-${msg.id || index}`}
@@ -542,7 +613,6 @@ const Chatbot = (props) => {
           ))}
         </div>
       </div>
-      {/* Welcome message and input */}
       <div
         className={`flex-shrink-0 borderrounded-xl ${
           messages.length === 0
