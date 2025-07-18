@@ -201,12 +201,25 @@ def verifyAuthForIDs(table, non_user_id):
 @app.route('/generate-playbook/<int:chat_id>', methods = ["GET"])
 @jwt_or_session_token_required
 def create_shareable_playbook(chat_id):
-    url = create_chat_shareable_url(chat_id)
+    try:
+        user_email = extractUserEmailFromRequest(request)
+    except InvalidTokenError:
+        # If the JWT is invalid, return an error
+        return jsonify({"error": "Invalid JWT"}), 401
+    
+    result = create_chat_shareable_url(chat_id, user_email)
+    
+    # Handle error cases
+    if isinstance(result, tuple) and len(result) == 2:
+        error_data, status_code = result
+        return jsonify(error_data), status_code
+    
+    # Success case
     return jsonify({
-            "url": url,
-            "success": True,
-            "message": "Shareable URL generated successfully"
-        }), 200
+        "data": result,
+        "success": True,
+        "message": "Shareable URL generated successfully"
+    }), 200
 
 @app.route('/playbook/<string:playbook_url>', methods=["POST"])
 @cross_origin(supports_credentials=True)

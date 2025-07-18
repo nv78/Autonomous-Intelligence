@@ -94,38 +94,11 @@ CREATE TABLE chats (
 CREATE TABLE chat_shares (
     id INTEGER PRIMARY KEY AUTO_INCREMENT,
     chat_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
     share_uuid VARCHAR(255) UNIQUE NOT NULL,
     created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (chat_id) REFERENCES chats(id)
-);
-
-CREATE TABLE chat_share_messages (
-    id INTEGER PRIMARY KEY AUTO_INCREMENT,
-    chat_share_id INTEGER NOT NULL,
-    role ENUM('user', 'chatbot') NOT NULL,
-    message_text TEXT NOT NULL,
-    created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (chat_share_id) REFERENCES chat_shares(id)
-);
-
-CREATE TABLE chat_share_documents (
-    id INTEGER PRIMARY KEY AUTO_INCREMENT,
-    chat_share_id INTEGER NOT NULL,
-    document_name VARCHAR(255) NOT NULL,
-    document_text LONGTEXT NOT NULL,
-    storage_key TEXT NOT NULL,
-    created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (chat_share_id) REFERENCES chat_shares(id)
-);
-
-CREATE TABLE chat_share_chunks (
-    id INTEGER PRIMARY KEY AUTO_INCREMENT,
-    chat_share_document_id INTEGER NOT NULL,
-    start_index INTEGER,
-    end_index INTEGER,
-    embedding_vector BLOB,
-    page_number INTEGER,
-    FOREIGN KEY (chat_share_document_id) REFERENCES chat_share_documents(id)
+    FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
 

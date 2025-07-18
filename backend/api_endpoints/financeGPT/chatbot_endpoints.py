@@ -67,135 +67,178 @@ def add_chat_to_db(user_email, chat_type, model_type): #intake the current userI
 
     return chat_id
 
-def create_chat_shareable_url(chat_id):
+def create_chat_shareable_url(chat_id, user_email):
     conn, cursor = get_db_connection()
-    # Generate shareable UUID
-    share_uuid = str(uuid.uuid4())
-    # Insert into chat_shares
-    cursor.execute(
-        "INSERT INTO chat_shares (chat_id, share_uuid) VALUES (%s, %s)",
-        (chat_id, share_uuid)
-    )
-    chat_share_id = cursor.lastrowid
-    # Copy messages
-    cursor.execute("""
-        SELECT sent_from_user, message_text, created
-        FROM messages
-        WHERE chat_id = %s
-        ORDER BY created ASC
-    """, (chat_id,))
-    messages = cursor.fetchall()
-    for msg in messages:
-        role = 'user' if msg['sent_from_user'] else 'chatbot'
+    
+    try:
+        # First get the user_id from user_email
+        cursor.execute("SELECT id FROM users WHERE email = %s", (user_email,))
+        user_result = cursor.fetchone()
+        
+        if not user_result:
+            return {"error": "User not found"}, 404
+        
+        user_id = user_result['id']
+        
+        # Check if a shareable URL already exists for this chat_id and user_id
         cursor.execute("""
-            INSERT INTO chat_share_messages (chat_share_id, role, message_text, created)
-            VALUES (%s, %s, %s, %s)
-        """, (chat_share_id, role, msg['message_text'], msg['created']))
-    # Copy documents
-    cursor.execute("""
-        SELECT id, document_name, document_text, storage_key, created
-        FROM documents
-        WHERE chat_id = %s
-    """, (chat_id,))
-    docs = cursor.fetchall()
-    for doc in docs:
+            SELECT cs.share_uuid, cs.created
+            FROM chat_shares cs
+            WHERE cs.chat_id = %s AND cs.user_id = %s
+            ORDER BY cs.created DESC
+            LIMIT 1
+        """, (chat_id, user_id))
+        
+        existing_share = cursor.fetchone()
+        
+        if existing_share:
+            # Return the existing shareable URL
+            return {
+                "share_uuid": existing_share['share_uuid'], 
+                "shareable_url": f"/share/{existing_share['share_uuid']}",
+                "created": existing_share['created'].isoformat() if existing_share['created'] else None,
+                "is_existing": True
+            }
+        
+        # Generate a unique UUID for the shareable link
+        share_uuid = str(uuid.uuid4())
+        
+        # Create the chat share entry - just store the reference
         cursor.execute("""
-            INSERT INTO chat_share_documents (
-                chat_share_id, document_name, document_text, storage_key, created
-            ) VALUES (%s, %s, %s, %s, %s)
-        """, (
-            chat_share_id,
-            doc["document_name"],
-            doc["document_text"],
-            doc["storage_key"],
-            doc["created"]
-        ))
-        chat_share_doc_id = cursor.lastrowid
-        # Copy chunks associated with the original document
-        cursor.execute("""
-            SELECT start_index, end_index, embedding_vector, page_number
-            FROM chunks
-            WHERE document_id = %s
-        """, (doc["id"],))
-        chunks = cursor.fetchall()
-        for chunk in chunks:
-            cursor.execute("""
-                INSERT INTO chat_share_chunks (
-                    chat_share_document_id, start_index, end_index, embedding_vector, page_number
-                ) VALUES (%s, %s, %s, %s, %s)
-            """, (
-                chat_share_doc_id,
-                chunk["start_index"],
-                chunk["end_index"],
-                chunk["embedding_vector"],
-                chunk["page_number"]
-            ))
-    conn.commit()
-    conn.close()
-    return f"/playbook/{share_uuid}"
+            INSERT INTO chat_shares (chat_id, user_id, share_uuid, created)
+            VALUES (%s, %s, %s, NOW())
+        """, (chat_id, user_id, share_uuid))
+        
+        conn.commit()
+        return {
+            "share_uuid": share_uuid, 
+            "shareable_url": f"/share/{share_uuid}",
+            "is_existing": False
+        }
+        
+    except Exception as e:
+        conn.rollback()
+        return {"error": str(e)}, 500
+    finally:
+        conn.close()
 
-def access_sharable_chat(share_uuid, user_id=1):
+def access_sharable_chat(share_uuid, user_id=None):
     conn, cursor = get_db_connection()
-    cursor.execute("SELECT * FROM chat_shares WHERE share_uuid = %s", (share_uuid,))
-    share = cursor.fetchone()
-    if not share:
-        return jsonify({"error": "Snapshot not found"}), 404
-    # Create new chat
-    cursor.execute("""
-        INSERT INTO chats (user_id, model_type, chat_name, associated_task)
-        VALUES (%s, %s, %s, %s)
-    """, (user_id, 0, "Imported from share", 0))
-    new_chat_id = cursor.lastrowid
-    # Copy messages
-    cursor.execute("""
-        SELECT role, message_text
-        FROM chat_share_messages
-        WHERE chat_share_id = %s
-        ORDER BY created ASC
-    """, (share['id'],))
-    messages = cursor.fetchall()
-    for msg in messages:
-        sent_from_user = 1 if msg['role'] == 'user' else 0
+    
+    try:
+        # 1. Get the shareable link data with chat info using JOIN
         cursor.execute("""
-            INSERT INTO messages (chat_id, message_text, sent_from_user)
-            VALUES (%s, %s, %s)
-        """, (new_chat_id, msg['message_text'], sent_from_user))
-    # Copy documents + chunks
-    cursor.execute("""
-        SELECT id, document_name, document_text, storage_key
-        FROM chat_share_documents
-        WHERE chat_share_id = %s
-    """, (share['id'],))
-    docs = cursor.fetchall()
-    for doc in docs:
-        # Insert document
+            SELECT 
+                cs.id as share_id,
+                cs.chat_id, 
+                cs.user_id as original_user_id,
+                cs.share_uuid, 
+                cs.created as share_created,
+                c.chat_name, 
+                c.model_type, 
+                c.associated_task, 
+                c.ticker,
+                c.custom_model_key,
+                c.created as chat_created,
+                u.person_name as original_user_name,
+                u.email as original_user_email
+            FROM chat_shares cs
+            JOIN chats c ON cs.chat_id = c.id
+            JOIN users u ON cs.user_id = u.id
+            WHERE cs.share_uuid = %s
+        """, (share_uuid,))
+        
+        share_data = cursor.fetchone()
+        
+        if not share_data:
+            return jsonify({"error": "Shared chat not found"}), 404
+        
+        # 2. Get messages from the original chat using JOIN
         cursor.execute("""
-            INSERT INTO documents (chat_id, workflow_id, document_name, document_text, storage_key)
-            VALUES (%s, NULL, %s, %s, %s)
-        """, (new_chat_id, doc['document_name'], doc['document_text'], doc['storage_key']))
-        new_doc_id = cursor.lastrowid
-        # Retrieve and copy chunks from snapshot
+            SELECT 
+                m.id as message_id,
+                m.message_text, 
+                m.sent_from_user, 
+                m.relevant_chunks, 
+                m.created as message_created
+            FROM messages m
+            WHERE m.chat_id = %s
+            ORDER BY m.created ASC
+        """, (share_data['chat_id'],))
+        
+        messages = cursor.fetchall()
+        
+        # 3. Get documents associated with the chat using JOIN
         cursor.execute("""
-            SELECT start_index, end_index, embedding_vector, page_number
-            FROM chat_share_chunks
-            WHERE chat_share_document_id = %s
-        """, (doc['id'],))
-        chunks = cursor.fetchall()
-        for chunk in chunks:
-            cursor.execute("""
-                INSERT INTO chunks (
-                    document_id, start_index, end_index, embedding_vector, page_number
-                ) VALUES (%s, %s, %s, %s, %s)
-            """, (
-                new_doc_id,
-                chunk['start_index'],
-                chunk['end_index'],
-                chunk['embedding_vector'],
-                chunk['page_number']
-            ))
-    conn.commit()
-    conn.close()
-    return jsonify({"new_chat_id": new_chat_id})
+            SELECT 
+                d.id as document_id,
+                d.document_name,
+                d.storage_key,
+                d.created as document_created,
+                COUNT(ch.id) as chunk_count
+            FROM documents d
+            LEFT JOIN chunks ch ON d.id = ch.document_id
+            WHERE d.chat_id = %s
+            GROUP BY d.id, d.document_name, d.storage_key, d.created
+            ORDER BY d.created ASC
+        """, (share_data['chat_id'],))
+        
+        documents = cursor.fetchall()
+        
+        # Prepare the response data
+        response_data = {
+            "share_info": {
+                "share_uuid": share_data['share_uuid'],
+                "share_created": share_data['share_created'].isoformat() if share_data['share_created'] else None,
+                "original_user_name": share_data['original_user_name'],
+                "original_user_email": share_data['original_user_email']
+            },
+            "chat_info": {
+                "chat_id": share_data['chat_id'],
+                "chat_name": share_data['chat_name'],
+                "model_type": share_data['model_type'],
+                "associated_task": share_data['associated_task'],
+                "ticker": share_data['ticker'],
+                "custom_model_key": share_data['custom_model_key'],
+                "chat_created": share_data['chat_created'].isoformat() if share_data['chat_created'] else None
+            },
+            "messages": [
+                {   
+                    "chat_id": share_data["chat_id"],
+                    "message_id": msg['message_id'],
+                    "message_text": msg['message_text'],
+                    "role": "user" if bool(msg['sent_from_user']) else "assistant" ,
+                    "relevant_chunks": msg['relevant_chunks'],
+                    "created": msg['message_created'].isoformat() if msg['message_created'] else None
+                }
+                for msg in messages
+            ],
+            "documents": [
+                {
+                    "document_id": doc['document_id'],
+                    "document_name": doc['document_name'],
+                    "storage_key": doc['storage_key'],
+                    "chunk_count": doc['chunk_count'],
+                    "created": doc['document_created'].isoformat() if doc['document_created'] else None
+                }
+                for doc in documents
+            ],
+            "message_count": len(messages),
+            "document_count": len(documents)
+        }
+        
+        # If user is not logged in (user_id is None), just return the data for viewing
+        if user_id is None:
+            response_data["is_copy"] = False
+            response_data["view_mode"] = "readonly"
+            conn.close()
+            return jsonify(response_data)
+        
+        return jsonify({ "status": 404 })
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return jsonify({"error": f"Failed to access shared chat: {str(e)}"}), 500
 
 ## General for all chatbots
 # Worflow_type is an integer where 2=FinancialReports

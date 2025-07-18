@@ -364,8 +364,8 @@ const Chatbot = (props) => {
           },
         }
       );
-      const data = await response.json();
-      const shareableUrl = data.url || `/playbook/${data.share_uuid}`;
+      const ctx = await response.json();
+      const shareableUrl = ctx.data.url || `/playbook/${ctx.data.share_uuid}`;
       alert(`Your shareable URL: ${shareableUrl}`);
     } catch (error) {
       console.error("Error generating shareable URL:", error);
