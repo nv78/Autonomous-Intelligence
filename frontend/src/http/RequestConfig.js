@@ -1,4 +1,4 @@
-const API_ENDPOINT = process.env.REACT_APP_BACK_END_HOST;
+const API_ENDPOINT = "";
 
 export function defaultHeaders() {
   const accessToken = localStorage.getItem("accessToken");

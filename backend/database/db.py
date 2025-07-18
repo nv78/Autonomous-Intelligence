@@ -30,7 +30,7 @@ def get_db_connection():
             )
     else:
         conn = mysql.connector.connect(
-            host=dbHost,
+            host="localhost",
             user=dbUser,
             password=dbPassword,
             database=dbName,

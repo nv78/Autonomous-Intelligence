@@ -34,7 +34,7 @@ planToSearches = {
 chatgptLimit = 10000
 
 dbName = "agents"
-dbHost = "db"  # Docker service name for the database container
+dbHost = "localhost"  # Docker service name for the database container
 dbPassword = ""
 dbUser = "root"
 

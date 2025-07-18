@@ -40,12 +40,14 @@ load_dotenv()
 print("Connecting to MySQL database...")
 
 options = {
-    "host": os.getenv("DB_HOST", "db"),
+    "host": os.getenv("DB_HOST", "localhost"),
     "user": os.getenv("DB_USER", "root"),
-    "password": os.getenv("DB_PASSWORD", "").strip('"') or None,
+    "password": os.getenv("DB_PASSWORD", "blue1215").strip('"') or None,
     "database": os.getenv("DB_NAME", "agents"),
     "port": int(os.getenv("DB_PORT", 3306)),
 }
+
+print("Connecting with host:", options["host"])
 
 connection = mysql.connector.connect(
     host=options["host"],
@@ -63,8 +65,11 @@ schema_path = os.path.join(project_root, "database", "schema.sql")
 
 with open(schema_path, encoding='utf8') as f:
     sql_script = f.read()
-    for result in cur.execute(sql_script, multi=True):
-        pass  # Optionally log result
+    statements = sql_script.split(';')
+    for statement in statements:
+        stmt = statement.strip()
+        if stmt:
+            cur.execute(stmt)
 
 connection.commit()
 cur.close()

@@ -12,7 +12,9 @@ import { Modal, Button } from "flowbite-react";
 
 function NoUserSession(props) {
   let dispatch = useDispatch();
-  const onLogin = () => {
+  const onLogin = (e) => {
+    if (e) e.preventDefault();
+    console.log("GOOGLE LOGIN BUTTON CLICKED!!!");
     dispatch(
       login({
         product_hash: props.productHash,
@@ -159,15 +161,38 @@ function NoUserSession(props) {
               </p>
             )}
             {pageState != 3 && pageState != 4 && (
-              <button
-                onClick={onLogin}
-                type="button"
-                className="login-with-google-btn-new"
-                style={{
-                  backgroundImage: `url(${googleIcon})`,
-                  textColor: "transparent",
-                }}
-              />
+              <>
+                <button
+                  onClick={onLogin}
+                  type="button"
+                  className="login-with-google-btn-new"
+                  style={{
+                    backgroundImage: `url(${googleIcon})`,
+                    textColor: "transparent",
+                    width: "200px", // or whatever size you want
+                    height: "40px",
+                    backgroundSize: "cover",
+                  }}
+                >
+                  {/* Optionally, add alt text for accessibility */}
+                  <span style={{ opacity: 0 }}>Sign in with Google</span>
+                </button>
+                <button
+                  onClick={() => console.log("TEST BUTTON CLICKED")}
+                  type="button"
+                  style={{
+                    marginTop: "10px",
+                    padding: "10px 20px",
+                    background: "#F1CA57",
+                    color: "#141414",
+                    borderRadius: "5px",
+                    border: "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  Test Button
+                </button>
+              </>
             )}
           </div>
         </div>
