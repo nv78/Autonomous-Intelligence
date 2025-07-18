@@ -537,15 +537,16 @@ const SidebarChatbot = forwardRef((props, ref) => {
       </button>
     </div>
   ) : null;
-  const handleSwitchChange = () => {
-    setShowConfirmPopup(true);
-  };
+  
+ const handleSwitchChange = (selectedOption) => {
+  props.setIsPrivate(selectedOption.value); 
+  setShowConfirmPopup(true); 
+ }
 
-  const confirmSwitchChange = () => {
-    props.setIsPrivate((prevState) => 1 - prevState); //toggle true or false
-    changeChatMode(props.isPrivate);
-    setShowConfirmPopup(false);
-  };
+const confirmSwitchChange = () => {
+  changeChatMode(props.isPrivate); 
+  setShowConfirmPopup(false);
+};
 
   const cancelSwitchChange = () => {
     setShowConfirmPopup(false);
@@ -743,7 +744,8 @@ const SidebarChatbot = forwardRef((props, ref) => {
   var modelOptions = [];
   modelOptions.push(
     { value: 0, label: "OpenAI" },
-    { value: 1, label: "Claude" }
+    { value: 1, label: "Claude" },
+    { value: 2, label: "Mistral" },
   );
 
   const taskoptions = [
