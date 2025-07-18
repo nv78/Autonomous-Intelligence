@@ -47,6 +47,7 @@ import ChatbotLanding from "./landing_page_screens/Chatbots/ChatbotLanding";
 import Languages from "./landing_page_screens/Chatbots/languages/Languages";
 import { LANGUAGE_ROUTES } from "../constants/RouteConstants";
 import Companies from "./landing_page_screens/Chatbots/companies/Companies";
+
 function LandingPage() {
   const location = useLocation();
   let dispatch = useDispatch();
