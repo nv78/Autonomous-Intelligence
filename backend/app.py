@@ -869,7 +869,7 @@ def reset_chat():
 def process_message_pdf():
     message = request.json.get('message')
     chat_id = request.json.get('chat_id')
-    model_type = request.json.get('model_type')
+    model_type = int(request.json.get('model_type', 0))
     model_key = request.json.get('model_key')
 
     try:
@@ -889,14 +889,14 @@ def process_message_pdf():
     sources = get_relevant_chunks(2, query, chat_id, user_email)
     sources_str = " ".join([", ".join(str(elem) for elem in source) for source in sources])
 
-    if (model_type == 0):
+    if model_type == 0:
+        # GPT (OpenAI)
         if model_key:
            model_use = model_key
         else:
            model_use = "gpt-4o-mini"
 
         print("using OpenAI and model is", model_use)
-        
         try:
             completion = client.chat.completions.create(
                 model=model_use,
@@ -917,15 +917,15 @@ def process_message_pdf():
                 ]
             )
             answer = str(completion.choices[0].message.content)
-    else:
-        print("using Claude")
 
+    elif model_type == 1:
+        # Claude (Anthropic)
+        print("using Claude")
         anthropic = Anthropic(
             api_key=os.getenv("ANTHROPIC_API_KEY")
         )
-
         completion = anthropic.completions.create(
-            model="claude-2",
+            model="claude-3-haiku-20240307",
             max_tokens_to_sample=700,
             prompt = (
               f"{HUMAN_PROMPT} "
@@ -935,6 +935,19 @@ def process_message_pdf():
               f"{AI_PROMPT}")
         )
         answer = completion.completion
+
+    elif model_type == 2:
+        # Magistral via Ollama
+        print("using Magistral (Ollama)")
+        ollama_url = "http://localhost:11434/api/generate"
+        payload = {
+            "model": "magistral",
+            "prompt": f"{query} {sources_str}",
+        }
+        response = requests.post(ollama_url, json=payload)
+        response.raise_for_status()
+        result = response.json()
+        answer = result["response"]
 
     #This adds bot message
     message_id = add_message_to_db(answer, chat_id, 0)
