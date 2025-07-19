@@ -561,7 +561,7 @@ const Chatbot = (props) => {
           messages.length > 0 ? "block" : "hidden"
         } flex justify-center`}
       >
-        <div className="py-3 flex-col mt-0 md:mt-4 px-4 flex gap-3 w-full max-w-4xl mx-6">
+        <div className="py-3 flex-col mt-0 px-4 flex gap-3 w-full max-w-4xl">
           <div className="bg-anoteblack-800 flex justify-between">
             <h1>{props.currChatName}</h1>
             <div className="flex gap-2">
@@ -633,34 +633,36 @@ const Chatbot = (props) => {
             {/* Left side - Upload button */}
             <button
               type="button"
-              onClick={() => {
+              onClick={async () => {
                 console.log("Upload button clicked in Chatbot");
-                console.log(
-                  "props.onUploadClick exists:",
-                  !!props.onUploadClick
-                );
-                console.log("Chat ID (id):", id);
+                if (props.isUploading) return;
+                if (!id) {
+                  // Create new chat if no id
+                  try {
+                    const newChatId = await props.createNewChat();
+                    navigate(`/chat/${newChatId}`);
+                  } catch (error) {
+                    console.error("Error creating new chat for upload:", error);
+                    return;
+                  }
+                }
                 if (props.onUploadClick) {
-                  console.log("Calling props.onUploadClick");
                   setUploadButtonClicked(true);
                   props.onUploadClick();
-                  // Reset the visual state after a short delay
                   setTimeout(() => setUploadButtonClicked(false), 1000);
                 } else {
                   console.log("props.onUploadClick is not available");
                 }
               }}
-              disabled={props.isUploading || !id}
+              disabled={props.isUploading}
               className={`flex items-center justify-center w-12 h-12 rounded-xl transition-colors flex-shrink-0 ${
                 uploadButtonClicked
                   ? "bg-blue-600 text-white"
                   : props.isUploading
                   ? "bg-gray-500 text-gray-300 cursor-not-allowed"
-                  : !id
-                  ? "bg-gray-600 text-gray-400 cursor-not-allowed"
                   : "bg-blue-500 hover:bg-blue-600 text-white"
               }`}
-              title={!id ? "Please select or create a chat first" : "Add files"}
+              title={"Add files"}
             >
               <FontAwesomeIcon icon={faFile} className="text-lg" />
             </button>
