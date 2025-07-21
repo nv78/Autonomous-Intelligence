@@ -24,13 +24,13 @@ const colors = {
       outline: 'none'
   }),
     option: (provided, state) => ({
-        ...provided,
-        backgroundColor: state.isFocused ? colors.focus : colors.focus,
-        color: state.isSelected ? colors.selected : colors.unselected,
-        '&:hover': {
-            backgroundColor: colors.hover
-        },
-        textAlign: 'left'
+  ...provided,
+    backgroundColor: state.isFocused
+        ? '#505050' 
+        : '#3a3a3a', 
+    color: state.isSelected ? '#ffffff' : '#b3b3b3',
+    cursor: 'pointer',
+    padding: '10px 12px',
     }),
     input: (provided, state) => ({
         ...provided,

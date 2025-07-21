@@ -1592,7 +1592,7 @@ def evaluate():
     answer = answer_json['message_text']
     context = answer_json['relevant_chunks']
 
-    #get it in the corret data format to put in ragas
+    #get it in the correct data format to put in ragas
     if not isinstance(context, list):
         context = [context]
 
