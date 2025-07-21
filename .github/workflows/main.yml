@@ -2,7 +2,7 @@ name: Lint Frontend (ESLint) & Backend (Python) + CodeQL
 
 on:
   push:
-    branches: [main]
+    branches: [main, BE-unit-tests]
     paths:
       - 'frontend/**'
       - 'backend/**'
