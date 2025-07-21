@@ -331,8 +331,8 @@ def change_chat_mode_db(chat_mode_to_change_to, chat_id, user_email):
 
 
 
-def add_document_to_db(text, document_name, chat_id=None, organization_id=None):
-    if chat_id == 0:
+def add_document_to_db(text, document_name, chat_id=None, organization_id=None, is_guest=False):
+    if is_guest:
         print(f"Guest session: Skipping database storage for document '{document_name}'")
         return None, False
     
@@ -647,9 +647,9 @@ def add_wf_sources_to_db(prompt_id, sources):
     conn.close()
 
 
-def add_message_to_db(text, chat_id, isUser):
+def add_message_to_db(text, chat_id, isUser, is_guest=False):
 
-    if chat_id == 0:
+    if  is_guest:
         return None #don't save guest messages
     #If isUser is 0, it is a bot message, 1 is a user message
     conn, cursor = get_db_connection()

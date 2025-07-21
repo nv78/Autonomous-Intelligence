@@ -843,9 +843,7 @@ def process_message_pdf():
     chat_id = request.json.get('chat_id')
     model_type = request.json.get('model_type')
     model_key = request.json.get('model_key')
-
-
-    is_guest = chat_id == 0
+    is_guest = request.json.get('is_guest', False)
 
     if not is_guest:
         try:
@@ -861,7 +859,7 @@ def process_message_pdf():
 
     #This adds user message to db
     if not is_guest:
-        add_message_to_db(query, chat_id, 1)
+        add_message_to_db(query, chat_id, 1, is_guest=is_guest)
 
     #Get most relevant section from the document
     if not is_guest:

@@ -104,6 +104,7 @@ function HomeChatbot({ isLoggedIn }) {
        <div className={`${isLoggedIn ? "w-[60%] mx-4" : "w-full"}`}>
         {currTask === 0 && (
           <Chatbot
+            isLoggedIn={isLoggedIn}
             chat_type={currTask}
             selectedChatId={selectedChatId}
             handleChatSelect={handleChatSelect}
