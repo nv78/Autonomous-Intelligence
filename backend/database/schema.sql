@@ -215,6 +215,15 @@ CREATE TABLE apiKeys (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
+CREATE TABLE IF NOT EXISTS companies (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(255),
+  path VARCHAR(255)
+  -- other columns
+);
+INSERT INTO companies (name, path) VALUES ('Anote Chatbot', '/companies/anote');
+
+
 
 CREATE UNIQUE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_chats_user_id ON chats(user_id);

@@ -64,6 +64,7 @@ from ragas.metrics import (
     context_precision,
 )
 from bs4 import BeautifulSoup
+from flask_mysql_connector import MySQL
 
 #WESLEY
 from api_endpoints.financeGPT.chatbot_endpoints import create_chat_shareable_url, access_sharable_chat
@@ -91,6 +92,8 @@ from api_endpoints.languages.japanese import japanese_blueprint
 from api_endpoints.languages.korean import korean_blueprint
 from api_endpoints.languages.spanish import spanish_blueprint
 from api_endpoints.languages.arabic import arabic_blueprint
+
+
 
 load_dotenv(override=True)
 
@@ -121,6 +124,7 @@ config = {
   'ORIGINS': [
     'http://localhost:3000',  # React
     'http://localhost:5000',
+    'http://localhost:5050',
     'http://dashboard.localhost:3000',  # React
     'https://anote.ai', # Frontend prod URL,
     'https://privatechatbot.ai', # Frontend prod URL,
@@ -148,6 +152,25 @@ app.config['MAIL_USERNAME'] = 'vidranatan@gmail.com'
 app.config['MAIL_PASSWORD'] = 'fhytlgpsjyzutlnm'
 app.config['MAIL_DEFAULT_SENDER'] = 'vidranatan@gmail.com'
 mail = Mail(app)
+
+
+#MySQL config -- could put these in a backend .env if there are different users
+app.config['MYSQL_HOST'] = 'db'
+app.config['MYSQL_USER'] = 'root'
+app.config['MYSQL_PASSWORD'] = ''
+app.config['MYSQL_DATABASE'] = 'agents'
+
+
+#debug
+print("MySQL config:", {
+    "host": app.config['MYSQL_HOST'],
+    "user": app.config['MYSQL_USER'],
+    "password": app.config['MYSQL_PASSWORD'],
+    "database": app.config['MYSQL_DATABASE']
+})
+
+mysql = MySQL(app)
+
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
@@ -1615,6 +1638,14 @@ def evaluate():
     )
 
     return result
+
+@app.route('/api/companies', methods=['GET'])
+def get_companies():
+    cursor = mysql.connection.cursor(dictionary=True)
+    cursor.execute("SELECT id, name, path FROM companies")
+    companies = cursor.fetchall()
+    cursor.close()
+    return jsonify(companies)
 
 
 if __name__ == '__main__':
