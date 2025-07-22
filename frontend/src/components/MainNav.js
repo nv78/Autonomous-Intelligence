@@ -10,6 +10,7 @@ import {
   downloadPrivateGPTPath,
   gtmPath,
   landing,
+  chatbots,
 } from "../constants/RouteConstants";
 import { Dropdown, Navbar, Avatar, DarkThemeToggle } from "flowbite-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -70,9 +71,9 @@ function MainNav(props) {
         </div>
         <div
           className="text-white text-xs font-medium cursor-pointer mr-3"
-          onClick={() => navigate(gtmPath)}
+          onClick={() => navigate(chatbots)}
         >
-          Chat with Us
+          Chatbots
         </div>
         <Dropdown
           theme={{
