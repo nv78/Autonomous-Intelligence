@@ -4,7 +4,8 @@ import axios from "axios";
 
 const Companies = () => {
   const [companies, setCompanies] = useState([]);
-
+  const urlObject = new URL(window.location.origin);
+  
   //check log in status
   const [isLoggedIn, setIsLoggedIn] = useState(true);
   const accessToken = localStorage.getItem("accessToken");
@@ -20,6 +21,13 @@ const Companies = () => {
   }
   var showRestrictedRouteRequiringUserSession = isLoggedIn;
 
+  var hostname = urlObject.hostname;
+  if (hostname.startsWith("www.")) {
+    hostname = hostname.substring(4);
+  }
+  urlObject.hostname = `dashboard.${hostname}`;
+
+  var startPath = urlObject.toString();
   useEffect(() => {
     axios.get("http://localhost:5050/api/companies", { //port 5050 because of conflicts with 5000
       withCredentials: true
@@ -84,10 +92,23 @@ const Companies = () => {
             </table>
           </div>
         )}
-
-          <Link to="/create-chatbot" className="btn-black px-6 py-2 border border-white rounded hover:bg-white hover:text-black transition">
+        
+        {showRestrictedRouteRequiringUserSession ? (
+          <Link
+            to="/"
+            className="btn-black px-6 py-2 border border-white rounded hover:bg-white hover:text-black transition"
+          >
             Get Started
           </Link>
+        ) : (
+          <a
+            href={startPath}
+            className="btn-black px-6 py-2 border border-white rounded hover:bg-white hover:text-black transition"
+          >
+            Get Started
+          </a>
+        )}
+
         </div>
       </div>
     </section>
