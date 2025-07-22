@@ -17,6 +17,7 @@ import { faLink } from "@fortawesome/free-solid-svg-icons";
 
 
 const Chatbot = (props) => {
+  const { isLoggedIn } = props;
   const [messages, setMessages] = useState([]);
   const [isFirstMessageSent, setIsFirstMessageSent] = useState(false);
   const inputRef = useRef(null);
@@ -155,6 +156,7 @@ const Chatbot = (props) => {
           chat_id: chat_id,
           model_type: props.isPrivate,
           model_key: props.confirmedModelKey,
+          is_guest: !props.isLoggedIn,
         }),
       });
       const response_data = await response.json();
