@@ -1,10 +1,13 @@
-import React, { Component, useState, useEffect } from "react";
+import React, { Component, useState, useEffect, useRef } from "react";
 import Navbarchatbot from "./NavbarChatbot";
 import Chatbot from "./Chatbot";
 import "../styles/Chatbot.css";
 import SidebarChatbot from "./SidebarChatbot";
 import fetcher from "../../http/RequestConfig";
 import ChatbotEdgar from "./chatbot_subcomponents/ChatbotEdgar";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
+import Popout from "./Popout";
+
 
 function HomeChatbot({ isLoggedIn }) {
   const [selectedChatId, setSelectedChatId] = useState(null);
@@ -16,12 +19,26 @@ function HomeChatbot({ isLoggedIn }) {
   const [showChatbot, setShowChatbot] = useState(false);
   const [isEdit, setIsEdit] = useState(0); //for whether you can currently edit the ticker or not
   const [activeMessageIndex, setActiveMessageIndex] = useState(null);
-  const [relevantChunk, setRelevantChunk] = useState('');
+  const [relevantChunk, setRelevantChunk] = useState("");
+  const [menu, setMenu] = useState(false);
+  const [chats, setChats] = useState([]);
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const { id } = useParams();
+  const location = useLocation();
 
+  // Upload-related state
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [triggerUpload, setTriggerUpload] = useState(false);
+  const sidebarRef = useRef(null);
+
+  const handleMenu = () => {
+    setMenu((prev) => !prev);
+  };
   const [confirmedModelKey, setConfirmedModelKey] = useState("");
 
   const handleChatSelect = (chatId) => {
-    if (!isLoggedIn) return;
     setSelectedChatId(chatId);
   };
 
@@ -48,30 +65,49 @@ function HomeChatbot({ isLoggedIn }) {
 
     const response_data = await response.json();
     handleChatSelect(response_data.chat_id);
-
     return response_data.chat_id;
   };
 
-  const testClick = () => {
-    fetcher("temp-test", {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-    }).catch((e) => {
-      console.error(e.error);
-    });
+  // Handle upload trigger from chatbot - direct approach
+  const handleUploadClick = () => {
+    if (sidebarRef.current && sidebarRef.current.openFileDialog) {
+      sidebarRef.current.openFileDialog();
+    } else {
+      // Fallback to trigger approach
+      setTriggerUpload(true);
+    }
+  };
+
+  // Reset upload trigger (called by sidebar after handling)
+  const resetUploadTrigger = () => {
+    setTriggerUpload(false);
   };
 
   useEffect(() => {
-  if (!isLoggedIn) {
-    // starting a temporary chat for guest
-    setSelectedChatId(0);
-    setCurrChatName("Guest Session");
-  }
-  }, [isLoggedIn]);
+    const retrieveAllChats = async () => {
+      console.log("i am in retrieve chats");
+      setLoading(true);
+      try {
+        const response = await fetcher("retrieve-all-chats", {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ chat_type: 0 }),
+        });
 
+        const response_data = await response.json();
+        setChats(response_data.chat_info);
+        console.log("retriving data", response_data);
+      } catch (error) {
+        console.error("Error fetching chats:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    retrieveAllChats();
+  }, []);
 
   return (
     
@@ -108,6 +144,10 @@ function HomeChatbot({ isLoggedIn }) {
             chat_type={currTask}
             selectedChatId={selectedChatId}
             handleChatSelect={handleChatSelect}
+            handleMenu={handleMenu}
+            chats={chats}
+            createNewChat={createNewChat}
+            menu={menu}
             handleForceUpdate={handleForceUpdate}
             forceUpdate={forceUpdate}
             isPrivate={isPrivate}
@@ -117,9 +157,36 @@ function HomeChatbot({ isLoggedIn }) {
             activeMessageIndex={activeMessageIndex}
             setActiveMessageIndex={setActiveMessageIndex}
             setRelevantChunk={setRelevantChunk}
+            isUploading={isUploading}
+            uploadProgress={uploadProgress}
+            onUploadClick={handleUploadClick}
           />
         )}
-        {currTask === 1 && (
+        <div className="w-72 hidden lg:block">
+          <SidebarChatbot
+            ref={sidebarRef}
+            selectedChatId={selectedChatId}
+            chat_type={currTask}
+            createNewChat={createNewChat}
+            onChatSelect={handleChatSelect}
+            handleForceUpdate={handleForceUpdate}
+            forceUpdate={forceUpdate}
+            setIsPrivate={setIsPrivate}
+            setCurrChatName={setCurrChatName}
+            setcurrTask={setcurrTask}
+            setTicker={setTicker}
+            setShowChatbot={setShowChatbot}
+            setIsEdit={setIsEdit}
+            setConfirmedModelKey={setConfirmedModelKey}
+            relevantChunk={relevantChunk}
+            activeMessageIndex={activeMessageIndex}
+            triggerUpload={triggerUpload}
+            resetUploadTrigger={resetUploadTrigger}
+            setIsUploading={setIsUploading}
+            setUploadProgress={setUploadProgress}
+          />
+        </div>
+        {/* {currTask === 1 && (
           <ChatbotEdgar
             chat_type={currTask}
             selectedChatId={selectedChatId}
@@ -141,30 +208,8 @@ function HomeChatbot({ isLoggedIn }) {
             setActiveMessageIndex={setActiveMessageIndex}
             setRelevantChunk={setRelevantChunk}
           />
-        )}
+        )} */}
       </div>
-
-      {isLoggedIn && (
-        <div className="w-[20%] mt-2">
-          <SidebarChatbot
-            selectedChatId={selectedChatId}
-            chat_type={currTask}
-            createNewChat={createNewChat}
-            onChatSelect={handleChatSelect}
-            handleForceUpdate={handleForceUpdate}
-            forceUpdate={forceUpdate}
-            setIsPrivate={setIsPrivate}
-            setCurrChatName={setCurrChatName}
-            setcurrTask={setcurrTask}
-            setTicker={setTicker}
-            setShowChatbot={setShowChatbot}
-            setIsEdit={setIsEdit}
-            setConfirmedModelKey={setConfirmedModelKey}
-            relevantChunk={relevantChunk}
-            activeMessageIndex={activeMessageIndex}
-          />
-        </div>
-      )}
     </div>
   );
 }

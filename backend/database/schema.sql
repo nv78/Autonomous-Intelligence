@@ -13,6 +13,14 @@ DROP TABLE IF EXISTS workflows;
 DROP TABLE IF EXISTS apiKeys;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS freeTrialAllowlist;
+DROP TABLE IF EXISTS organizations;
+
+CREATE TABLE organizations (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    organization_type VARCHAR(50) NOT NULL,
+    website_url VARCHAR(255)
+);
 
 CREATE TABLE users (
     id INTEGER PRIMARY KEY AUTO_INCREMENT,
@@ -83,6 +91,44 @@ CREATE TABLE chats (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
+CREATE TABLE chat_shares (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    chat_id INTEGER NOT NULL,
+    share_uuid VARCHAR(255) UNIQUE NOT NULL,
+    created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (chat_id) REFERENCES chats(id)
+);
+
+CREATE TABLE chat_share_messages (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    chat_share_id INTEGER NOT NULL,
+    role ENUM('user', 'chatbot') NOT NULL,
+    message_text TEXT NOT NULL,
+    created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (chat_share_id) REFERENCES chat_shares(id)
+);
+
+CREATE TABLE chat_share_documents (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    chat_share_id INTEGER NOT NULL,
+    document_name VARCHAR(255) NOT NULL,
+    document_text LONGTEXT NOT NULL,
+    storage_key TEXT NOT NULL,
+    created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (chat_share_id) REFERENCES chat_shares(id)
+);
+
+CREATE TABLE chat_share_chunks (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    chat_share_document_id INTEGER NOT NULL,
+    start_index INTEGER,
+    end_index INTEGER,
+    embedding_vector BLOB,
+    page_number INTEGER,
+    FOREIGN KEY (chat_share_document_id) REFERENCES chat_share_documents(id)
+);
+
+
 CREATE TABLE messages (
     id INTEGER PRIMARY KEY AUTO_INCREMENT,
     created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -114,11 +160,13 @@ CREATE TABLE documents (
     created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     workflow_id INTEGER,
     chat_id INTEGER,
+    organization_id INTEGER,
     storage_key TEXT NOT NULL,
     document_name VARCHAR(255) NOT NULL,
     document_text LONGTEXT NOT NULL,
     FOREIGN KEY (workflow_id) REFERENCES workflows(id),
-    FOREIGN KEY (chat_id) REFERENCES chats(id)
+    FOREIGN KEY (chat_id) REFERENCES chats(id),
+    FOREIGN KEY (organization_id) REFERENCES organizations(id)
 );
 
 CREATE TABLE chunks (
@@ -182,3 +230,4 @@ CREATE INDEX idx_prompt_answers_prompt_id ON prompt_answers(prompt_id);
 CREATE INDEX idx_prompt_answers_citation_id ON prompt_answers(citation_id);
 CREATE INDEX idx_reports_workflow_id ON reports(workflow_id);
 CREATE INDEX idx_tickers_workflow_id ON tickers(workflow_id);
+CREATE INDEX idx_organizations_name ON organizations(name);

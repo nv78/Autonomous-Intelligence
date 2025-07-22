@@ -3,7 +3,6 @@ import sqlite3
 import ollama
 import json
 import requests
-import ray
 from tika import parser as p
 from datasets import Dataset
 import ragas
@@ -56,6 +55,7 @@ def upload_private(task_type, model_type, ticker, file_paths):
     return {'id': chat_id}
 
 def chat_private(chat_id, message, finetuned_model_key=None):
+    
     conn, cursor = get_db_connection()
     
     model_type, task_type = get_chat_info(chat_id)
@@ -137,6 +137,8 @@ def evaluate_private(message_id):
 
 
 def process_files(chat_type, files, paths, user_email, model_type, chat_id):
+    import ray
+    ray.init(ignore_reinit_error=True) 
     if chat_type == "documents": #question-answering        
         #Ingest pdf
         MAX_CHUNK_SIZE = 1000

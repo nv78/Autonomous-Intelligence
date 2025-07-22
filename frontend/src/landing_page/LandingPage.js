@@ -6,6 +6,7 @@ import "./landing_page_styles/LandingPageSampleProjects.css";
 import "./landing_page_styles/LandingPageEllipse.css";
 import "./landing_page_styles/LandingPageLabel.css";
 import "./landing_page_styles/LandingPageFooter.css";
+import React, { useState, useEffect, useRef } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import FAQs from "./landing_page_screens/FAQs";
 import SampleProjects from "./landing_page_screens/SampleProjects";
@@ -23,19 +24,28 @@ import {
   pricingPath,
   registryPath,
   financeGPTPath,
+  homePath,
+  gtmPath,
+  chatbots,
+  languages,
+  companies,
 } from "../constants/RouteConstants";
 import Home from "./landing_page_screens/Home/Home";
 import Footer from "./landing_page_components/Footer";
 import Banner from "./landing_page_components/Banner";
 import Navbar from "./landing_page_components/Navbar";
 import { Helmet } from "react-helmet";
-import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { useLocation } from "react-router-dom";
 import { robotHeader } from "../util/RobotHeader";
 import Pricing from "./landing_page_screens/Pricing";
 import Registry from "./landing_page_screens/Registry";
 import CustomerCaseStudy from "./landing_page_screens/Customers/CustomerCaseStudy";
+import GTMChatbot from "./landing_page_screens/Chatbots/companies/GTMChatbot";
+import ChatbotLanding from "./landing_page_screens/Chatbots/ChatbotLanding";
+import Languages from "./landing_page_screens/Chatbots/languages/Languages";
+import { LANGUAGE_ROUTES } from "../constants/RouteConstants";
+import Companies from "./landing_page_screens/Chatbots/companies/Companies";
 
 function LandingPage() {
   const location = useLocation();
@@ -69,6 +79,7 @@ function LandingPage() {
       <div className="">
         <Routes>
           <Route index element={<Home open={open} />} />,
+          <Route path={homePath} element={<Home />} />
           <Route path={faqsPath} index element={<FAQs />} />
           <Route path={financeGPTPath} index element={<FinanceGPT />} />
           <Route path={downloadPrivateGPTPath} index element={<DownloadPrivateGPT/>} />
@@ -78,6 +89,12 @@ function LandingPage() {
           <Route path={registryPath} index element={<Registry />} />
           <Route path={sampleProjectsPath} index element={<SampleProjects />} />
           <Route path={researchPath} index element={<Research />} />
+          <Route path={gtmPath} element = {<GTMChatbot />} />
+          <Route path={chatbots} element = {<ChatbotLanding />} />
+          <Route path={languages} element = {<Languages />} />
+          <Route path="/languages/:lang" element={<Languages />} />
+
+          <Route path={companies} element = {<Companies />} />
           <Route path="*" element={<Navigate replace to="/" />} />
         </Routes>
       </div>

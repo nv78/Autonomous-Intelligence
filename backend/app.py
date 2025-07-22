@@ -65,6 +65,11 @@ from ragas.metrics import (
 )
 from bs4 import BeautifulSoup
 
+#WESLEY
+from api_endpoints.financeGPT.chatbot_endpoints import create_chat_shareable_url, access_sharable_chat
+
+from database.db import get_db_connection
+
 from api_endpoints.financeGPT.chatbot_endpoints import add_prompt_to_workflow_db, add_workflow_to_db, \
     add_chat_to_db, add_message_to_db, chunk_document, get_text_from_single_file, add_document_to_db, get_relevant_chunks,  \
     remove_prompt_from_workflow_db, remove_ticker_from_workflow_db, reset_uploaded_docs_for_workflow, retrieve_chats_from_db, \
@@ -74,22 +79,48 @@ from api_endpoints.financeGPT.chatbot_endpoints import add_prompt_to_workflow_db
     retrieve_chats_from_db, delete_chat_from_db, retrieve_message_from_db, retrieve_docs_from_db, add_sources_to_db, delete_doc_from_db, reset_chat_db, \
     change_chat_mode_db, update_chat_name_db, find_most_recent_chat_from_db, process_prompt_answer, \
     ensure_SDK_user_exists, get_chat_info, ensure_demo_user_exists, get_message_info, get_text_from_url, \
-    add_organization_to_db, get_organization_from_db
+    add_organization_to_db, get_organization_from_db, update_workflow_name_db, retrieve_messages_from_share_uuid
 
 from datetime import datetime
 
+from database.db_auth import get_db_connection
+
+from api_endpoints.gpt4_gtm.handler import gpt4_blueprint
+from api_endpoints.languages.chinese import chinese_blueprint
+from api_endpoints.languages.japanese import japanese_blueprint
+from api_endpoints.languages.korean import korean_blueprint
+from api_endpoints.languages.spanish import spanish_blueprint
+from api_endpoints.languages.arabic import arabic_blueprint
 
 load_dotenv(override=True)
 
 app = Flask(__name__)
+app.register_blueprint(gpt4_blueprint)
+app.register_blueprint(chinese_blueprint)
+app.register_blueprint(japanese_blueprint)
+app.register_blueprint(korean_blueprint)
+app.register_blueprint(spanish_blueprint)
+app.register_blueprint(arabic_blueprint)
 
-if ray.is_initialized() == False:
-  ray.init(logging_level="INFO", log_to_driver=True)
+#if ray.is_initialized() == False:
+   #ray.init(logging_level="INFO", log_to_driver=True)
+client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+def ensure_ray_started():
+    if not ray.is_initialized():
+        try:
+            ray.init(
+                logging_level="INFO",
+                log_to_driver=True,
+                ignore_reinit_error=True  # Helpful when running in dev
+            )
+        except Exception as e:
+            print(f"Ray init failed: {e}")
 
 # TODO: Replace with your URLs.
 config = {
   'ORIGINS': [
     'http://localhost:3000',  # React
+    'http://localhost:5000',
     'http://dashboard.localhost:3000',  # React
     'https://anote.ai', # Frontend prod URL,
     'https://privatechatbot.ai', # Frontend prod URL,
@@ -166,6 +197,21 @@ def verifyAuthForIDs(table, non_user_id):
   if access_denied:
     abort(401)
 
+#WESLEY
+@app.route('/generate-playbook/<int:chat_id>', methods = ["GET"])
+@jwt_or_session_token_required
+def create_shareable_playbook(chat_id):
+    url = create_chat_shareable_url(chat_id)
+    return jsonify({
+            "url": url,
+            "success": True,
+            "message": "Shareable URL generated successfully"
+        }), 200
+
+@app.route('/playbook/<string:playbook_url>', methods=["POST"])
+@cross_origin(supports_credentials=True)
+def import_shared_chat(playbook_url):
+    return access_sharable_chat(playbook_url) 
 
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -459,6 +505,7 @@ def create_organization():
                 # Ingest each sub-URL's text as a document
                 doc_id, doesExist = add_document_to_db(link_text, link, organization_id)
                 if not doesExist:
+                    ensure_ray_started()
                     chunk_document.remote(link_text, 1000, doc_id)
 
         return jsonify({"organization_id": organization_id}), 201
@@ -581,8 +628,6 @@ def download_chat_history():
         return jsonify({"error": str(e)}), 500
 
 
-
-
 @app.route('/create-new-chat', methods=['POST'])
 def create_new_chat():
     try:
@@ -629,7 +674,15 @@ def retrieve_messages_from_chat():
 
     return jsonify(messages=messages)
 
+@app.route('/retrieve-shared-messages-from-chat', methods=['POST'])
+def get_playbook_messages():
+    chat_type = 0
+    chat_id = request.json.get('chat_id')
 
+    messages = retrieve_message_from_db("anon@anote.ai", chat_id, chat_type)
+
+    return jsonify(messages=messages)
+    
 @app.route('/update-chat-name', methods=['POST'])
 def update_chat_name():
     try:
@@ -658,7 +711,7 @@ def infer_chat_name():
     chat_messages = request.json.get('messages')
     chat_id = request.json.get('chat_id')
 
-    client = openai.OpenAI()
+    
     completion = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
@@ -740,7 +793,8 @@ def ingest_pdfs():
         doc_id, doesExist = add_document_to_db(text, filename, chat_id=chat_id)
 
         if not doesExist:
-           chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+            ensure_ray_started()
+            chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
 
 
     return jsonify({"error": "Invalid JWT"}), 200
@@ -768,7 +822,8 @@ def ingest_pdfs_wf():
         doc_id, doesExist = add_document_to_db(text, filename, workflow_id)
 
         if not doesExist:
-          chunk_document.remote(text_pages, MAX_CHUNK_SIZE, doc_id)
+            ensure_ray_started()
+            chunk_document.remote(text_pages, MAX_CHUNK_SIZE, doc_id)
     return text, filename
 
 @app.route('/retrieve-current-docs', methods=['POST'])
@@ -877,7 +932,7 @@ def process_message_pdf():
            model_use = "gpt-4o-mini"
 
         print("using OpenAI and model is", model_use)
-        client = openai.OpenAI()
+        
         try:
             completion = client.chat.completions.create(
                 model=model_use,
@@ -954,7 +1009,7 @@ def process_message_pdf_demo():
     print('sources_str is', sources_str)
 
 
-    client = openai.OpenAI()
+    
     completion = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
@@ -992,6 +1047,7 @@ def ingest_pdfs_demo():
         # Assuming add_document_to_db and chunk_document.remote are implemented
         doc_id, doesExist = add_document_to_db(text, filename, chat_id=chat_id)
         if not doesExist:
+            ensure_ray_started()
             chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
 
     # This mapping is now redundant since we're using a static demo_chat_id, but you could maintain it if you plan to extend functionality
@@ -1131,6 +1187,7 @@ def process_ticker_info():
 
         if not doesExist:
             print("test")
+            ensure_ray_started()
             chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
             #remote_task = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
             #result = ray.get(remote_task)
@@ -1380,7 +1437,9 @@ def upload():
 
             if not doesExist:
                 #chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+                ensure_ray_started()
                 result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+                ensure_ray_started()
                 result = ray.get(result_id)
         for path in paths:
 
@@ -1390,7 +1449,9 @@ def upload():
 
             if not doesExist:
                 #chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+                ensure_ray_started()
                 result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+                ensure_ray_started()
                 result = ray.get(result_id)
     elif chat_type == "edgar": #edgar
         print("ticker")
@@ -1420,7 +1481,9 @@ def upload():
             if not doesExist:
                 #print("test")
                 #chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+                ensure_ray_started()
                 result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+                
                 result = ray.get(result_id)
     else:
         return jsonify({"id": "Please enter a valid task type"}), 400
@@ -1464,7 +1527,7 @@ def public_ingest_pdf():
            model_use = "gpt-4o-mini"
 
         print("using OpenAI and model is", model_use)
-        client = openai.OpenAI()
+        
         try:
             completion = client.chat.completions.create(
                 model=model_use,
@@ -1554,6 +1617,6 @@ def evaluate():
     return result
 
 
-
 if __name__ == '__main__':
-    app.run(port=5000)
+    debug_mode = os.getenv("FLASK_ENV") == "development"
+    app.run(host="0.0.0.0", port=5000, debug=debug_mode)

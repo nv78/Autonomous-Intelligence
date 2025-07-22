@@ -59,12 +59,25 @@ cur = connection.cursor()
 
 # Read and execute schema
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-schema_path = os.path.join(project_root, "database", "schema.sql")
+schema_path = os.path.join(os.path.dirname(__file__), "schema.sql")
 
 with open(schema_path, encoding='utf8') as f:
     sql_script = f.read()
     for result in cur.execute(sql_script, multi=True):
         pass  # Optionally log result
+
+cur.execute("SELECT * FROM users WHERE id = 1")
+result = cur.fetchone()
+
+if result is None:
+    print("Inserting dummy user with ID 1...")
+    cur.execute("""
+        INSERT INTO users (id, email, person_name, credits)
+        VALUES (0, 'anon@anote.ai', 'Anonymous', 0)
+    """)
+    connection.commit()
+else:
+    print("Dummy user already exists.")
 
 connection.commit()
 cur.close()
