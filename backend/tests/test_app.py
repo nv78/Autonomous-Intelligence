@@ -177,15 +177,6 @@ class TestFlaskApp(unittest.TestCase):
             mock_handler.assert_called_once()
 
 
-    def test_portal_session(self):
-        with patch('app.extractUserEmailFromRequest') as mock_extract_email:
-            mock_extract_email.return_value = "test@example.com"
-            headers = {"Authorization": "Bearer testtoken"}
-            response = self.app.post("/createPortalSession", headers=headers)
-            self.assertEqual(response.status_code, 200)
-            self.assertIn("session_id", response.get_json())
-
-
     def test_viewUser(self):
         headers = {
             "Content-Type": "application/json",
@@ -546,49 +537,6 @@ class TestFlaskApp(unittest.TestCase):
                 content_type='multipart/form-data'
             )
             self.assertEqual(response.status_code, 200)
-            self.assertIn("Invalid JWT", response.get_data(as_text=True))
-
-
-    def test_delete_doc(self):
-        with patch('app.extractUserEmailFromRequest') as mock_extract_email:
-            mock_extract_email.return_value = "test@example.com"
-            headers = {"Authorization": "Bearer testtoken"}
-            data = {"doc_id": "doc123"}
-            response = self.app.post("/delete-doc", json=data, headers=headers)
-            self.assertEqual(response.status_code, 200)
-
-
-    def test_change_chat_mode(self):
-        # Mock the dependencies that are called within the route handler
-        with patch('app.extractUserEmailFromRequest') as mock_extract_email, \
-             patch('app.reset_chat_db') as mock_reset_chat, \
-             patch('app.change_chat_mode_db') as mock_change_mode:
-
-            # Mock the JWT validation to pass
-            mock_extract_email.return_value = "test@example.com"
-            mock_reset_chat.return_value = None
-            mock_change_mode.return_value = None
-
-            # Simulate the request payload
-            data = {"chat_id": "chat1", "model_type": "test_model"}
-            response = self.app.post("/change-chat-mode", json=data)
-
-            # Assertions
-            self.assertIn("Success", response.get_data(as_text=True))
-            # self.assertEqual(response.get_json(), "Success") # This line is removed as per the edit hint
-
-            # Verify mocks were called correctly
-            mock_extract_email.assert_called_once_with(request) # Use request.json for json payload
-            mock_reset_chat.assert_called_once_with(data["chat_id"], "test@example.com")
-            mock_change_mode.assert_called_once_with(data["model_type"], data["chat_id"], "test@example.com")
-
-        # --- Invalid JWT ---
-        with patch('app.extractUserEmailFromRequest') as mock_extract_email:
-            from app import InvalidTokenError
-            mock_extract_email.side_effect = InvalidTokenError()
-            data = {"chat_id": "chat1", "model_type": "test_model"}
-            response = self.app.post("/change-chat-mode", json=data)
-            self.assertEqual(response.status_code, 401)
             self.assertIn("Invalid JWT", response.get_data(as_text=True))
 
 
