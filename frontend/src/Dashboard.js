@@ -16,6 +16,7 @@ import {
   connectorOptions,
   languages, // Import connector options from RouteConstants
   companies,
+  LANGUAGE_ROUTES,
 } from "./constants/RouteConstants";
 import PaymentsComponent from "./subcomponents/payments/PaymentsComponent";
 import PaymentsProduct from "./subcomponents/payments/PaymentsProduct";
@@ -102,6 +103,8 @@ function Dashboard() {
     <Route path={gtmPath} element={<GTMChatbot />} />,
     <Route path={chatbots} element ={<ChatbotLanding />} />,
     <Route path={languages} element = {<Languages />} />,
+    <Route path="/languages/:lang" element={<Languages />} />,
+
     <Route path={companies} element = {<Companies />} />,
   ]
   var privateRoutes = [
