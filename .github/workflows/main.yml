@@ -1,8 +1,8 @@
-name: Lint Frontend (ESLint) & Backend (Python) + CodeQL
+name: Run Unit Tests 
 
 on:
   push:
-    branches: [main, BE-unit-tests]
+    branches: [main]
     paths:
       - 'frontend/**'
       - 'backend/**'
