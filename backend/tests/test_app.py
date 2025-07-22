@@ -115,6 +115,17 @@ class TestFlaskApp(unittest.TestCase):
     #         response.status_code, [200, 202]
     #     )
 
+    @patch("database.db.get_db_connection")
+    @patch("flask_mail.Mail.send")  # Patch the mail sending function
+    def test_forgotpwd(self, mock_mail_send, mock_get_db_connection):
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_get_db_connection.return_value = (mock_conn, mock_cursor)
+        mock_mail_send.return_value = None  # Prevents actual email sending
+
+        data = {"email": "nvidra10@anote.ai"}
+        response = self.app.post("/forgotPassword", json=data)
+        self.assertIn(response.status_code, [200, 202]) 
     # @patch("database.db.get_db_connection")
     # def test_resetpwd(self, mock_get_db_connection):
     #     mock_conn = MagicMock()
