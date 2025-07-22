@@ -5,6 +5,21 @@ import axios from "axios";
 const Companies = () => {
   const [companies, setCompanies] = useState([]);
 
+  //check log in status
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const accessToken = localStorage.getItem("accessToken");
+  const sessionToken = localStorage.getItem("sessionToken");
+  if (accessToken || sessionToken) {
+    if (!isLoggedIn) {
+      setIsLoggedIn(true);
+    }
+  } else {
+    if (isLoggedIn) {
+      setIsLoggedIn(false);
+    }
+  }
+  var showRestrictedRouteRequiringUserSession = isLoggedIn;
+
   useEffect(() => {
     axios.get("http://localhost:5050/api/companies", { //port 5050 because of conflicts with 5000
       withCredentials: true
