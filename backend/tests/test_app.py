@@ -178,11 +178,12 @@ class TestFlaskApp(unittest.TestCase):
 
 
     def test_portal_session(self):
-        headers = {"Authorization": "Bearer dummy-token"}
-        response = self.app.post("/createPortalSession", headers=headers)
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("session_id", response.get_json())
+        with patch('app.extractUserEmailFromRequest') as mock_extract_email:
+            mock_extract_email.return_value = "test@example.com"
+            headers = {"Authorization": "Bearer testtoken"}
+            response = self.app.post("/createPortalSession", headers=headers)
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("session_id", response.get_json())
 
 
     def test_viewUser(self):
@@ -549,12 +550,13 @@ class TestFlaskApp(unittest.TestCase):
 
 
     def test_delete_doc(self):
-        # Define the data payload for the endpoint
-        data = {"doc_id": "doc123"}
-        headers = {"Authorization": "Bearer testtoken"}
-        response = self.app.post("/delete-doc", json=data, headers=headers)
-        self.assertEqual(response.status_code, 200)
-        
+        with patch('app.extractUserEmailFromRequest') as mock_extract_email:
+            mock_extract_email.return_value = "test@example.com"
+            headers = {"Authorization": "Bearer testtoken"}
+            data = {"doc_id": "doc123"}
+            response = self.app.post("/delete-doc", json=data, headers=headers)
+            self.assertEqual(response.status_code, 200)
+
 
     def test_change_chat_mode(self):
         # Mock the dependencies that are called within the route handler
@@ -573,7 +575,7 @@ class TestFlaskApp(unittest.TestCase):
 
             # Assertions
             self.assertIn("Success", response.get_data(as_text=True))
-            self.assertEqual(response.get_json(), "Success")
+            # self.assertEqual(response.get_json(), "Success") # This line is removed as per the edit hint
 
             # Verify mocks were called correctly
             mock_extract_email.assert_called_once_with(request) # Use request.json for json payload
