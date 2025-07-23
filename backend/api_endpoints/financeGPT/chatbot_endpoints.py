@@ -585,7 +585,7 @@ def chunk_document_by_page(text_pages, maxChunkSize, document_id):
             chunkText = page_text[startIndex:endIndex]
             chunkText = chunkText.replace("\n", "")
 
-            embeddingVector = openai.embeddings.create(input=chunkText, model="text-embedding-ada-002").data[0].embedding
+            embeddingVector = get_embedding(chunkText)
             embeddingVector = np.array(embeddingVector)
             blob = embeddingVector.tobytes()
 
@@ -629,36 +629,67 @@ def chunk_document_by_page(text_pages, maxChunkSize, document_id):
     conn.commit()
     conn.close()
 
+def get_embedding(question, isOpenAI: bool = False, model="nomic-embed-text"):
+    if isOpenAI: 
+        if model != "text-embedding-ada-002":
+            raise ValueError(f"Unsupported embedding model: {model}. Only 'text-embedding-ada-002' is supported for OpenAI embeddings.")
+        return openai.embeddings.create(input=question, model="text-embedding-ada-002").data[0].embedding 
+    else:
+        response = requests.post(
+            "http://host.docker.internal:11434/api/embeddings",  # default Ollama endpoint
+            json={
+                "model": model,
+                "prompt": question
+            }
+        )
+        response.raise_for_status()
+        return response.json()["embedding"]
+
 @ray.remote
 def chunk_document(text, maxChunkSize, document_id):
     conn, cursor = get_db_connection()
 
     chunks = []
     startIndex = 0
+    try:
+        while startIndex < len(text):
+            endIndex = startIndex + min(maxChunkSize, len(text))
+            chunkText = text[startIndex:endIndex].replace("\n", "")
 
-    while startIndex < len(text):
-        endIndex = startIndex + min(maxChunkSize, len(text))
-        chunkText = text[startIndex:endIndex]
-        chunkText = chunkText.replace("\n", "")
+            try:        
+                embeddingVector = get_embedding(chunkText)
+                print(embeddingVector)
+            except Exception as e:
+                print(f"[ERROR] Failed to get embedding for chunk: {e}")
+                # Optionally: log or skip this chunk
+                raise RuntimeError("OpenAI embedding API failed")
 
-        embeddingVector = openai.embeddings.create(input=chunkText, model="text-embedding-ada-002").data[0].embedding
-        embeddingVector = np.array(embeddingVector)
-        blob = embeddingVector.tobytes()
-        chunks.append({
-            "text": chunkText,
-            "start_index": startIndex,
-            "end_index": endIndex,
-            "embedding_vector": embeddingVector,
-            "embedding_vector_blob": blob,
-        })
-        startIndex += maxChunkSize
+            embeddingVector = np.array(embeddingVector)
+            blob = embeddingVector.tobytes()
+            chunks.append({
+                "text": chunkText,
+                "start_index": startIndex,
+                "end_index": endIndex,
+                "embedding_vector": embeddingVector,
+                "embedding_vector_blob": blob,
+            })
+            startIndex += maxChunkSize
 
-    for chunk in chunks:
-        cursor.execute('INSERT INTO chunks (start_index, end_index, document_id, embedding_vector) VALUES (%s,%s,%s,%s)', [chunk["start_index"], chunk["end_index"], document_id, chunk["embedding_vector_blob"]])
+        for chunk in chunks:
+            cursor.execute(
+                'INSERT INTO chunks (start_index, end_index, document_id, embedding_vector) VALUES (%s,%s,%s,%s)',
+                [chunk["start_index"], chunk["end_index"], document_id, chunk["embedding_vector_blob"]]
+            )
 
-    print("CHUNKING DONE")
-    conn.commit()
-    conn.close()
+        print("CHUNKING DONE")
+        conn.commit()
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print("[FATAL ERROR] Exception during chunking:", e)
+        raise RuntimeError("Chunking failed due to internal error")
+    finally:
+        conn.close()
 
 
 
@@ -709,7 +740,7 @@ def get_relevant_chunks(k, question, chat_id, user_email):
 
     embeddings = np.array(embeddings)
 
-    embeddingVector = openai.embeddings.create(input=question, model="text-embedding-ada-002").data[0].embedding
+    embeddingVector = get_embedding(question)
     embeddingVector = np.array(embeddingVector)
 
     res = knn(embeddingVector, embeddings)
@@ -764,7 +795,7 @@ def get_relevant_chunks_wf(k, question, worflow_id, user_email):
 
     embeddings = np.array(embeddings)
 
-    embeddingVector = openai.embeddings.create(input=question, model="text-embedding-ada-002").data[0].embedding
+    embeddingVector = get_embedding(question) 
     embeddingVector = np.array(embeddingVector)
 
     res = knn(embeddingVector, embeddings)
@@ -1279,18 +1310,19 @@ def ensure_SDK_user_exists(user_email):
 def get_chat_info(chat_id):
     conn, cursor = get_db_connection()
 
-    cursor.execute("SELECT model_type, associated_task FROM chats WHERE id = %s", (chat_id,))
+    cursor.execute("SELECT model_type, chat_name, associated_task FROM chats WHERE id = %s", (chat_id,))
     result = cursor.fetchone()
 
     if result:
         model_type = result['model_type']
-        associated_task = result['associated_task']
+        associated_task = result['associated_task'],
+        chat_name = result['chat_name']
     else:
-        model_type, associated_task = None, None
+        model_type, associated_task, chat_name = None, None, None
     cursor.close()
     conn.close()
 
-    return model_type, associated_task
+    return model_type, associated_task, chat_name
 
 def get_message_info(answer_id, user_email):
     conn, cursor = get_db_connection()

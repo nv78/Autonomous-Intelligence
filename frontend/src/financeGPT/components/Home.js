@@ -63,7 +63,11 @@ function HomeChatbot() {
   };
 
   // Handle upload trigger from chatbot - direct approach
-  const handleUploadClick = () => {
+  const handleUploadClick = (chatId) => {
+    // If a chatId is provided, ensure selectedChatId is set
+    if (chatId && chatId !== selectedChatId) {
+      setSelectedChatId(chatId);
+    }
     if (sidebarRef.current && sidebarRef.current.openFileDialog) {
       sidebarRef.current.openFileDialog();
     } else {
@@ -101,7 +105,7 @@ function HomeChatbot() {
       }
     };
     retrieveAllChats();
-  }, []);
+  }, [forceUpdate]);
 
   return (
     <div className="flex flex-row h-screen">
@@ -174,6 +178,7 @@ function HomeChatbot() {
             resetUploadTrigger={resetUploadTrigger}
             setIsUploading={setIsUploading}
             setUploadProgress={setUploadProgress}
+            onChatReady={(chatId) => navigate(`/chat/${chatId}`)}
           />
         </div>
         {/* {currTask === 1 && (
