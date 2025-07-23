@@ -26,6 +26,19 @@ const Chatbot = (props) => {
 
   // Load existing chat messages
   const handleLoadChat = useCallback(async () => {
+    if (!props.isLoggedIn) {
+      console.log("Guest session - not loading from database");
+      // Only reset to welcome message if this is the initial load
+      if (messages.length === 0) {
+        setMessages([
+          {
+            message: "Hello, I am your Panacea, your agentic AI assistant. What can I do to help?",
+            sentTime: "just now",
+            direction: "incoming",
+          },
+        ]);
+      }
+    }
     if (!id) return;
     if (!props.selectedChatId) {
       props.handleChatSelect(id);

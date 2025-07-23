@@ -35,7 +35,6 @@ import Footer from "./landing_page_components/Footer";
 import Banner from "./landing_page_components/Banner";
 import Navbar from "./landing_page_components/Navbar";
 import { Helmet } from "react-helmet";
-
 import { useDispatch } from "react-redux";
 import { useLocation } from "react-router-dom";
 import { robotHeader } from "../util/RobotHeader";

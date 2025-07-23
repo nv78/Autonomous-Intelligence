@@ -13,7 +13,7 @@ services:
       - ./:/app
       - ./db:/app/db
       - ./models:/app/models
-      - tika-data:/tmp  # Persist Tika server data
+      - tika-data:/tmp # Persist Tika server data
       - ./database/schema.sql:/docker-entrypoint-initdb.d/init.sql
     env_file:
       - .env
@@ -28,7 +28,7 @@ services:
         condition: service_healthy
     networks:
       - anote-network
-    shm_size: '2.44gb'
+    shm_size: "2.44gb"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s
@@ -65,4 +65,4 @@ networks:
 
 volumes:
   mysql-data:
-  tika-data:  # Volume for Tika server data
+  tika-data: # Volume for Tika server data

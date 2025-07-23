@@ -17,6 +17,8 @@ function CheckLogin(props) {
 
   const accessToken = localStorage.getItem("accessToken");
   const sessionToken = localStorage.getItem("sessionToken");
+
+  const isFreeTrial = new URLSearchParams(location.search).get("free") === "true";
   console.log("get access token");
   console.log(accessToken);
   if (accessToken || sessionToken) {
@@ -39,17 +41,19 @@ function CheckLogin(props) {
     navigate(fullPath);
   }
 
+
   var mainView = [];
-  if (!isLoggedIn) {
+  if (!isLoggedIn && !isFreeTrial) {
+    //mainView = <HomeChatbot isLoggedIn={false} />;
     mainView = (
       <NoUserSession productHash={productHash} freeTrialCode={freeTrialCode} />
     );
   } else if (!props.showRestrictedRouteRequiringPayments) {
     //mainView = <PaymentsComponent />;
-    mainView = <HomeChatbot />;
+    mainView = <HomeChatbot isLoggedIn={isLoggedIn} />;
   } else {
     // TODO: Replace this with your home page component.
-    mainView = <HomeChatbot />;
+    mainView = <HomeChatbot isLoggedIn={isLoggedIn}/>;
   }
 
   useEffect(() => {

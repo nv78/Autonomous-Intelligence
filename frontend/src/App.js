@@ -39,7 +39,8 @@
 import { IsDashboardSubdomain } from "./util/DomainParsing";
 import Dashboard from "./Dashboard";
 import LandingPage from "./landing_page/LandingPage";
-import { BrowserRouter as Router} from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route} from "react-router-dom";
+import CheckLogin from "./components/CheckLogin";
 
 function App() {
   var isDashboardSubdomain = IsDashboardSubdomain();
@@ -52,7 +53,10 @@ function App() {
   } else {
     return (
       <Router>
-        <LandingPage />
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/chat" element={<CheckLogin setIsLoggedInParent={() => {}} />} />
+        </Routes>
       </Router>
     );
   }

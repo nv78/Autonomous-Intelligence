@@ -8,7 +8,8 @@ import ChatbotEdgar from "./chatbot_subcomponents/ChatbotEdgar";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Popout from "./Popout";
 
-function HomeChatbot() {
+
+function HomeChatbot({ isLoggedIn }) {
   const [selectedChatId, setSelectedChatId] = useState(null);
   const [forceUpdate, setForceUpdate] = useState(0);
   const [isPrivate, setIsPrivate] = useState(0);
@@ -46,6 +47,11 @@ function HomeChatbot() {
   };
 
   const createNewChat = async () => {
+    if (!isLoggedIn) {
+      alert("Please sign in to create new chats.")
+      return;
+    }
+
     const response = await fetcher("create-new-chat", {
       method: "POST",
       headers: {
@@ -104,33 +110,37 @@ function HomeChatbot() {
   }, []);
 
   return (
-    <div className="flex flex-row h-screen">
-      <Navbarchatbot
-        selectedChatId={selectedChatId}
-        onChatSelect={handleChatSelect}
-        handleForceUpdate={handleForceUpdate}
-        isPrivate={isPrivate}
-        loading={loading}
-        setIsPrivate={setIsPrivate}
-        menu={menu}
-        handleMenu={handleMenu}
-        chats={chats}
-        setcurrTask={setcurrTask}
-        setTicker={setTicker}
-        currTask={currTask}
-        setConfirmedModelKey={setConfirmedModelKey}
-        confirmedModelKey={confirmedModelKey}
-        setCurrChatName={setCurrChatName}
-        setIsEdit={setIsEdit}
-        setShowChatbot={setShowChatbot}
-        createNewChat={createNewChat}
-        handleChatSelect={handleChatSelect}
-        forceUpdate={forceUpdate}
-      />
+    
+    <div className="flex flex-row mt-2">
 
-      <div className="w-full lg:flex  h-full">
+      
+      {isLoggedIn && (
+        <div className="w-[20%]">
+          <Navbarchatbot
+            selectedChatId={selectedChatId}
+            onChatSelect={handleChatSelect}
+            handleForceUpdate={handleForceUpdate}
+            isPrivate={isPrivate}
+            setIsPrivate={setIsPrivate}
+            setcurrTask={setcurrTask}
+            setTicker={setTicker}
+            currTask={currTask}
+            setConfirmedModelKey={setConfirmedModelKey}
+            confirmedModelKey={confirmedModelKey}
+            setCurrChatName={setCurrChatName}
+            setIsEdit={setIsEdit}
+            setShowChatbot={setShowChatbot}
+            createNewChat={createNewChat}
+            handleChatSelect={handleChatSelect}
+            forceUpdate={forceUpdate}
+          />
+        </div>
+      )}
+      
+       <div className={`${isLoggedIn ? "w-[60%] mx-4" : "w-full"}`}>
         {currTask === 0 && (
           <Chatbot
+            isLoggedIn={isLoggedIn}
             chat_type={currTask}
             selectedChatId={selectedChatId}
             handleChatSelect={handleChatSelect}
