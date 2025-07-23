@@ -585,7 +585,7 @@ def chunk_document_by_page(text_pages, maxChunkSize, document_id):
             chunkText = page_text[startIndex:endIndex]
             chunkText = chunkText.replace("\n", "")
 
-            embeddingVector = get_embedding_ollama(chunkText) # openai.embeddings.create(input=chunkText, model="text-embedding-ada-002").data[0].embedding
+            embeddingVector = get_embedding(chunkText)
             embeddingVector = np.array(embeddingVector)
             blob = embeddingVector.tobytes()
 
@@ -629,16 +629,21 @@ def chunk_document_by_page(text_pages, maxChunkSize, document_id):
     conn.commit()
     conn.close()
 
-def get_embedding_ollama(text, model="nomic-embed-text"):
-    response = requests.post(
-        "http://host.docker.internal:11434/api/embeddings",  # default Ollama endpoint
-        json={
-            "model": model,
-            "prompt": text
-        }
-    )
-    response.raise_for_status()
-    return response.json()["embedding"]
+def get_embedding(question, isOpenAI: bool = False, model="nomic-embed-text"):
+    if isOpenAI: 
+        if model != "text-embedding-ada-002":
+            raise ValueError(f"Unsupported embedding model: {model}. Only 'text-embedding-ada-002' is supported for OpenAI embeddings.")
+        return openai.embeddings.create(input=question, model="text-embedding-ada-002").data[0].embedding 
+    else:
+        response = requests.post(
+            "http://host.docker.internal:11434/api/embeddings",  # default Ollama endpoint
+            json={
+                "model": model,
+                "prompt": question
+            }
+        )
+        response.raise_for_status()
+        return response.json()["embedding"]
 
 @ray.remote
 def chunk_document(text, maxChunkSize, document_id):
@@ -651,12 +656,8 @@ def chunk_document(text, maxChunkSize, document_id):
             endIndex = startIndex + min(maxChunkSize, len(text))
             chunkText = text[startIndex:endIndex].replace("\n", "")
 
-            try:
-                # embeddingVector = openai.embeddings.create(
-                #      input=chunkText, model="nomic-embed-text:latest"
-                # ).data[0].embedding
-
-                embeddingVector = get_embedding_ollama(chunkText)
+            try:        
+                embeddingVector = get_embedding(chunkText)
                 print(embeddingVector)
             except Exception as e:
                 print(f"[ERROR] Failed to get embedding for chunk: {e}")
@@ -739,7 +740,7 @@ def get_relevant_chunks(k, question, chat_id, user_email):
 
     embeddings = np.array(embeddings)
 
-    embeddingVector = get_embedding_ollama(question) # openai.embeddings.create(input=question, model="text-embedding-ada-002").data[0].embedding
+    embeddingVector = get_embedding(question)
     embeddingVector = np.array(embeddingVector)
 
     res = knn(embeddingVector, embeddings)
@@ -794,7 +795,7 @@ def get_relevant_chunks_wf(k, question, worflow_id, user_email):
 
     embeddings = np.array(embeddings)
 
-    embeddingVector = get_embedding_ollama(question) #openai.embeddings.create(input=question, model="text-embedding-ada-002").data[0].embedding
+    embeddingVector = get_embedding(question) 
     embeddingVector = np.array(embeddingVector)
 
     res = knn(embeddingVector, embeddings)
