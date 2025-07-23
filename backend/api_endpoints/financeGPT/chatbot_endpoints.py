@@ -3,6 +3,7 @@ from langchain_community.vectorstores import Chroma
 from langchain.docstore.document import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
+
 from dotenv import load_dotenv
 import ray
 import openai
@@ -17,6 +18,7 @@ import requests
 from flask import jsonify
 
 # from openai import OpenAI
+client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # """Module for fetching data from the SEC EDGAR Archives"""
 import json
@@ -39,7 +41,7 @@ else:
 
 from database.db import get_db_connection
 from tika import parser as p
-
+import uuid
 
 load_dotenv()
 API_KEY = os.getenv('OPENAI_API_KEY')
@@ -734,6 +736,48 @@ def get_relevant_chunks(k, question, chat_id, user_email):
 
     return source_chunks
 
+def process_message_pdf_internal(message, chat_id, model_type, user_email):
+    """Internal function for regular PDF chat processing"""
+    query = message.strip()
+    
+    # Add user message to db
+    add_message_to_db(query, chat_id, 1)
+    
+    # Get relevant chunks
+    sources = get_relevant_chunks(2, query, chat_id, user_email)
+    sources_str = " ".join([", ".join(str(elem) for elem in source) for source in sources])
+    
+    # Generate response based on model type
+    if model_type == 0:  # OpenAI
+        completion = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "user",
+                 "content": f"You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. These are the sources from the text:{sources_str} And this is the question:{query}."}
+            ]
+        )
+        answer = str(completion.choices[0].message.content)
+    else:  # Claude
+        anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        completion = anthropic_client.completions.create(
+            model="claude-2",
+            max_tokens_to_sample=700,
+            prompt=(
+                f"{HUMAN_PROMPT} "
+                f"You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. "
+                f"please address the question: {query}. "
+                f"Consider the provided text as evidence: {sources_str}. "
+                f"{AI_PROMPT}")
+        )
+        answer = completion.completion
+    
+    # Save response
+    message_id = add_message_to_db(answer, chat_id, 0)
+    if sources:
+        add_sources_to_db(message_id, sources)
+    
+    # Return dict instead of jsonify (since this is called internally)
+    return {"answer": answer, "reactive_mode": False}
 
 def get_relevant_chunks_wf(k, question, worflow_id, user_email):
     conn, cursor = get_db_connection()

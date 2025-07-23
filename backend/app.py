@@ -64,9 +64,13 @@ from ragas.metrics import (
     context_precision,
 )
 from bs4 import BeautifulSoup
+import json
+from datetime import datetime, timedelta
+from reactive_agent import ReactiveAgent
+
 
 #WESLEY
-from api_endpoints.financeGPT.chatbot_endpoints import create_chat_shareable_url, access_sharable_chat
+from api_endpoints.financeGPT.chatbot_endpoints import create_chat_shareable_url, access_sharable_chat, process_message_pdf_internal
 
 from database.db import get_db_connection
 
@@ -1580,6 +1584,254 @@ def public_ingest_pdf():
 
     return jsonify(message_id=message_id, answer=answer, sources=sources_swapped) #can modify the sources here if we don't want to return the sources
 
+
+@app.route('/process-reactive-agent', methods=['POST'])
+def process_reactive_agent():
+    """Process messages through the reactive agent system"""
+    try:
+        user_email = extractUserEmailFromRequest(request)
+    except InvalidTokenError:
+        return jsonify({"error": "Invalid JWT"}), 401
+    
+    message = request.json.get('message')
+    chat_id = request.json.get('chat_id')
+    model_type = request.json.get('model_type', 'gpt-4o-mini')
+    
+    if not message or not chat_id:
+        return jsonify({"error": "Missing message or chat_id"}), 400
+    
+    # Initialize or get existing agent for this chat
+    agent = ReactiveAgent(chat_id, user_email, model_type)
+    
+    # Load conversation history from database
+    try:
+        messages = retrieve_message_from_db(user_email, chat_id, 0)  # 0 for regular chat
+        for msg in messages[-20:]:  # Load last 20 messages for context
+            if msg['sent_from_user'] == 1:
+                role = "user"
+            else:
+                role = "chatbot"
+            agent.conversation_history.append({
+                "role": role,
+                "content": msg['message_text']
+            })
+    except:
+        pass  # Continue with empty history if loading fails
+    
+    # Generate reactive response
+    response, tool_used, tool_result = agent.generate_response(message.strip())
+    
+    # Save messages to database
+    try:
+        add_message_to_db(message.strip(), chat_id, 1)  # User message
+        message_id = add_message_to_db(response, chat_id, 0)  # Agent response
+        
+        # If we used a tool and got sources, save them
+        if tool_used == "search_documents" and tool_result:
+            try:
+                sources = get_relevant_chunks(2, message.strip(), chat_id, user_email)
+                if sources:
+                    add_sources_to_db(message_id, sources)
+            except:
+                pass
+    except Exception as e:
+        print(f"Error saving to database: {e}")
+    
+    return jsonify({
+        "answer": response,
+        "tool_used": tool_used,
+        "tool_result": tool_result,
+        "agent_state": {
+            "conversation_length": len(agent.conversation_history),
+            "last_action": agent.agent_state["last_action"],
+            "active_tools": agent.agent_state["active_tools"][-5:] if agent.agent_state["active_tools"] else []
+        }
+    })
+
+@app.route('/get-agent-state', methods=['POST'])
+def get_agent_state():
+    """Get the current state of the reactive agent for a chat"""
+    try:
+        user_email = extractUserEmailFromRequest(request)
+    except InvalidTokenError:
+        return jsonify({"error": "Invalid JWT"}), 401
+    
+    chat_id = request.json.get('chat_id')
+    if not chat_id:
+        return jsonify({"error": "Missing chat_id"}), 400
+    
+    # Initialize agent to get current state
+    agent = ReactiveAgent(chat_id, user_email)
+    
+    # Load conversation history from database
+    try:
+        messages = retrieve_message_from_db(user_email, chat_id, 0)
+        conversation_summary = f"Total messages: {len(messages)}"
+        if messages:
+            recent_messages = messages[-5:]
+            conversation_summary += f"\nRecent activity: {len(recent_messages)} messages in current session"
+    except:
+        conversation_summary = "No conversation history available"
+    
+    return jsonify({
+        "chat_id": chat_id,
+        "agent_capabilities": list(agent.available_tools.keys()),
+        "conversation_summary": conversation_summary,
+        "tools_available": {
+            "search_documents": "Search through uploaded documents",
+            "analyze_sentiment": "Analyze sentiment of text",
+            "summarize_conversation": "Get conversation summary",
+            "get_relevant_info": "Find previous mentions of topics"
+        }
+    })
+
+@app.route('/reset-current-agent-state', methods=['POST'])
+def reset_agent_state():
+    """Reset the agent state for a specific chat"""
+    try:
+        user_email = extractUserEmailFromRequest(request)
+    except InvalidTokenError:
+        return jsonify({"error": "Invalid JWT"}), 401
+    
+    chat_id = request.json.get('chat_id')
+    if not chat_id:
+        return jsonify({"error": "Missing chat_id"}), 400
+    
+    # This will clear the conversation and reset to default state
+    # This doesn't actually delete database messages, just resets the agent's internal state
+    return jsonify({
+        "message": "Agent state reset successfully",
+        "chat_id": chat_id,
+        "status": "reset"
+    })
+
+@app.route('/agent-capabilities', methods=['GET'])
+def agent_capabilities():
+    """Get information about the reactive agent's capabilities"""
+    return jsonify({
+        "reactive_agent_features": {
+            "conversation_memory": "Maintains context across messages in a chat session",
+            "tool_integration": "Can automatically use tools based on user input patterns",
+            "sentiment_analysis": "Can analyze the emotional tone of messages",
+            "document_search": "Can search through uploaded documents for relevant information",
+            "conversation_summary": "Can provide summaries of the ongoing conversation",
+            "contextual_responses": "Generates responses that take into account conversation history"
+        },
+        "available_tools": {
+            "search_documents": {
+                "description": "Search uploaded documents for relevant information",
+                "triggers": ["search", "find", "document", "look up", "information about"]
+            },
+            "analyze_sentiment": {
+                "description": "Analyze the sentiment/emotion of text",
+                "triggers": ["how do you feel", "sentiment", "emotion", "mood"]
+            },
+            "summarize_conversation": {
+                "description": "Provide a summary of the current conversation",
+                "triggers": ["summarize", "summary", "recap", "what have we discussed"]
+            },
+            "get_relevant_info": {
+                "description": "Find previous mentions of specific topics",
+                "triggers": ["tell me about", "what did we say about", "previous mention"]
+            }
+        },
+        "usage_examples": [
+            "Search for information about quarterly results",
+            "How do you feel about this proposal?",
+            "Can you summarize our discussion so far?",
+            "What did we say about the budget earlier?"
+        ]
+    })
+
+@app.route('/create-new-chat-enhanced', methods=['POST'])
+def create_new_chat_enhanced():
+    try:
+        user_email = extractUserEmailFromRequest(request)
+    except InvalidTokenError:
+        return jsonify({"error": "Invalid JWT"}), 401
+
+    chat_type = request.json.get('chat_type', 0)
+    model_type = request.json.get('model_type', 0)
+    reactive_mode = request.json.get('reactive_mode', False)
+    
+    chat_id = add_chat_to_db(user_email, chat_type, model_type)
+    
+    # If reactive mode, initialize the agent
+    if reactive_mode:
+        agent = ReactiveAgent(chat_id, user_email)
+        # Store initial state or configuration if needed
+    
+    return jsonify({
+        "chat_id": chat_id,
+        "reactive_mode": reactive_mode,
+        "available_tools": list(ReactiveAgent(chat_id, user_email).available_tools.keys()) if reactive_mode else []
+    })
+
+@app.route('/process-message-reactive', methods=['POST'])
+def process_message_reactive():
+    """Enhanced message processing that combines reactive agent with existing PDF chat"""
+    try:
+        user_email = extractUserEmailFromRequest(request)
+    except InvalidTokenError:
+        return jsonify({"error": "Invalid JWT"}), 401
+    
+    message = request.json.get('message')
+    chat_id = request.json.get('chat_id')
+    model_type = request.json.get('model_type', 0)  # Default to 0 (OpenAI)
+    use_reactive_mode = request.json.get('reactive_mode', False)
+    
+    if not message or not chat_id:
+        return jsonify({"error": "Missing message or chat_id"}), 400
+    
+    if use_reactive_mode:
+        # Use the reactive agent system
+        model_name = "gpt-4o-mini" if model_type == 0 else "claude-2"
+        agent = ReactiveAgent(chat_id, user_email, model_name)
+        
+        # Load conversation history
+        try:
+            messages = retrieve_message_from_db(user_email, chat_id, 0)
+            for msg in messages[-20:]:
+                role = "user" if msg['sent_from_user'] == 1 else "chatbot"
+                agent.conversation_history.append({
+                    "role": role,
+                    "content": msg['message_text']
+                })
+        except:
+            pass
+        
+        # Generate response with reactive capabilities
+        response, tool_used, tool_result = agent.generate_response(message.strip())
+        
+        # Save to database
+        add_message_to_db(message.strip(), chat_id, 1)
+        message_id = add_message_to_db(response, chat_id, 0)
+        
+        # Save sources if document search was used
+        if tool_used == "search_documents" and tool_result:
+            try:
+                sources = get_relevant_chunks(2, message.strip(), chat_id, user_email)
+                if sources:
+                    add_sources_to_db(message_id, sources)
+            except:
+                pass
+        
+        return jsonify({
+            "answer": response,
+            "tool_used": tool_used,
+            "tool_result": tool_result,
+            "reactive_mode": True,
+            "agent_state": {
+                "conversation_length": len(agent.conversation_history),
+                "last_action": agent.agent_state["last_action"],
+                "active_tools": agent.agent_state["active_tools"][-5:] if agent.agent_state["active_tools"] else []
+            }
+        })
+    else:
+        # Use the existing PDF chat system - call internal function and return JSON
+        result = process_message_pdf_internal(message, chat_id, model_type, user_email)
+        return jsonify(result)
+    
 @app.route('/public/evaluate', methods = ['POST'])
 @valid_api_key_required
 def evaluate():
