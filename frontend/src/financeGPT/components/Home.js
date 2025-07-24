@@ -137,7 +137,7 @@ function HomeChatbot({ isLoggedIn }) {
         </div>
       )}
       
-       <div className={`${isLoggedIn ? "w-[60%] mx-4" : "w-full"}`}>
+      <div className={`${isLoggedIn ? "w-[60%] mx-4" : "w-full"}`}>
         {currTask === 0 && (
           <Chatbot
             isLoggedIn={isLoggedIn}
@@ -162,7 +162,9 @@ function HomeChatbot({ isLoggedIn }) {
             onUploadClick={handleUploadClick}
           />
         )}
-        <div className="w-72 hidden lg:block">
+      </div>
+      {isLoggedIn && (
+        <div className="w-[20%] hidden lg:block">
           <SidebarChatbot
             ref={sidebarRef}
             selectedChatId={selectedChatId}
@@ -186,6 +188,7 @@ function HomeChatbot({ isLoggedIn }) {
             setUploadProgress={setUploadProgress}
           />
         </div>
+      )}
         {/* {currTask === 1 && (
           <ChatbotEdgar
             chat_type={currTask}
@@ -209,7 +212,6 @@ function HomeChatbot({ isLoggedIn }) {
             setRelevantChunk={setRelevantChunk}
           />
         )} */}
-      </div>
     </div>
   );
 }
