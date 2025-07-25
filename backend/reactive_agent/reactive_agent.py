@@ -74,14 +74,38 @@ class ReactiveAgent:
         }
     
     def search_documents(self, query):
-        """Search through uploaded documents for relevant information"""
+        """Enhanced search through uploaded documents with validation"""
         try:
             sources = get_relevant_chunks(3, query, self.chat_id, self.user_email)
-            if sources:
-                return f"Found relevant information: {' '.join([str(source[0]) for source in sources[:2]])}"
-            return "No relevant documents found."
-        except:
-            return "Document search is not available for this chat."
+            
+            # Check if sources are valid
+            if not sources or all(isinstance(source, str) and any(indicator in source.lower() for indicator in ["no text found", "no relevant", "error"]) for source in sources):
+                return "No relevant documents found for your query. Please ensure you have uploaded relevant documents."
+            
+            # Process and format sources with confidence indicators
+            formatted_sources = []
+            for source in sources[:2]:  # Limit to top 2 for readability
+                if isinstance(source, tuple):
+                    if len(source) >= 4:  # Enhanced format with confidence
+                        content, doc_name, sim_score, confidence = source[:4]
+                        confidence_level = "high" if confidence > 0.8 else "medium" if confidence > 0.6 else "low"
+                        formatted_sources.append(f"From {doc_name} (confidence: {confidence_level}): {content[:200]}...")
+                    elif len(source) >= 2:
+                        content, doc_name = source[:2]
+                        formatted_sources.append(f"From {doc_name}: {content[:200]}...")
+                    else:
+                        formatted_sources.append(f"Document content: {str(source[0])[:200]}...")
+                elif isinstance(source, str):
+                    formatted_sources.append(f"Found: {source[:200]}...")
+            
+            if formatted_sources:
+                return "Found relevant information:\\n" + "\\n\\n".join(formatted_sources)
+            else:
+                return "Found documents but could not extract clear information. Please try a more specific query."
+                
+        except Exception as e:
+            print(f"[ERROR] Document search failed: {e}")
+            return "Document search encountered an error. Please try rephrasing your query."
     
     def analyze_sentiment(self, text):
         """Analyze the sentiment of the given text"""
@@ -157,7 +181,7 @@ class ReactiveAgent:
         return None
     
     def generate_response(self, user_input):
-        """Generate a reactive response based on user input and conversation history"""
+        """Generate a reactive response with enhanced document grounding"""
         # Add user input to conversation history
         self.conversation_history.append({"role": "user", "content": user_input})
         
@@ -170,41 +194,60 @@ class ReactiveAgent:
             self.agent_state["last_action"] = tool_to_use
             self.agent_state["active_tools"].append(tool_to_use)
         
-        # Build the context for the AI response
+        # Build enhanced context for the AI response
         context_parts = []
         
-        # Add conversation history (last 10 messages)
-        recent_history = self.conversation_history[-10:] if len(self.conversation_history) > 10 else self.conversation_history
-        if recent_history:
-            context_parts.append(f"Recent conversation: {json.dumps(recent_history)}")
+        # Add conversation history (last 8 messages for better focus)
+        recent_history = self.conversation_history[-8:] if len(self.conversation_history) > 8 else self.conversation_history
+        if len(recent_history) > 1:  # Only add if there's actual conversation
+            formatted_history = []
+            for msg in recent_history[-4:]:  # Last 4 messages for context
+                role = "User" if msg["role"] == "user" else "Assistant"
+                formatted_history.append(f"{role}: {msg['content'][:150]}...")
+            context_parts.append(f"Recent conversation:\\n" + "\\n".join(formatted_history))
         
         # Add tool result if available
         if tool_result:
-            context_parts.append(f"Tool result from {tool_to_use}: {tool_result}")
+            context_parts.append(f"Tool result from {tool_to_use}:\\n{tool_result}")
         
-        # Add document context if available
-        try:
-            sources = get_relevant_chunks(2, user_input, self.chat_id, self.user_email)
-            if sources:
-                sources_str = " ".join([str(source[0]) for source in sources])
-                context_parts.append(f"Relevant document context: {sources_str}")
-        except:
-            pass
+        # Add document context if no tool was used or if search tool was used
+        document_context_added = False
+        if not tool_to_use or tool_to_use == "search_documents":
+            try:
+                sources = get_relevant_chunks(3, user_input, self.chat_id, self.user_email)
+                if sources and not all(isinstance(source, str) and any(indicator in source.lower() for indicator in ["no text found", "no relevant", "error"]) for source in sources):
+                    formatted_sources = []
+                    for source in sources[:2]:
+                        if isinstance(source, tuple) and len(source) >= 2:
+                            content, doc_name = source[:2]
+                            formatted_sources.append(f"From {doc_name}: {str(content)[:300]}...")
+                        elif isinstance(source, str):
+                            formatted_sources.append(f"Document: {source[:300]}...")
+                    
+                    if formatted_sources:
+                        context_parts.append(f"Relevant document information:\\n" + "\\n\\n".join(formatted_sources))
+                        document_context_added = True
+            except Exception as e:
+                print(f"[WARNING] Failed to add document context: {e}")
         
-        # Create the system prompt
-        system_prompt = f"""You are a reactive AI assistant that adapts to user needs. You have access to conversation history and can use tools when needed.
-        Current conversation context:
-        {chr(10).join(context_parts)}
+        # Enhanced system prompt with better instructions
+        system_prompt = f"""You are an intelligent document assistant with access to conversation history and uploaded documents. 
 
-        Guidelines:
-        1. Be conversational and natural
-        2. Reference previous parts of the conversation when relevant
-        3. If you used a tool, incorporate its results naturally into your response
-        4. Be helpful and proactive in suggesting follow-up actions
-        5. Keep responses concise but informative
-        6. Show that you understand the context and flow of the conversation
+CONTEXT:
+{chr(10).join(context_parts) if context_parts else "No additional context available"}
 
-        User's current message: {user_input}"""
+INSTRUCTIONS:
+1. Be conversational and helpful
+2. When referencing documents, be specific about sources when possible
+3. If you used a tool, naturally incorporate its results
+4. If document information is available, ground your response in that information
+5. If you don't have relevant information, be honest about limitations
+6. Keep responses focused and informative
+7. Show understanding of the conversation flow
+
+{"Document information is available - use it to inform your response." if document_context_added else "No specific document context available - rely on conversation and general assistance."}
+
+User message: {user_input}"""
         
         try:
             completion = client.chat.completions.create(
@@ -213,23 +256,42 @@ class ReactiveAgent:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_input}
                 ],
-                temperature=0.6
+                temperature=0.3,  # Lower temperature for more grounded responses
+                max_tokens=800
             )
             
             response = completion.choices[0].message.content
             
+            # Validate response if we have document context
+            if document_context_added and tool_to_use != "search_documents":
+                # Basic check for grounded response
+                response_lower = response.lower()
+                hallucination_indicators = ["i believe", "in my opinion", "generally speaking", "typically", "usually", "based on my knowledge"]
+                
+                for indicator in hallucination_indicators:
+                    if indicator in response_lower:
+                        print(f"[WARNING] Potential hallucination detected in response: {indicator}")
+                        break
+            
             # Add assistant response to conversation history
             self.conversation_history.append({"role": "chatbot", "content": response})
             
-            # Update agent memory
+            # Update agent memory with enhanced tracking
             self.agent_state["memory"].append({
                 "timestamp": datetime.now().isoformat(),
                 "user_input": user_input,
                 "tool_used": tool_to_use,
+                "document_context_used": document_context_added,
                 "response_summary": response[:100] + "..." if len(response) > 100 else response
             })
+            
+            # Keep memory manageable
+            if len(self.agent_state["memory"]) > 20:
+                self.agent_state["memory"] = self.agent_state["memory"][-15:]
             
             return response, tool_to_use, tool_result
             
         except Exception as e:
-            return f"I apologize, but I encountered an error while processing your request: {str(e)}", None, None
+            error_msg = f"I apologize, but I encountered an error while processing your request. Please try rephrasing your question."
+            print(f"[ERROR] Reactive agent response generation failed: {e}")
+            return error_msg, tool_to_use, tool_result

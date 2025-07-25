@@ -16,6 +16,8 @@ import uuid
 from sec_api import QueryApi, RenderApi
 import requests
 from flask import jsonify
+import os
+load_dotenv(override=True)
 
 # from openai import OpenAI
 client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -42,6 +44,10 @@ else:
 from database.db import get_db_connection
 from tika import parser as p
 import uuid
+
+import os
+
+load_dotenv(override=True)
 
 load_dotenv()
 API_KEY = os.getenv('OPENAI_API_KEY')

@@ -50,6 +50,7 @@ from fpdf import FPDF
 import openai
 import shutil
 from io import BytesIO
+import os
 import io
 from tika import parser as p
 import anthropic
@@ -66,8 +67,7 @@ from ragas.metrics import (
 from bs4 import BeautifulSoup
 import json
 from datetime import datetime, timedelta
-from reactive_agent import ReactiveAgent
-
+from reactive_agent.reactive_agent import ReactiveAgent
 
 #WESLEY
 from api_endpoints.financeGPT.chatbot_endpoints import create_chat_shareable_url, access_sharable_chat, process_message_pdf_internal
