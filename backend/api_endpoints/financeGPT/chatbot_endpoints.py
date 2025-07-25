@@ -46,6 +46,9 @@ API_KEY = os.getenv('OPENAI_API_KEY')
 embeddings = OpenAIEmbeddings(api_key=API_KEY)
 sec_api_key = os.getenv('SEC_API_KEY')
 
+# Embedding Configuration
+EMBEDDING_MODEL = 'intfloat/multilingual-e5-large'
+EMBEDDING_DIMENSIONS = 1024
 MAX_CHUNK_SIZE = 1000
 
 ## General for all chatbots
@@ -585,7 +588,13 @@ def chunk_document_by_page(text_pages, maxChunkSize, document_id):
             chunkText = page_text[startIndex:endIndex]
             chunkText = chunkText.replace("\n", "")
 
-            embeddingVector = get_embedding(chunkText)
+            try:
+                embeddingVector = get_embedding(chunkText)
+                print(f"Generated page embedding with {len(embeddingVector)} dimensions")
+            except Exception as e:
+                print(f"[ERROR] Failed to get embedding for page chunk: {e}")
+                raise RuntimeError("Embedding generation failed")
+                
             embeddingVector = np.array(embeddingVector)
             blob = embeddingVector.tobytes()
 
@@ -629,21 +638,40 @@ def chunk_document_by_page(text_pages, maxChunkSize, document_id):
     conn.commit()
     conn.close()
 
-def get_embedding(question, isOpenAI: bool = False, model="nomic-embed-text"):
-    if isOpenAI: 
-        if model != "text-embedding-ada-002":
-            raise ValueError(f"Unsupported embedding model: {model}. Only 'text-embedding-ada-002' is supported for OpenAI embeddings.")
-        return openai.embeddings.create(input=question, model="text-embedding-ada-002").data[0].embedding 
-    else:
-        response = requests.post(
-            "http://host.docker.internal:11434/api/embeddings",  # default Ollama endpoint
-            json={
-                "model": model,
-                "prompt": question
-            }
-        )
-        response.raise_for_status()
-        return response.json()["embedding"]
+def get_embedding(question):
+    """
+    Get embedding for a given text using Multilingual-E5-large model.
+    
+    Args:
+        question (str): The text to embed
+    
+    Returns:
+        list: The embedding vector (1024 dimensions)
+        
+    Raises:
+        RuntimeError: If the embedding generation fails
+    """
+    try:
+        from sentence_transformers import SentenceTransformer
+        
+        # Initialize model (cache it globally for performance)
+        if not hasattr(get_embedding, '_e5_model'):
+            print(f"Loading {EMBEDDING_MODEL} model...")
+            get_embedding._e5_model = SentenceTransformer(EMBEDDING_MODEL)
+        
+        # Add prefix for better performance as recommended by the model
+        prefixed_question = f"query: {question}"
+        embedding = get_embedding._e5_model.encode(prefixed_question, normalize_embeddings=True).tolist()
+        
+        # Validate dimensions using constant
+        if len(embedding) != EMBEDDING_DIMENSIONS:
+            raise RuntimeError(f"Unexpected embedding dimension: {len(embedding)}, expected {EMBEDDING_DIMENSIONS}")
+            
+        return embedding
+        
+    except Exception as e:
+        print(f"[ERROR] Failed to get embedding: {e}")
+        raise RuntimeError(f"Embedding generation failed: {str(e)}")
 
 @ray.remote
 def chunk_document(text, maxChunkSize, document_id):
@@ -658,11 +686,10 @@ def chunk_document(text, maxChunkSize, document_id):
 
             try:        
                 embeddingVector = get_embedding(chunkText)
-                print(embeddingVector)
+                print(f"Generated embedding with {len(embeddingVector)} dimensions")
             except Exception as e:
                 print(f"[ERROR] Failed to get embedding for chunk: {e}")
-                # Optionally: log or skip this chunk
-                raise RuntimeError("OpenAI embedding API failed")
+                raise RuntimeError("Embedding generation failed")
 
             embeddingVector = np.array(embeddingVector)
             blob = embeddingVector.tobytes()
@@ -694,11 +721,47 @@ def chunk_document(text, maxChunkSize, document_id):
 
 
 def knn(x, y):
-    x = np.expand_dims(x, axis=0)
-    # Calculate cosine similarity
-    similarities = np.dot(x, y.T) / (np.linalg.norm(x) * np.linalg.norm(y))
-    # Convert similarities to distances
-    distances = 1 - similarities.flatten()
+    """
+    Calculate k-nearest neighbors using cosine similarity.
+    
+    Args:
+        x (np.array): Query vector (1D)
+        y (np.array): Document vectors (2D: N x dimensions)
+    
+    Returns:
+        list: Results sorted by similarity (best first)
+    """
+    # Ensure x is 2D: (1, dimensions)
+    if x.ndim == 1:
+        x = np.expand_dims(x, axis=0)
+    
+    # Ensure y is 2D: (N, dimensions)
+    if y.ndim == 1:
+        y = np.expand_dims(y, axis=0)
+    
+    # Validate dimensions match
+    if x.shape[1] != y.shape[1]:
+        raise ValueError(f"Dimension mismatch: query has {x.shape[1]} dims, documents have {y.shape[1]} dims")
+    
+    # Calculate cosine similarity with safety checks
+    x_norm = np.linalg.norm(x, axis=1, keepdims=True)
+    y_norm = np.linalg.norm(y, axis=1, keepdims=True)
+    
+    # Avoid division by zero
+    x_norm = np.where(x_norm == 0, 1e-8, x_norm)
+    y_norm = np.where(y_norm == 0, 1e-8, y_norm)
+    
+    # Normalize vectors
+    x_normalized = x / x_norm
+    y_normalized = y / y_norm
+    
+    # Calculate similarities
+    similarities = np.dot(x_normalized, y_normalized.T).flatten()
+    
+    # Convert similarities to distances (lower is better)
+    distances = 1 - similarities
+    
+    # Sort by similarity (best first)
     nearest_neighbors = np.argsort(distances)
 
     results = []
@@ -730,6 +793,11 @@ def get_relevant_chunks(k, question, chat_id, user_email):
     for row in rows:
         embeddingVectorBlob = row["embedding_vector"]
         embeddingVector = np.frombuffer(embeddingVectorBlob)
+        
+        # Basic validation - should match our configured embedding dimensions
+        if len(embeddingVector) != EMBEDDING_DIMENSIONS:
+            print(f"[WARNING] Found embedding with unexpected dimension: {len(embeddingVector)}, expected {EMBEDDING_DIMENSIONS}")
+            
         embeddings.append(embeddingVector)
 
     if (len(embeddings) == 0):
@@ -740,8 +808,20 @@ def get_relevant_chunks(k, question, chat_id, user_email):
 
     embeddings = np.array(embeddings)
 
-    embeddingVector = get_embedding(question)
-    embeddingVector = np.array(embeddingVector)
+    try:
+        embeddingVector = get_embedding(question)
+        embeddingVector = np.array(embeddingVector)
+        
+        # Validate query embedding dimensions
+        if len(embeddingVector) != EMBEDDING_DIMENSIONS:
+            raise ValueError(f"Query embedding dimension mismatch: expected {EMBEDDING_DIMENSIONS}, got {len(embeddingVector)}")
+            
+    except Exception as e:
+        print(f"[ERROR] Failed to generate query embedding: {e}")
+        res_list = []
+        for i in range(k):
+            res_list.append("Error generating embedding")
+        return res_list
 
     res = knn(embeddingVector, embeddings)
     num_results = min(k, len(res))
@@ -766,15 +846,15 @@ def get_relevant_chunks(k, question, chat_id, user_email):
     return source_chunks
 
 
-def get_relevant_chunks_wf(k, question, worflow_id, user_email):
+def get_relevant_chunks_wf(k, question, workflow_id, user_email):
     conn, cursor = get_db_connection()
 
     query = """
     SELECT c.start_index, c.end_index, c.embedding_vector, c.document_id, c.page_number, d.document_name
     FROM chunks c
     JOIN documents d ON c.document_id = d.id
-    JOIN workflows w ON d.workflow_id = ch.id
-    JOIN users u ON ch.user_id = u.id
+    JOIN workflows w ON d.workflow_id = w.id
+    JOIN users u ON w.user_id = u.id
     WHERE u.email = %s AND w.id = %s
     """
 
@@ -785,6 +865,11 @@ def get_relevant_chunks_wf(k, question, worflow_id, user_email):
     for row in rows:
         embeddingVectorBlob = row["embedding_vector"]
         embeddingVector = np.frombuffer(embeddingVectorBlob)
+        
+        # Basic validation - should match our configured embedding dimensions
+        if len(embeddingVector) != EMBEDDING_DIMENSIONS:
+            print(f"[WARNING] Found workflow embedding with unexpected dimension: {len(embeddingVector)}, expected {EMBEDDING_DIMENSIONS}")
+            
         embeddings.append(embeddingVector)
 
     if (len(embeddings) == 0):
@@ -795,8 +880,20 @@ def get_relevant_chunks_wf(k, question, worflow_id, user_email):
 
     embeddings = np.array(embeddings)
 
-    embeddingVector = get_embedding(question) 
-    embeddingVector = np.array(embeddingVector)
+    try:
+        embeddingVector = get_embedding(question) 
+        embeddingVector = np.array(embeddingVector)
+        
+        # Validate query embedding dimensions
+        if len(embeddingVector) != EMBEDDING_DIMENSIONS:
+            raise ValueError(f"Workflow query embedding dimension mismatch: expected {EMBEDDING_DIMENSIONS}, got {len(embeddingVector)}")
+            
+    except Exception as e:
+        print(f"[ERROR] Failed to generate workflow query embedding: {e}")
+        res_list = []
+        for i in range(k):
+            res_list.append("Error generating embedding")
+        return res_list
 
     res = knn(embeddingVector, embeddings)
     num_results = min(k, len(res))

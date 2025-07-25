@@ -54,5 +54,6 @@ mkdocstrings
 mkdocstrings-python
 beautifulsoup4
 transformers>=4.36.0
+sentence-transformers>=2.2.2
 httpx>=0.27.0
 pytest
