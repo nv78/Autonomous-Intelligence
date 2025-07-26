@@ -110,10 +110,10 @@ function HomeChatbot({ isLoggedIn }) {
   }, []);
 
   return (
-    
+   
     <div className="flex flex-row mt-2">
 
-      
+     
       {isLoggedIn && (
         <div className="w-[20%]">
           <Navbarchatbot
@@ -136,7 +136,7 @@ function HomeChatbot({ isLoggedIn }) {
           />
         </div>
       )}
-      
+     
       <div className={`${isLoggedIn ? "w-[60%] mx-4" : "w-full"}`}>
         {currTask === 0 && (
           <Chatbot
@@ -215,5 +215,6 @@ function HomeChatbot({ isLoggedIn }) {
     </div>
   );
 }
+
 
 export default HomeChatbot;
