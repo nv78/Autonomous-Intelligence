@@ -18,7 +18,7 @@ def chat_japanese():
 
         SYSTEM_MSG = {
             "role": "system",
-            "content": "You are a chatbot assistant meant to speak to the user in japanese. You should help to user to answer on any questions in japanese. Respond in japanese no matter the language of the user."
+            "content": "You are built to serve people on the Anote website. You are a chatbot assistant that helps the user to answer any questions in Japanese. Respond in Japanese no matter the language of the user. Even if the user writes in a different language, only respond in Japanese."
         }
         if not messages or messages[0].get("role") != "system":
             messages.insert(0, SYSTEM_MSG)

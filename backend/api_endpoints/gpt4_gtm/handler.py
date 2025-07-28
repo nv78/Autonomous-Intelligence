@@ -5,7 +5,7 @@ import os
 gpt4_blueprint = Blueprint('gpt4', __name__)
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-MODEL_NAME = "ft:gpt-4.1-mini-2025-04-14:personal::BrXpyWs6"
+MODEL_NAME = "ft:gpt-4.1-mini-2025-04-14:personal::BvmGNtx5"
 
 @gpt4_blueprint.route("/gtm/respond", methods=["POST"])
 def generate_response_openai():
