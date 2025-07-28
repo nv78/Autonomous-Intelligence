@@ -5,6 +5,7 @@ from werkzeug.utils import secure_filename
 import PyPDF2
 import pandas as pd
 from docx import Document
+import json
 
 gpt4_blueprint = Blueprint('gpt4', __name__)
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -44,59 +45,56 @@ def extract_text_from_file(file_storage):
 @gpt4_blueprint.route("/gtm/respond", methods=["POST"])
 def generate_response_openai():
     try:
-        prompt = ""
-        file = None
-        
-        # If JSON request (no file)
-        if request.is_json:
-            data = request.get_json()
-            prompt = data.get("prompt", "").strip() if data else ""
-            
-        else:
-            prompt = request.form.get("prompt", "").strip()
-            file = request.files.get("file")
-        
-        print("prompt", prompt)
-        print("file", file)
+        file = request.files.get("file")
+        messages_json = request.form.get("messages")
 
-        if not prompt and not file:
-            return jsonify({"error": "Missing prompt/file"}), 400
-        
+        messages = []
+        prompt = ""  # for fallback/error reporting
+
+        if messages_json:
+            try:
+                messages = json.loads(messages_json)
+                if messages and isinstance(messages, list):
+                    prompt = messages[-1]["content"]
+            except Exception as e:
+                print("❌ Failed to parse messages:", e)
+
+        print("🟡 Prompt:", prompt)
+        print("🟡 File:", file)
+
+        if not messages and not file:
+            return jsonify({"error": "Missing messages or file"}), 400
+
         file_content = ""
         if file:
             try:
                 file_content = extract_text_from_file(file)
             except Exception as e:
                 return jsonify({"error": f"Failed to parse file: {str(e)}"}), 400
-            
-        if file_content:  # Case when a file is uploaded
-            full_prompt = f"""Using this attached document, please answer this:
-        {prompt}
 
-        Uploaded document:
-        \"\"\"
-        {file_content.strip()}
-        \"\"\""""
+        if file_content:
+            # If there's file content, inject it into the final user message
+            messages[-1]["content"] = f"""{messages[-1]["content"]}
 
-            completion = client.chat.completions.create(
-                model=MODEL_NAME,
-                messages=[
-                    {
-                        "role": "system", "content": "You are a chatbot assistant for the company Anote. You should help the user to answer their question using the attached document."
-                    },
-                    {
-                        "role": "user", "content": full_prompt.strip()
-                    }
-                ]
-            )
-        else:  # Case when no file is uploaded
-            completion = client.chat.completions.create(
-                model=MODEL_NAME,
-                messages=[
-                {"role": "system", "content": "You are a chatbot assistant for the company Anote. You should help the user to answer their question."},
-                {"role": "user", "content": prompt}
-                ]
-            )
+Uploaded document:
+\"\"\"
+{file_content.strip()}
+\"\"\""""
+
+        full_messages = [
+            {
+                "role": "system",
+                "content": "You are a chatbot assistant for the company Anote. You should help the user to answer their question." +
+                           (" You may also use the uploaded document if available." if file else "")
+            }
+        ] + messages
+
+        completion = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=full_messages
+        )
+
+        print("🧾 Sending messages to OpenAI:\n", json.dumps(messages, indent=2))
 
         reply = completion.choices[0].message.content
         return jsonify({"response": reply})
