@@ -20,6 +20,7 @@ ragas==0.1.0
 pydantic==1.10.13
 transformers==4.40.1
 torch==2.2.2
+python-docx
 
 # Document Processing
 tika==1.24
