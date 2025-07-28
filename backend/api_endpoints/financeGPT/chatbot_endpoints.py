@@ -719,6 +719,114 @@ def chunk_document(text, maxChunkSize, document_id):
         conn.close()
 
 
+def get_embeddings_batch(texts, batch_size=16):
+    """
+    Get embeddings for multiple texts in batches for better performance.
+    
+    Args:
+        texts (list): List of text strings to embed
+        batch_size (int): Number of texts to process in each batch
+    
+    Returns:
+        list: List of embedding vectors
+    """
+    try:
+        from sentence_transformers import SentenceTransformer
+        
+        # Initialize model if not already done
+        if not hasattr(get_embeddings_batch, '_e5_model'):
+            print(f"Loading {EMBEDDING_MODEL} model for batch processing...")
+            get_embeddings_batch._e5_model = SentenceTransformer(EMBEDDING_MODEL)
+        
+        embeddings = []
+        
+        # Process texts in batches
+        for i in range(0, len(texts), batch_size):
+            batch_texts = texts[i:i + batch_size]
+            # Add prefix for better performance as recommended by the model
+            prefixed_texts = [f"passage: {text}" for text in batch_texts]
+            
+            # Get batch embeddings
+            batch_embeddings = get_embeddings_batch._e5_model.encode(
+                prefixed_texts, 
+                normalize_embeddings=True,
+                batch_size=batch_size
+            )
+            
+            embeddings.extend(batch_embeddings.tolist())
+            print(f"Processed batch {i//batch_size + 1}/{(len(texts) + batch_size - 1)//batch_size}")
+        
+        return embeddings
+        
+    except Exception as e:
+        print(f"[ERROR] Failed to get batch embeddings: {e}")
+        raise RuntimeError(f"Batch embedding generation failed: {str(e)}")
+
+
+@ray.remote
+def chunk_document_optimized(text, maxChunkSize, document_id):
+    """
+    Optimized document chunking with batch embedding generation.
+    Processes all chunks for a document in batches for better performance.
+    """
+    conn, cursor = get_db_connection()
+
+    chunk_texts = []
+    chunk_metadata = []
+    startIndex = 0
+    
+    try:
+        # First, create all chunks without embeddings
+        while startIndex < len(text):
+            endIndex = startIndex + min(maxChunkSize, len(text))
+            chunkText = text[startIndex:endIndex].replace("\n", "")
+            
+            chunk_texts.append(chunkText)
+            chunk_metadata.append({
+                "start_index": startIndex,
+                "end_index": endIndex
+            })
+            startIndex += maxChunkSize
+
+        # Generate embeddings for all chunks in batches
+        print(f"Generating embeddings for {len(chunk_texts)} chunks in batches...")
+        embeddings = get_embeddings_batch(chunk_texts, batch_size=16)
+        
+        # Validate dimensions
+        for i, embedding in enumerate(embeddings):
+            if len(embedding) != EMBEDDING_DIMENSIONS:
+                raise RuntimeError(f"Chunk {i} embedding dimension mismatch: expected {EMBEDDING_DIMENSIONS}, got {len(embedding)}")
+        
+        # Insert all chunks into database
+        chunk_data = []
+        for i, (metadata, embedding) in enumerate(zip(chunk_metadata, embeddings)):
+            embedding_array = np.array(embedding)
+            blob = embedding_array.tobytes()
+            
+            chunk_data.append((
+                metadata["start_index"],
+                metadata["end_index"], 
+                document_id,
+                blob
+            ))
+
+        # Batch insert into database
+        cursor.executemany(
+            'INSERT INTO chunks (start_index, end_index, document_id, embedding_vector) VALUES (%s,%s,%s,%s)',
+            chunk_data
+        )
+
+        print(f"Successfully processed {len(chunk_data)} chunks with batch embeddings")
+        conn.commit()
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f"[FATAL ERROR] Exception during optimized chunking: {e}")
+        raise RuntimeError("Optimized chunking failed due to internal error")
+    finally:
+        conn.close()
+
 
 def knn(x, y):
     """
@@ -1493,4 +1601,3 @@ def get_organization_from_db(organization_id):
         return organization
     finally:
         conn.close()
-

@@ -7,6 +7,7 @@ flask-jwt-extended==4.4.4
 python-dateutil
 # PyJWT==2.6.0
 bcrypt==4.0.1
+boto3
 python-dotenv==1.0.0
 datasets
 
@@ -43,4 +44,5 @@ sentence-transformers>=2.2.2
 # httpx>=0.27.0
 pytest
 redis
+
 
