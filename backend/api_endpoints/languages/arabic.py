@@ -72,6 +72,9 @@ def chat_arabic():
                 file_content = extract_text_from_file(file)
             except Exception as e:
                 return jsonify({"error": f"Failed to parse file: {str(e)}"}), 400
+            
+            if not file_content.strip():
+                return jsonify({"response": "عذراً، لا أستطيع قراءة الوثيقة المرفقة."})
 
         if file_content:
             messages[-1]["content"] = f"""{messages[-1]["content"]}

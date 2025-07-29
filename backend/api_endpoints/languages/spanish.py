@@ -70,8 +70,14 @@ def chat_spanish():
         if file:
             try:
                 file_content = extract_text_from_file(file)
+                print(f"🟢 Length of extracted content: {len(file_content)}")
+                print(f"🟢 Content starts with: {repr(file_content[:50])}")
+                print(f"🟢 Extracted file content: {file_content[:200]}...")
             except Exception as e:
                 return jsonify({"error": f"Failed to parse file: {str(e)}"}), 400
+            
+            if not file_content.strip():
+                return jsonify({"response": "Lo siento, no puedo leer el documento adjunto."})
 
         if file_content:
             messages[-1]["content"] = f"""{messages[-1]["content"]}
