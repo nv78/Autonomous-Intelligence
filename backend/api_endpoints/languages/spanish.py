@@ -13,6 +13,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 spanish_blueprint = Blueprint('spanish', __name__)
 
 MODEL_NAME = "ft:gpt-4.1-mini-2025-04-14:personal::BtJIlsUg"
+LANGUAGE_KEY = "spanish"
 
 def extract_text_from_file(file_storage):
     filename = secure_filename(file_storage.filename)

@@ -12,6 +12,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 japanese_blueprint = Blueprint('japanese', __name__)
 
+LANGUAGE_KEY = "japanese"
 MODEL_NAME = "ft:gpt-4.1-mini-2025-04-14:personal::Bt2nGdcd"
 
 def extract_text_from_file(file_storage):
