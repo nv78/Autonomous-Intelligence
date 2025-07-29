@@ -57,6 +57,7 @@ def chat_spanish():
                 messages = json.loads(messages_json)
                 if messages and isinstance(messages, list):
                     prompt = messages[-1]["content"]
+                    messages[-1]["content"] += " (responde solo en espanol)"
             except Exception as e:
                 print("❌ Failed to parse messages:", e)
 
@@ -78,7 +79,7 @@ def chat_spanish():
             
             if not file_content.strip():
                 return jsonify({"response": "Lo siento, no puedo leer el documento adjunto."})
-
+        print("MESSAGE: ", messages)
         if file_content:
             messages[-1]["content"] = f"""{messages[-1]["content"]}
 
@@ -86,11 +87,12 @@ Uploaded document:
 \"\"\"
 {file_content.strip()}
 \"\"\""""
+            
         
         full_messages = [
             {
                 "role": "system",
-                "content": "You are a chatbot assistant meant to speak to the user in Spanish. You should help to user to answer on any questions in Spanish. Respond in Spanish no matter the language of the user. Be helpful and do not make up or hallucinate, if you do not know an answer, say you do not know."
+                "content": "You are a chatbot assistant that **must only speak Spanish**. Always respond **only in Spanish** regardless of the user's language. Never reply in any other language. If you don't know the answer, say 'No sé la respuesta.' Always be helpful and truthful."
             }
         ] + messages
 
@@ -112,7 +114,7 @@ Uploaded document:
         #     messages=messages
         # )
 
-        print("🧾 Sending messages to OpenAI:\n", json.dumps(messages, indent=2))
+        print("🧾 Sending messages to OpenAI:\n", json.dumps(full_messages, indent=2))
 
         reply = completion.choices[0].message.content
         return jsonify({"response": reply})
