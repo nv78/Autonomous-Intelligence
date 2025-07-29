@@ -192,7 +192,7 @@ function ChatHistory(props) {
           document.body
         )}
 
-      <div className="px-3 mt-12">
+      <div className="px-3 mt-16">
         <div className="flex justify-between items-center mb-2">
           <h2
             className={`text-xl text-anoteblack-100 ${
@@ -203,7 +203,7 @@ function ChatHistory(props) {
           </h2>
           <button
             onClick={() => navigate("/")}
-            className="p-2 bg-anoteblack-700 border cursor-pointer hover:bg-anoteblack-600 text-white rounded-lg transition-colors"
+            className="bg-anoteblack-700  cursor-pointer hover:bg-anoteblack-600 text-white rounded-lg transition-colors"
             title="Create new chat"
           >
             <FontAwesomeIcon icon={faPlus} className="text-base font-bold" />

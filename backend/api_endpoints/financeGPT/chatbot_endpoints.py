@@ -47,8 +47,8 @@ embeddings = OpenAIEmbeddings(api_key=API_KEY)
 sec_api_key = os.getenv('SEC_API_KEY')
 
 # Embedding Configuration
-EMBEDDING_MODEL = 'intfloat/multilingual-e5-large'
-EMBEDDING_DIMENSIONS = 1024
+EMBEDDING_MODEL = 'sentence-transformers/all-mpnet-base-v2'
+EMBEDDING_DIMENSIONS = 768
 MAX_CHUNK_SIZE = 1000
 
 # Global model cache for optimal performance
@@ -722,7 +722,7 @@ def get_embedding(question):
         
         # Add prefix for better performance as recommended by the model
         prefixed_question = f"query: {question}"
-        embedding = model.encode(prefixed_question, normalize_embeddings=True).tolist()
+        embedding = model.encode(prefixed_question,  show_progress_bar=True, normalize_embeddings=True).tolist()
         
         # Validate dimensions using constant
         if len(embedding) != EMBEDDING_DIMENSIONS:
