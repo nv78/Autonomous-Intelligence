@@ -94,7 +94,7 @@ Uploaded document:
             messages=full_messages
         )
 
-        print("🧾 Sending messages to OpenAI:\n", json.dumps(messages, indent=2))
+        print("🧾 Sending messages to OpenAI:\n", json.dumps(full_messages, indent=2))
 
         reply = completion.choices[0].message.content
         return jsonify({"response": reply})

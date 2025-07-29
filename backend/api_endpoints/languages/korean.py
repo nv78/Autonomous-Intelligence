@@ -57,6 +57,7 @@ def chat_korean():
                 messages = json.loads(messages_json)
                 if messages and isinstance(messages, list):
                     prompt = messages[-1]["content"]
+                    messages[-1]["content"] += " (한국어로만 답변해주세요)"
             except Exception as e:
                 print("❌ Failed to parse messages:", e)
 
@@ -87,7 +88,7 @@ Uploaded document:
         full_messages = [
             {
                 "role": "system",
-                "content": "You are a chatbot assistant meant to speak to the user in korean. You should help to user to answer on any questions in korean. Respond in korean no matter the language of the user. Be helpful and do not make up or hallucinate, if you do not know an answer, say you do not know."
+                "content": "You are a chatbot assistant that **must only speak Korean**. Always respond **only in Korean** regardless of the user's language. Never reply in any other language. If you don't know the answer, say '나는 답을 모른다.' Always be helpful and truthful."
             }
         ] + messages
 
@@ -95,7 +96,7 @@ Uploaded document:
             model=MODEL_NAME,
             messages=full_messages
         )
-        print("🧾 Sending messages to OpenAI:\n", json.dumps(messages, indent=2))
+        print("🧾 Sending messages to OpenAI:\n", json.dumps(full_messages, indent=2))
 
         reply = completion.choices[0].message.content
         return jsonify({"response": reply})
