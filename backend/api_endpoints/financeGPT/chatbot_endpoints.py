@@ -51,6 +51,14 @@ EMBEDDING_MODEL = 'intfloat/multilingual-e5-large'
 EMBEDDING_DIMENSIONS = 1024
 MAX_CHUNK_SIZE = 1000
 
+# Global model cache for optimal performance
+_embedding_model = None
+try:
+    import threading
+    _model_lock = threading.RLock()
+except ImportError:
+    _model_lock = None
+
 ## General for all chatbots
 # Chat_type is an integer where 0=chatbot, 1=Edgar, 2=PDFUploader, etc
 def add_chat_to_db(user_email, chat_type, model_type): #intake the current userID and the model type into the chat table
@@ -572,71 +580,129 @@ def add_document_to_wfs_db(text, document_name, workflow_id):
 
 
 @ray.remote
-def chunk_document_by_page(text_pages, maxChunkSize, document_id):
-    print("start chunk doc")
+def chunk_document_by_page_optimized(text_pages, maxChunkSize, document_id):
+    """
+    Optimized page-based document chunking with batch embedding generation.
+    Processes all chunks across all pages in batches for better performance.
+    """
+    print("start optimized page chunk doc")
 
     conn, cursor = get_db_connection()
 
+    chunk_texts = []
+    chunk_metadata = []
     globalStartIndex = 0
     page_number = 1
 
-    for page_text in text_pages:
-        startIndex = 0  # Start index for each page
-        while startIndex < len(page_text):
-            endIndex = startIndex + min(maxChunkSize, len(page_text) - startIndex)
-
-            chunkText = page_text[startIndex:endIndex]
-            chunkText = chunkText.replace("\n", "")
-
-            try:
-                embeddingVector = get_embedding(chunkText)
-                print(f"Generated page embedding with {len(embeddingVector)} dimensions")
-            except Exception as e:
-                print(f"[ERROR] Failed to get embedding for page chunk: {e}")
-                raise RuntimeError("Embedding generation failed")
+    try:
+        # First, create all chunks across all pages without embeddings
+        for page_text in text_pages:
+            startIndex = 0  # Start index for each page
+            while startIndex < len(page_text):
+                endIndex = startIndex + min(maxChunkSize, len(page_text) - startIndex)
+                chunkText = page_text[startIndex:endIndex].replace("\n", "")
                 
-            embeddingVector = np.array(embeddingVector)
-            blob = embeddingVector.tobytes()
+                chunk_texts.append(chunkText)
+                chunk_metadata.append({
+                    "global_start": globalStartIndex + startIndex,
+                    "global_end": globalStartIndex + endIndex,
+                    "page_number": page_number
+                })
+                startIndex += maxChunkSize
 
-            cursor.execute('INSERT INTO chunks (start_index, end_index, document_id, embedding_vector, page_number) VALUES (%s,%s,%s,%s,%s)',
-                           [globalStartIndex + startIndex, globalStartIndex + endIndex, document_id, blob, page_number])
+            globalStartIndex += len(page_text)
+            page_number += 1
 
-            startIndex += maxChunkSize
+        # Generate embeddings for all chunks in batches
+        print(f"Generating embeddings for {len(chunk_texts)} page chunks in batches...")
+        embeddings = get_embeddings_batch(chunk_texts, batch_size=32)
+        
+        # Validate dimensions
+        for i, embedding in enumerate(embeddings):
+            if len(embedding) != EMBEDDING_DIMENSIONS:
+                raise RuntimeError(f"Page chunk {i} embedding dimension mismatch: expected {EMBEDDING_DIMENSIONS}, got {len(embedding)}")
+        
+        # Insert all chunks into database
+        chunk_data = []
+        for i, (metadata, embedding) in enumerate(zip(chunk_metadata, embeddings)):
+            embedding_array = np.array(embedding)
+            blob = embedding_array.tobytes()
+            
+            chunk_data.append((
+                metadata["global_start"],
+                metadata["global_end"], 
+                document_id,
+                blob,
+                metadata["page_number"]
+            ))
 
-        globalStartIndex += len(page_text)
-        page_number += 1
+        # Batch insert into database
+        cursor.executemany(
+            'INSERT INTO chunks (start_index, end_index, document_id, embedding_vector, page_number) VALUES (%s,%s,%s,%s,%s)',
+            chunk_data
+        )
 
+        print(f"Successfully processed {len(chunk_data)} page chunks with batch embeddings")
+        conn.commit()
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f"[FATAL ERROR] Exception during optimized page chunking: {e}")
+        raise RuntimeError("Optimized page chunking failed due to internal error")
+    finally:
+        conn.close()
 
+@ray.remote
+def chunk_document_by_page(text_pages, maxChunkSize, document_id):
+    """
+    Legacy page-based chunking function - redirects to optimized version.
+    """
+    return chunk_document_by_page_optimized.remote(text_pages, maxChunkSize, document_id)
 
+def _get_model():
+    """
+    Get the global embedding model instance with thread-safe initialization.
+    
+    Returns:
+        SentenceTransformer: The embedding model
+    """
+    global _embedding_model
+    
+    if _embedding_model is None:
+        try:
+            if _model_lock:
+                with _model_lock:
+                    if _embedding_model is None:
+                        print(f"Loading {EMBEDDING_MODEL} model with optimizations...")
+                        from sentence_transformers import SentenceTransformer
+                        import torch
+                        
+                        # Use GPU if available for faster inference
+                        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+                        _embedding_model = SentenceTransformer(EMBEDDING_MODEL, device=device)
+                        print(f"Model loaded on device: {device}")
+            else:
+                print(f"Loading {EMBEDDING_MODEL} model...")
+                from sentence_transformers import SentenceTransformer
+                _embedding_model = SentenceTransformer(EMBEDDING_MODEL)
+        except Exception as e:
+            print(f"[ERROR] Failed to load embedding model: {e}")
+            raise RuntimeError(f"Model loading failed: {str(e)}")
+    
+    return _embedding_model
 
-    #chunks = []
-    #startIndex = 0
-#
-    #while startIndex < len(unchunkedText):
-    #    endIndex = startIndex + min(maxChunkSize, len(unchunkedText))
-    #    chunkText = unchunkedText[startIndex:endIndex]
-    #    chunkText = chunkText.replace("\n", "")
-#
-    #    embeddingVector = openai.embeddings.create(input=chunkText, model="text-embedding-ada-002").data[0].embedding
-    #    embeddingVector = np.array(embeddingVector)
-    #    blob = embeddingVector.tobytes()
-    #    chunks.append({
-    #        "text": chunkText,
-    #        "start_index": startIndex,
-    #        "end_index": endIndex,
-    #        "embedding_vector": embeddingVector,
-    #        "embedding_vector_blob": blob,
-    #    })
-    #    startIndex += maxChunkSize
-
-    print("end chunk doc")
-
-
-    #for chunk in chunks:
-    #    cursor.execute('INSERT INTO chunks (start_index, end_index, document_id, embedding_vector) VALUES (%s,%s,%s,%s)', [chunk["start_index"], chunk["end_index"], document_id, chunk["embedding_vector_blob"]])
-
-    conn.commit()
-    conn.close()
+def preload_embedding_model():
+    """
+    Preload the embedding model to reduce latency on first use.
+    Should be called during application startup for optimal performance.
+    """
+    try:
+        print("Preloading embedding model for faster PDF processing...")
+        _get_model()
+        print("Embedding model preloaded successfully!")
+    except Exception as e:
+        print(f"[WARNING] Failed to preload embedding model: {e}")
 
 def get_embedding(question):
     """
@@ -652,16 +718,11 @@ def get_embedding(question):
         RuntimeError: If the embedding generation fails
     """
     try:
-        from sentence_transformers import SentenceTransformer
-        
-        # Initialize model (cache it globally for performance)
-        if not hasattr(get_embedding, '_e5_model'):
-            print(f"Loading {EMBEDDING_MODEL} model...")
-            get_embedding._e5_model = SentenceTransformer(EMBEDDING_MODEL)
+        model = _get_model()
         
         # Add prefix for better performance as recommended by the model
         prefixed_question = f"query: {question}"
-        embedding = get_embedding._e5_model.encode(prefixed_question, normalize_embeddings=True).tolist()
+        embedding = model.encode(prefixed_question, normalize_embeddings=True).tolist()
         
         # Validate dimensions using constant
         if len(embedding) != EMBEDDING_DIMENSIONS:
@@ -675,69 +736,26 @@ def get_embedding(question):
 
 @ray.remote
 def chunk_document(text, maxChunkSize, document_id):
-    conn, cursor = get_db_connection()
+    """
+    Legacy document chunking function - redirects to optimized version.
+    """
 
-    chunks = []
-    startIndex = 0
-    try:
-        while startIndex < len(text):
-            endIndex = startIndex + min(maxChunkSize, len(text))
-            chunkText = text[startIndex:endIndex].replace("\n", "")
-
-            try:        
-                embeddingVector = get_embedding(chunkText)
-                print(f"Generated embedding with {len(embeddingVector)} dimensions")
-            except Exception as e:
-                print(f"[ERROR] Failed to get embedding for chunk: {e}")
-                raise RuntimeError("Embedding generation failed")
-
-            embeddingVector = np.array(embeddingVector)
-            blob = embeddingVector.tobytes()
-            chunks.append({
-                "text": chunkText,
-                "start_index": startIndex,
-                "end_index": endIndex,
-                "embedding_vector": embeddingVector,
-                "embedding_vector_blob": blob,
-            })
-            startIndex += maxChunkSize
-
-        for chunk in chunks:
-            cursor.execute(
-                'INSERT INTO chunks (start_index, end_index, document_id, embedding_vector) VALUES (%s,%s,%s,%s)',
-                [chunk["start_index"], chunk["end_index"], document_id, chunk["embedding_vector_blob"]]
-            )
-
-        print("CHUNKING DONE")
-        conn.commit()
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        print("[FATAL ERROR] Exception during chunking:", e)
-        raise RuntimeError("Chunking failed due to internal error")
-    finally:
-        conn.close()
+    return chunk_document_optimized.remote(text, maxChunkSize, document_id)
 
 
-def get_embeddings_batch(texts, batch_size=16):
+def get_embeddings_batch(texts, batch_size=32):
     """
     Get embeddings for multiple texts in batches for better performance.
     
     Args:
         texts (list): List of text strings to embed
-        batch_size (int): Number of texts to process in each batch
+        batch_size (int): Number of texts to process in each batch (increased default)
     
     Returns:
         list: List of embedding vectors
     """
     try:
-        from sentence_transformers import SentenceTransformer
-        
-        # Initialize model if not already done
-        if not hasattr(get_embeddings_batch, '_e5_model'):
-            print(f"Loading {EMBEDDING_MODEL} model for batch processing...")
-            get_embeddings_batch._e5_model = SentenceTransformer(EMBEDDING_MODEL)
-        
+        model = _get_model()
         embeddings = []
         
         # Process texts in batches
@@ -746,11 +764,13 @@ def get_embeddings_batch(texts, batch_size=16):
             # Add prefix for better performance as recommended by the model
             prefixed_texts = [f"passage: {text}" for text in batch_texts]
             
-            # Get batch embeddings
-            batch_embeddings = get_embeddings_batch._e5_model.encode(
+            # Get batch embeddings with optimized settings
+            batch_embeddings = model.encode(
                 prefixed_texts, 
                 normalize_embeddings=True,
-                batch_size=batch_size
+                batch_size=batch_size,
+                show_progress_bar=False,  # Reduce overhead
+                convert_to_tensor=False   # Direct to list for efficiency
             )
             
             embeddings.extend(batch_embeddings.tolist())
@@ -762,13 +782,110 @@ def get_embeddings_batch(texts, batch_size=16):
         print(f"[ERROR] Failed to get batch embeddings: {e}")
         raise RuntimeError(f"Batch embedding generation failed: {str(e)}")
 
+def prepare_chunks_for_embedding(text_pages, maxChunkSize):
+    """
+    Prepare text chunks from pages without generating embeddings.
+    This separates chunk preparation from embedding generation for optimization.
+    
+    Args:
+        text_pages (list): List of page texts
+        maxChunkSize (int): Maximum size for each chunk
+    
+    Returns:
+        tuple: (chunk_texts, chunk_metadata) for batch processing
+    """
+
+    chunk_texts = []
+    chunk_metadata = []
+    globalStartIndex = 0
+    page_number = 1
+
+    for page_text in text_pages:
+        startIndex = 0
+        while startIndex < len(page_text):
+            endIndex = startIndex + min(maxChunkSize, len(page_text) - startIndex)
+            chunkText = page_text[startIndex:endIndex].replace("\n", "")
+            
+            chunk_texts.append(chunkText)
+            chunk_metadata.append({
+                "global_start": globalStartIndex + startIndex,
+                "global_end": globalStartIndex + endIndex,
+                "page_number": page_number
+            })
+            startIndex += maxChunkSize
+
+        globalStartIndex += len(page_text)
+        page_number += 1
+
+    return chunk_texts, chunk_metadata
+
+def fast_pdf_ingestion(text_pages, maxChunkSize, document_id):
+    """
+    This method uses optimized batch embedding generation.
+    This is the fastest way to process PDFs for embedding.
+    
+    Args:
+        text_pages (list): List of page texts from PDF
+        maxChunkSize (int): Maximum chunk size
+        document_id (int): Database document ID
+    
+    Returns:
+        int: Number of chunks processed
+    """
+    print(f"Starting fast PDF ingestion for document {document_id}")
+    
+    # Prepare all chunks
+    chunk_texts, chunk_metadata = prepare_chunks_for_embedding(text_pages, maxChunkSize)
+    print(f"Prepared {len(chunk_texts)} chunks for processing")
+    
+    # Generate all embeddings in optimized batches
+    print("Generating embeddings in optimized batches...")
+    embeddings = get_embeddings_batch(chunk_texts, batch_size=64)  # Larger batch for speed
+    
+    # Validate all embeddings
+    for i, embedding in enumerate(embeddings):
+        if len(embedding) != EMBEDDING_DIMENSIONS:
+            raise RuntimeError(f"Chunk {i} embedding dimension mismatch: expected {EMBEDDING_DIMENSIONS}, got {len(embedding)}")
+    
+    # Batch insert to database
+    conn, cursor = get_db_connection()
+    try:
+        chunk_data = []
+        for metadata, embedding in zip(chunk_metadata, embeddings):
+            embedding_array = np.array(embedding)
+            blob = embedding_array.tobytes()
+            
+            chunk_data.append((
+                metadata["global_start"],
+                metadata["global_end"], 
+                document_id,
+                blob,
+                metadata["page_number"]
+            ))
+
+        # Single batch insert for maximum speed
+        cursor.executemany(
+            'INSERT INTO chunks (start_index, end_index, document_id, embedding_vector, page_number) VALUES (%s,%s,%s,%s,%s)',
+            chunk_data
+        )
+        conn.commit()
+        
+        print(f"Fast PDF ingestion completed: {len(chunk_data)} chunks processed")
+        return len(chunk_data)
+        
+    except Exception as e:
+        print(f"[ERROR] Fast PDF ingestion failed: {e}")
+        raise RuntimeError(f"Fast PDF ingestion failed: {str(e)}")
+    finally:
+        conn.close()
+
 
 @ray.remote
 def chunk_document_optimized(text, maxChunkSize, document_id):
     """
-    Optimized document chunking with batch embedding generation.
-    Processes all chunks for a document in batches for better performance.
+    Chunk documents into smaller pieces with optimized batch embedding creation.
     """
+
     conn, cursor = get_db_connection()
 
     chunk_texts = []
@@ -790,7 +907,7 @@ def chunk_document_optimized(text, maxChunkSize, document_id):
 
         # Generate embeddings for all chunks in batches
         print(f"Generating embeddings for {len(chunk_texts)} chunks in batches...")
-        embeddings = get_embeddings_batch(chunk_texts, batch_size=16)
+        embeddings = get_embeddings_batch(chunk_texts, batch_size=32)
         
         # Validate dimensions
         for i, embedding in enumerate(embeddings):
