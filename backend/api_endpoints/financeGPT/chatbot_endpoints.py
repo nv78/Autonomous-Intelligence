@@ -656,7 +656,7 @@ def chunk_document_by_page_optimized(text_pages, maxChunkSize, document_id):
 @ray.remote
 def chunk_document_by_page(text_pages, maxChunkSize, document_id):
     """
-    Legacy page-based chunking function - redirects to optimized version.
+    Redirects to optimized version.
     """
     return chunk_document_by_page_optimized.remote(text_pages, maxChunkSize, document_id)
 
@@ -736,10 +736,6 @@ def get_embedding(question):
 
 @ray.remote
 def chunk_document(text, maxChunkSize, document_id):
-    """
-    Legacy document chunking function - redirects to optimized version.
-    """
-
     return chunk_document_optimized.remote(text, maxChunkSize, document_id)
 
 
@@ -893,7 +889,7 @@ def chunk_document_optimized(text, maxChunkSize, document_id):
     startIndex = 0
     
     try:
-        # First, create all chunks without embeddings
+        # Create all chunks without embeddings
         while startIndex < len(text):
             endIndex = startIndex + min(maxChunkSize, len(text))
             chunkText = text[startIndex:endIndex].replace("\n", "")
@@ -1018,8 +1014,8 @@ def get_relevant_chunks(k, question, chat_id, user_email):
     for row in rows:
         embeddingVectorBlob = row["embedding_vector"]
         embeddingVector = np.frombuffer(embeddingVectorBlob)
-        
-        # Basic validation - should match our configured embedding dimensions
+
+        #embedding validation
         if len(embeddingVector) != EMBEDDING_DIMENSIONS:
             print(f"[WARNING] Found embedding with unexpected dimension: {len(embeddingVector)}, expected {EMBEDDING_DIMENSIONS}")
             
@@ -1051,7 +1047,7 @@ def get_relevant_chunks(k, question, chat_id, user_email):
     res = knn(embeddingVector, embeddings)
     num_results = min(k, len(res))
 
-    #Get the k most relevant chunks
+    # Get k most relevant chunks
     source_chunks = []
     for i in range(num_results):
         source_id = res[i]['index']
