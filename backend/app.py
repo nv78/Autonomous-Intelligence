@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, abort, redirect, send_file
+from flask import Flask, request, jsonify, abort, redirect, send_file, Blueprint
 from flask_cors import CORS, cross_origin
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -65,6 +65,7 @@ from ragas.metrics import (
 )
 from bs4 import BeautifulSoup
 from flask_mysql_connector import MySQL
+import MySQLdb.cursors
 
 #WESLEY
 from api_endpoints.financeGPT.chatbot_endpoints import create_chat_shareable_url, access_sharable_chat
@@ -92,6 +93,9 @@ from api_endpoints.languages.japanese import japanese_blueprint
 from api_endpoints.languages.korean import korean_blueprint
 from api_endpoints.languages.spanish import spanish_blueprint
 from api_endpoints.languages.arabic import arabic_blueprint
+from datetime import datetime
+from flask import current_app
+
 
 
 
@@ -1647,6 +1651,47 @@ def get_companies():
     cursor.close()
     return jsonify(companies)
 
+
+def get_user_from_token(token):
+    if not token:
+        return None
+
+    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    cursor.execute("""
+        SELECT * FROM users WHERE session_token = %s
+    """, (token,))
+    user = cursor.fetchone()
+
+    if user and user.get("session_token_expiration"):
+        # session_token_expiration is usually stored as a datetime string
+        expiration = user["session_token_expiration"]
+        # Convert expiration string to datetime object (assuming ISO format)
+        expiration_dt = datetime.strptime(expiration, "%Y-%m-%d %H:%M:%S")
+        if expiration_dt > datetime.utcnow():
+            return user
+    return None
+
+@app.route("/api/user/companies", methods=["GET"])
+def get_user_companies():
+    session_token = request.cookies.get("sessionToken")
+    if not session_token:
+        return jsonify({"error": "Not authenticated"}), 401
+
+    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    cursor.execute("SELECT id FROM users WHERE session_token = %s", (session_token,))
+    user = cursor.fetchone()
+
+    if not user:
+        return jsonify({"error": "Invalid session token"}), 401
+
+    user_id = user["id"]
+    cursor.execute("SELECT name, path FROM user_company_chatbots WHERE user_id = %s", (user_id,))
+    companies = cursor.fetchall()
+    return jsonify(companies)
+
+
+api = Blueprint('api', __name__)
+app.register_blueprint(api)
 
 if __name__ == '__main__':
     debug_mode = os.getenv("FLASK_ENV") == "development"

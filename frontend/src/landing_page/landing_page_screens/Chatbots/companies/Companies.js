@@ -27,6 +27,10 @@ const Companies = () => {
   }
   urlObject.hostname = `dashboard.${hostname}`;
 
+  //getting user's made chatbots
+  const [userChatbots, setUserChatbots] = useState([]);
+
+
   var startPath = urlObject.toString();
   useEffect(() => {
     axios.get("http://localhost:5050/api/companies", { //port 5050 because of conflicts with 5000
@@ -34,7 +38,21 @@ const Companies = () => {
     })  // Flask runs on port 5000
       .then(res => setCompanies(res.data))
       .catch(err => console.error("Error fetching companies:", err));
-  }, []);
+      // If logged in, fetch user-specific chatbots
+      if (isLoggedIn) {
+        axios.get("http://localhost:5050/api/user/companies", {
+          headers: {
+            Authorization: `Bearer ${accessToken || sessionToken}`
+          },
+          withCredentials: true
+        })
+        .then(res => setUserChatbots(res.data))
+        .catch(err => console.error("Error fetching user chatbots:", err));
+      }
+  }, [isLoggedIn, accessToken, sessionToken]);
+
+  
+
 
   return (
     <section className="text-gray-100 body-font overflow-hidden min-h-screen bg-black px-4 py-10">
@@ -61,13 +79,14 @@ const Companies = () => {
           </div>
         </div>
 
+
         <div className="sm:w-1/2 w-full flex flex-col items-center text-center">
-          <h2 className="text-2xl font-semibold mb-3">Make Your Own</h2>
+          {/*<h2 className="text-2xl font-semibold mb-3">Make Your Own</h2>
           <p className="text-sm text-gray-400 max-w-xs mb-6">
             Create an intelligent chatbot for your company, no coding necessary.
           </p>
 
-          {showRestrictedRouteRequiringUserSession && (
+          {showRestrictedRouteRequiringUserSession && ( */}
           <div className="w-full max-w-md border border-gray-600 rounded-md mb-6 p-4">
             <h3 className="text-lg font-semibold mb-2 text-left">Your Existing Chatbots</h3>
             <table className="w-full text-sm text-left text-gray-300">
@@ -78,20 +97,20 @@ const Companies = () => {
                 </tr>
               </thead>
               <tbody>
-                {/* Replace with actual chatbot data */}
-                <tr>
-                  <td className="px-2 py-2">ExampleBot</td>
-                  <td className="px-2 py-2">
-                    <Link to="/chatbots/examplebot" className="text-yellow-400 hover:underline">
-                      View
-                    </Link>
-                  </td>
-                </tr>
-                {/* Add more rows dynamically here */}
+                {userChatbots.map((bot) => (
+                  <tr key={bot.id}>
+                    <td className="px-2 py-2">{bot.name}</td>
+                    <td className="px-2 py-2">
+                      <Link to={bot.path} className="text-yellow-400 hover:underline">
+                        View
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
-        )}
+        {/*})} */}
         
         {showRestrictedRouteRequiringUserSession ? (
           <Link
