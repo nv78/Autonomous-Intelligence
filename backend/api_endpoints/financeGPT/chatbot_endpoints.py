@@ -54,11 +54,14 @@ CHUNK_OVERLAP = 100
 
 # Global model cache for optimal performance
 _embedding_model = None
+_text_splitter = None
 try:
     import threading
     _model_lock = threading.RLock()
+    _splitter_lock = threading.RLock()
 except ImportError:
     _model_lock = None
+    _splitter_lock = None
 
 ## General for all chatbots
 # Chat_type is an integer where 0=chatbot, 1=Edgar, 2=PDFUploader, etc
@@ -596,13 +599,8 @@ def chunk_document_by_page_optimized(text_pages, maxChunkSize, document_id):
     page_number = 1
 
     try:
-        # Initialize text splitter once for all pages
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=maxChunkSize,
-            chunk_overlap=CHUNK_OVERLAP,
-            separators=["\n\n", "\n", ". ", "? ", "! ", " ", ""],
-            length_function=len,
-        )
+        # Get the global text splitter instance
+        text_splitter = _get_text_splitter(maxChunkSize)
         
         # Process each page with semantic chunking
         for page_text in text_pages:
@@ -717,6 +715,64 @@ def _get_model():
     
     return _embedding_model
 
+# Dictionary to cache text splitters by chunk size
+_text_splitters = {}
+
+def _get_text_splitter(chunk_size=None):
+    """
+    Get a text splitter instance with thread-safe initialization.
+    Caches splitters by chunk size to avoid recreating them.
+    
+    Args:
+        chunk_size (int, optional): Chunk size. Defaults to MAX_CHUNK_SIZE.
+    
+    Returns:
+        RecursiveCharacterTextSplitter: The text splitter
+    """
+    global _text_splitters
+    
+    if chunk_size is None:
+        chunk_size = MAX_CHUNK_SIZE
+    
+    if chunk_size not in _text_splitters:
+        try:
+            if _splitter_lock:
+                with _splitter_lock:
+                    if chunk_size not in _text_splitters:
+                        print(f"Initializing RecursiveCharacterTextSplitter with chunk_size={chunk_size}...")
+                        _text_splitters[chunk_size] = RecursiveCharacterTextSplitter(
+                            chunk_size=chunk_size,
+                            chunk_overlap=CHUNK_OVERLAP,
+                            separators=["\n\n", "\n", ". ", "? ", "! ", " ", ""],
+                            length_function=len,
+                        )
+                        print(f"RecursiveCharacterTextSplitter (chunk_size={chunk_size}) initialized successfully!")
+            else:
+                print(f"Initializing RecursiveCharacterTextSplitter with chunk_size={chunk_size}...")
+                _text_splitters[chunk_size] = RecursiveCharacterTextSplitter(
+                    chunk_size=chunk_size,
+                    chunk_overlap=CHUNK_OVERLAP,
+                    separators=["\n\n", "\n", ". ", "? ", "! ", " ", ""],
+                    length_function=len,
+                )
+        except Exception as e:
+            print(f"[ERROR] Failed to initialize text splitter: {e}")
+            raise RuntimeError(f"Text splitter initialization failed: {str(e)}")
+    
+    return _text_splitters[chunk_size]
+
+def preload_text_splitter():
+    """
+    Preload the text splitter to reduce latency on first use.
+    Should be called during application startup for optimal performance.
+    """
+    try:
+        print("Preloading RecursiveCharacterTextSplitter for faster document processing...")
+        _get_text_splitter()
+        print("RecursiveCharacterTextSplitter preloaded successfully!")
+    except Exception as e:
+        print(f"[WARNING] Failed to preload text splitter: {e}")
+
 def preload_embedding_model():
     """
     Preload the embedding model to reduce latency on first use.
@@ -728,6 +784,14 @@ def preload_embedding_model():
         print("Embedding model preloaded successfully!")
     except Exception as e:
         print(f"[WARNING] Failed to preload embedding model: {e}")
+
+def preload_models():
+    """
+    Preload both the embedding model and text splitter for optimal performance.
+    Should be called during application startup.
+    """
+    preload_text_splitter()
+    preload_embedding_model()
 
 def get_embedding(question):
     """
@@ -821,13 +885,8 @@ def prepare_chunks_for_embedding(text_pages, maxChunkSize):
     globalStartIndex = 0
     page_number = 1
 
-    # Initialize text splitter once for all pages
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=maxChunkSize,
-        chunk_overlap=CHUNK_OVERLAP,
-        separators=["\n\n", "\n", ". ", "? ", "! ", " ", ""],
-        length_function=len,
-    )
+    # Get the global text splitter instance
+    text_splitter = _get_text_splitter(maxChunkSize)
 
     for page_text in text_pages:
         # Split page text into semantic chunks
@@ -935,13 +994,8 @@ def chunk_document_optimized(text, maxChunkSize, document_id):
     chunk_metadata = []
     
     try:
-        # Use RecursiveCharacterTextSplitter for semantic-aware chunking
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=maxChunkSize,
-            chunk_overlap=CHUNK_OVERLAP,
-            separators=["\n\n", "\n", ". ", "? ", "! ", " ", ""],
-            length_function=len,
-        )
+        # Get the global text splitter instance for semantic-aware chunking  
+        text_splitter = _get_text_splitter(maxChunkSize)
         
         # Split text into semantic chunks
         chunks = text_splitter.split_text(text)
@@ -1579,7 +1633,7 @@ def process_ticker_info_wf(user_email, workflow_id, ticker):
     print("PROCESS TICKER INFO FOR TICKER ", ticker)
 
     if ticker:
-        MAX_CHUNK_SIZE = 1000
+        chunk_size = 1000
 
         reset_uploaded_docs_for_workflow(workflow_id, user_email)
 
@@ -1595,7 +1649,7 @@ def process_ticker_info_wf(user_email, workflow_id, ticker):
         # print("Doc Id: ", doc_id)
 
         if not doesExist:
-            chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+            chunk_document.remote(text, chunk_size, doc_id)
 
         if os.path.exists(filename):
             os.remove(filename)
