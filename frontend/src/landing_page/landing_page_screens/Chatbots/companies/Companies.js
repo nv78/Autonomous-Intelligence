@@ -33,22 +33,20 @@ const Companies = () => {
 
   var startPath = urlObject.toString();
   useEffect(() => {
-    axios.get("http://localhost:5050/api/companies", { //port 5050 because of conflicts with 5000
-      withCredentials: true
-    })  // Flask runs on port 5000
+    axios.get("/api/companies", { withCredentials: true })
       .then(res => setCompanies(res.data))
       .catch(err => console.error("Error fetching companies:", err));
-      // If logged in, fetch user-specific chatbots
-      if (isLoggedIn) {
-        axios.get("http://localhost:5050/api/user/companies", {
-          headers: {
-            Authorization: `Bearer ${accessToken || sessionToken}`
-          },
-          withCredentials: true
-        })
-        .then(res => setUserChatbots(res.data))
-        .catch(err => console.error("Error fetching user chatbots:", err));
-      }
+  
+    if (isLoggedIn) {
+      axios.get("/api/user/companies", {
+        headers: {
+          Authorization: `Bearer ${accessToken || sessionToken}`
+        },
+        withCredentials: true
+      })
+      .then(res => setUserChatbots(res.data))
+      .catch(err => console.error("Error fetching user chatbots:", err));
+    }
   }, [isLoggedIn, accessToken, sessionToken]);
 
   

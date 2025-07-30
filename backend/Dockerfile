@@ -31,7 +31,7 @@ ENV FLASK_APP=app.py \
     PYTHONDONTWRITEBYTECODE=1
 
 # Expose ports
-EXPOSE 5000 6379 9998
+EXPOSE 5000 6379 9998 8000
 
 # Use the start script as the entrypoint
 CMD ["bash", "-c", "ray start --head --port=6379 --dashboard-port=9998 && flask run --host=0.0.0.0 --port=5000 --no-reload"]

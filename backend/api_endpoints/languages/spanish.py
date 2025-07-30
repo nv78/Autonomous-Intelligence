@@ -11,6 +11,7 @@ LANGUAGE_KEY = "spanish"
 
 @spanish_blueprint.route("/api/chat/spanish", methods=["POST"])
 def chat_spanish():
+    print("Received request:", request.json)  # or use logging
     try:
         messages = request.json.get("messages")
         if not messages or not isinstance(messages, list):
