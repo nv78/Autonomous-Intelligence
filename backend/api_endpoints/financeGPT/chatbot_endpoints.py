@@ -49,7 +49,8 @@ sec_api_key = os.getenv('SEC_API_KEY')
 # Embedding Configuration
 EMBEDDING_MODEL = 'sentence-transformers/all-mpnet-base-v2'
 EMBEDDING_DIMENSIONS = 768
-MAX_CHUNK_SIZE = 1000
+MAX_CHUNK_SIZE = 800
+CHUNK_OVERLAP = 100
 
 # Global model cache for optimal performance
 _embedding_model = None
@@ -582,10 +583,10 @@ def add_document_to_wfs_db(text, document_name, workflow_id):
 @ray.remote
 def chunk_document_by_page_optimized(text_pages, maxChunkSize, document_id):
     """
-    Optimized page-based document chunking with batch embedding generation.
-    Processes all chunks across all pages in batches for better performance.
+    Optimized page-based document chunking with RecursiveCharacterTextSplitter and batch embedding generation.
+    Processes all chunks across all pages in batches for better performance and also preserving semantic boundaries so that the meaning is retained.
     """
-    print("start optimized page chunk doc")
+    print("start optimized semantic page chunk doc")
 
     conn, cursor = get_db_connection()
 
@@ -595,26 +596,50 @@ def chunk_document_by_page_optimized(text_pages, maxChunkSize, document_id):
     page_number = 1
 
     try:
-        # First, create all chunks across all pages without embeddings
+        # Initialize text splitter once for all pages
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=maxChunkSize,
+            chunk_overlap=CHUNK_OVERLAP,
+            separators=["\n\n", "\n", ". ", "? ", "! ", " ", ""],
+            length_function=len,
+        )
+        
+        # Process each page with semantic chunking
         for page_text in text_pages:
-            startIndex = 0  # Start index for each page
-            while startIndex < len(page_text):
-                endIndex = startIndex + min(maxChunkSize, len(page_text) - startIndex)
-                chunkText = page_text[startIndex:endIndex].replace("\n", "")
+            # Split page text into semantic chunks
+            page_chunks = text_splitter.split_text(page_text)
+            print(f"Page {page_number}: Created {len(page_chunks)} semantic chunks")
+            
+            # Track position within this page for accurate indexing
+            page_pos = 0
+            for chunk in page_chunks:
+
+                # Find chunk position in the page
+                chunk_start_in_page = page_text.find(chunk, page_pos)
+                if chunk_start_in_page == -1:
+                    chunk_start_in_page = page_text.find(chunk)
                 
-                chunk_texts.append(chunkText)
+                chunk_end_in_page = chunk_start_in_page + len(chunk)
+                
+                # Calculate global positions
+                global_start = globalStartIndex + chunk_start_in_page
+                global_end = globalStartIndex + chunk_end_in_page
+                
+                chunk_texts.append(chunk)
                 chunk_metadata.append({
-                    "global_start": globalStartIndex + startIndex,
-                    "global_end": globalStartIndex + endIndex,
+                    "global_start": global_start,
+                    "global_end": global_end,
                     "page_number": page_number
                 })
-                startIndex += maxChunkSize
+                
+                # Update page position for next chunk search
+                page_pos = chunk_start_in_page + 1
 
             globalStartIndex += len(page_text)
             page_number += 1
 
         # Generate embeddings for all chunks in batches
-        print(f"Generating embeddings for {len(chunk_texts)} page chunks in batches...")
+        print(f"Generating embeddings for {len(chunk_texts)} semantic page chunks in batches...")
         embeddings = get_embeddings_batch(chunk_texts, batch_size=32)
         
         # Validate dimensions
@@ -622,7 +647,7 @@ def chunk_document_by_page_optimized(text_pages, maxChunkSize, document_id):
             if len(embedding) != EMBEDDING_DIMENSIONS:
                 raise RuntimeError(f"Page chunk {i} embedding dimension mismatch: expected {EMBEDDING_DIMENSIONS}, got {len(embedding)}")
         
-        # Insert all chunks into database
+        # Insert the chunks into database
         chunk_data = []
         for i, (metadata, embedding) in enumerate(zip(chunk_metadata, embeddings)):
             embedding_array = np.array(embedding)
@@ -642,14 +667,14 @@ def chunk_document_by_page_optimized(text_pages, maxChunkSize, document_id):
             chunk_data
         )
 
-        print(f"Successfully processed {len(chunk_data)} page chunks with batch embeddings")
+        print(f"Successfully processed {len(chunk_data)} semantic page chunks with batch embeddings")
         conn.commit()
         
     except Exception as e:
         import traceback
         traceback.print_exc()
-        print(f"[FATAL ERROR] Exception during optimized page chunking: {e}")
-        raise RuntimeError("Optimized page chunking failed due to internal error")
+        print(f"[FATAL ERROR] Exception during optimized semantic page chunking: {e}")
+        raise RuntimeError("Optimized semantic page chunking failed due to internal error")
     finally:
         conn.close()
 
@@ -780,7 +805,7 @@ def get_embeddings_batch(texts, batch_size=32):
 
 def prepare_chunks_for_embedding(text_pages, maxChunkSize):
     """
-    Prepare text chunks from pages without generating embeddings.
+    Prepare semantic text chunks from pages using RecursiveCharacterTextSplitter without generating embeddings.
     This separates chunk preparation from embedding generation for optimization.
     
     Args:
@@ -796,19 +821,41 @@ def prepare_chunks_for_embedding(text_pages, maxChunkSize):
     globalStartIndex = 0
     page_number = 1
 
+    # Initialize text splitter once for all pages
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=maxChunkSize,
+        chunk_overlap=CHUNK_OVERLAP,
+        separators=["\n\n", "\n", ". ", "? ", "! ", " ", ""],
+        length_function=len,
+    )
+
     for page_text in text_pages:
-        startIndex = 0
-        while startIndex < len(page_text):
-            endIndex = startIndex + min(maxChunkSize, len(page_text) - startIndex)
-            chunkText = page_text[startIndex:endIndex].replace("\n", "")
+        # Split page text into semantic chunks
+        page_chunks = text_splitter.split_text(page_text)
+        
+        # Track position within this page for accurate indexing
+        page_pos = 0
+        for chunk in page_chunks:
+            # Find chunk position within the page
+            chunk_start_in_page = page_text.find(chunk, page_pos)
+            if chunk_start_in_page == -1:
+                chunk_start_in_page = page_text.find(chunk)
             
-            chunk_texts.append(chunkText)
+            chunk_end_in_page = chunk_start_in_page + len(chunk)
+            
+            # Calculate global positions
+            global_start = globalStartIndex + chunk_start_in_page
+            global_end = globalStartIndex + chunk_end_in_page
+            
+            chunk_texts.append(chunk)
             chunk_metadata.append({
-                "global_start": globalStartIndex + startIndex,
-                "global_end": globalStartIndex + endIndex,
+                "global_start": global_start,
+                "global_end": global_end,
                 "page_number": page_number
             })
-            startIndex += maxChunkSize
+            
+            # Update page position for next chunk search
+            page_pos = chunk_start_in_page + 1
 
         globalStartIndex += len(page_text)
         page_number += 1
@@ -817,8 +864,8 @@ def prepare_chunks_for_embedding(text_pages, maxChunkSize):
 
 def fast_pdf_ingestion(text_pages, maxChunkSize, document_id):
     """
-    This method uses optimized batch embedding generation.
-    This is the fastest way to process PDFs for embedding.
+    Fast PDF ingestion using RecursiveCharacterTextSplitter for semantic chunking and optimized batch embedding generation.
+    This is the fastest way to process PDFs for embedding while preserving semantic boundaries.
     
     Args:
         text_pages (list): List of page texts from PDF
@@ -828,11 +875,11 @@ def fast_pdf_ingestion(text_pages, maxChunkSize, document_id):
     Returns:
         int: Number of chunks processed
     """
-    print(f"Starting fast PDF ingestion for document {document_id}")
+    print(f"Starting fast semantic PDF ingestion for document {document_id}")
     
-    # Prepare all chunks
+    # Prepare all chunks using semantic chunking
     chunk_texts, chunk_metadata = prepare_chunks_for_embedding(text_pages, maxChunkSize)
-    print(f"Prepared {len(chunk_texts)} chunks for processing")
+    print(f"Prepared {len(chunk_texts)} semantic chunks for processing")
     
     # Generate all embeddings in optimized batches
     print("Generating embeddings in optimized batches...")
@@ -866,12 +913,12 @@ def fast_pdf_ingestion(text_pages, maxChunkSize, document_id):
         )
         conn.commit()
         
-        print(f"Fast PDF ingestion completed: {len(chunk_data)} chunks processed")
+        print(f"Fast semantic PDF ingestion completed: {len(chunk_data)} chunks processed")
         return len(chunk_data)
         
     except Exception as e:
-        print(f"[ERROR] Fast PDF ingestion failed: {e}")
-        raise RuntimeError(f"Fast PDF ingestion failed: {str(e)}")
+        print(f"[ERROR] Fast semantic PDF ingestion failed: {e}")
+        raise RuntimeError(f"Fast semantic PDF ingestion failed: {str(e)}")
     finally:
         conn.close()
 
@@ -879,38 +926,56 @@ def fast_pdf_ingestion(text_pages, maxChunkSize, document_id):
 @ray.remote
 def chunk_document_optimized(text, maxChunkSize, document_id):
     """
-    Chunk documents into smaller pieces with optimized batch embedding creation.
+    Chunk documents into smaller pieces with RecursiveCharacterTextSplitter and use optimized batch embedding creation.
     """
 
     conn, cursor = get_db_connection()
 
     chunk_texts = []
     chunk_metadata = []
-    startIndex = 0
     
     try:
-        # Create all chunks without embeddings
-        while startIndex < len(text):
-            endIndex = startIndex + min(maxChunkSize, len(text))
-            chunkText = text[startIndex:endIndex].replace("\n", "")
+        # Use RecursiveCharacterTextSplitter for semantic-aware chunking
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=maxChunkSize,
+            chunk_overlap=CHUNK_OVERLAP,
+            separators=["\n\n", "\n", ". ", "? ", "! ", " ", ""],
+            length_function=len,
+        )
+        
+        # Split text into semantic chunks
+        chunks = text_splitter.split_text(text)
+        print(f"RecursiveCharacterTextSplitter created {len(chunks)} semantic chunks")
+        
+        # Finding each chunk's positions in original text
+        current_pos = 0
+        for chunk in chunks:
+            # Find chunk in the original text starting from current position
+            chunk_start = text.find(chunk, current_pos)
+            if chunk_start == -1:
+                chunk_start = text.find(chunk)
             
-            chunk_texts.append(chunkText)
+            chunk_end = chunk_start + len(chunk)
+            
+            chunk_texts.append(chunk)
             chunk_metadata.append({
-                "start_index": startIndex,
-                "end_index": endIndex
+                "start_index": chunk_start,
+                "end_index": chunk_end
             })
-            startIndex += maxChunkSize
+            
+            # Update current position for next search
+            current_pos = chunk_start + 1
 
         # Generate embeddings for all chunks in batches
-        print(f"Generating embeddings for {len(chunk_texts)} chunks in batches...")
+        print(f"Generating embeddings for {len(chunk_texts)} semantic chunks in batches...")
         embeddings = get_embeddings_batch(chunk_texts, batch_size=32)
         
-        # Validate dimensions
+        # Make sure dimensions match
         for i, embedding in enumerate(embeddings):
             if len(embedding) != EMBEDDING_DIMENSIONS:
                 raise RuntimeError(f"Chunk {i} embedding dimension mismatch: expected {EMBEDDING_DIMENSIONS}, got {len(embedding)}")
         
-        # Insert all chunks into database
+        # Insert all of the chunks into database
         chunk_data = []
         for i, (metadata, embedding) in enumerate(zip(chunk_metadata, embeddings)):
             embedding_array = np.array(embedding)
@@ -929,14 +994,14 @@ def chunk_document_optimized(text, maxChunkSize, document_id):
             chunk_data
         )
 
-        print(f"Successfully processed {len(chunk_data)} chunks with batch embeddings")
+        print(f"Successfully processed {len(chunk_data)} semantic chunks with batch embeddings")
         conn.commit()
         
     except Exception as e:
         import traceback
         traceback.print_exc()
-        print(f"[FATAL ERROR] Exception during optimized chunking: {e}")
-        raise RuntimeError("Optimized chunking failed due to internal error")
+        print(f"[FATAL ERROR] Exception during optimized semantic chunking: {e}")
+        raise RuntimeError("Optimized semantic chunking failed due to internal error")
     finally:
         conn.close()
 
@@ -1384,8 +1449,6 @@ def get_text_from_edgar(ticker):
     # pattern = r'\.xlsx.*'
     #text = re.sub(pattern, '', text, flags=re.DOTALL)
 
-
-
     return text
 
 def add_ticker_to_chat_db(chat_id, ticker, user_email, isUpdate):
@@ -1510,8 +1573,6 @@ def remove_prompt_from_workflow_db(prompt_id):
     conn.close()
 
     return "Success"
-
-
 
 
 def process_ticker_info_wf(user_email, workflow_id, ticker):
