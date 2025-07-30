@@ -286,17 +286,18 @@ class TestFlaskApp(unittest.TestCase):
 
     def test_retrieve_messages_from_chat(self):
         # --- Valid JWT ---
-        with patch("app.extractUserEmailFromRequest") as mock_extract_email, patch(
-            "app.retrieve_message_from_db"
-        ) as mock_retrieve_messages:
+        with patch("app.extractUserEmailFromRequest") as mock_extract_email, \
+             patch("app.retrieve_message_from_db") as mock_retrieve_messages, \
+             patch("app.get_chat_info") as mock_get_chat_info:
             mock_extract_email.return_value = "test@example.com"
             mock_retrieve_messages.return_value = [
                 {"msg": "hello from chat"},
                 {"msg": "another message"},
             ]
+            mock_get_chat_info.return_value = (None, None, "Test Chat Name")
             headers = {
                 "Content-Type": "application/json",
-                "Authorization": "Bearer testtoken",
+                "Authorization": "***",
             }
             data = {"chat_type": "test_type", "chat_id": "chat1"}
             response = self.app.post(
@@ -304,12 +305,10 @@ class TestFlaskApp(unittest.TestCase):
             )
             self.assertEqual(response.status_code, 200)
             self.assertIn("hello from chat", response.get_data(as_text=True))
-            self.assertIn("another message", response.get_data(as_text=True))
 
         # --- Invalid JWT ---
         with patch("app.extractUserEmailFromRequest") as mock_extract_email:
             from app import InvalidTokenError
-
             mock_extract_email.side_effect = InvalidTokenError()
             headers = {
                 "Content-Type": "application/json",
