@@ -691,27 +691,30 @@ def _get_model():
         SentenceTransformer: The embedding model
     """
     global _embedding_model
-    
-    if _embedding_model is None:
-        try:
-            if _model_lock:
-                with _model_lock:
-                    if _embedding_model is None:
-                        print(f"Loading {EMBEDDING_MODEL} model with optimizations...")
-                        from sentence_transformers import SentenceTransformer
-                        import torch
+
+
+    if _embedding_model is not None:
+        return _embedding_model
+
+    try:
+        if _model_lock:
+            with _model_lock:
+                if _embedding_model is None:
+                    print(f"Loading {EMBEDDING_MODEL} model with optimizations...")
+                    from sentence_transformers import SentenceTransformer
+                    import torch
                         
                         # Use GPU if available for faster inference
-                        device = 'cuda' if torch.cuda.is_available() else 'cpu'
-                        _embedding_model = SentenceTransformer(EMBEDDING_MODEL, device=device)
-                        print(f"Model loaded on device: {device}")
-            else:
-                print(f"Loading {EMBEDDING_MODEL} model...")
-                from sentence_transformers import SentenceTransformer
-                _embedding_model = SentenceTransformer(EMBEDDING_MODEL)
-        except Exception as e:
-            print(f"[ERROR] Failed to load embedding model: {e}")
-            raise RuntimeError(f"Model loading failed: {str(e)}")
+                    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+                    _embedding_model = SentenceTransformer(EMBEDDING_MODEL, device=device)
+                    print(f"Model loaded on device: {device}")
+        else:
+            print(f"Loading {EMBEDDING_MODEL} model...")
+            from sentence_transformers import SentenceTransformer
+            _embedding_model = SentenceTransformer(EMBEDDING_MODEL)
+    except Exception as e:
+        print(f"[ERROR] Failed to load embedding model: {e}")
+        raise RuntimeError(f"Model loading failed: {str(e)}")
     
     return _embedding_model
 
