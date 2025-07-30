@@ -256,8 +256,8 @@ class TestFlaskApp(unittest.TestCase):
 
     def test_retrieve_chats(self):
         # --- Valid JWT ---
-        with patch("app.extractUserEmailFromRequest") as mock_extract_email, patch(
-            "app.retrieve_chats_from_db"
+        with patch("backend.app.extractUserEmailFromRequest") as mock_extract_email, patch(
+            "backend.app.retrieve_chats_from_db"
         ) as mock_retrieve_chats:
             mock_extract_email.return_value = "test@example.com"
             mock_retrieve_chats.return_value = [
@@ -272,7 +272,7 @@ class TestFlaskApp(unittest.TestCase):
             self.assertIn("new chat data", response.get_data(as_text=True))
 
         # --- Invalid JWT ---
-        with patch("app.extractUserEmailFromRequest") as mock_extract_email:
+        with patch("backend.app.extractUserEmailFromRequest") as mock_extract_email:
             from app import InvalidTokenError
 
             mock_extract_email.side_effect = InvalidTokenError()
