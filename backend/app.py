@@ -54,7 +54,7 @@ import io
 from tika import parser as p
 import anthropic
 from anthropic import Anthropic, HUMAN_PROMPT, AI_PROMPT
-from datasets import Dataset
+from datasets import Dataset, load_dataset
 import re
 import ragas
 from ragas.metrics import (
@@ -66,6 +66,7 @@ from ragas.metrics import (
 from bs4 import BeautifulSoup
 from flask_mysql_connector import MySQL
 import MySQLdb.cursors
+from nltk.translate.bleu_score import sentence_bleu
 
 #WESLEY
 from api_endpoints.financeGPT.chatbot_endpoints import create_chat_shareable_url, access_sharable_chat
@@ -1690,6 +1691,64 @@ def get_user_companies():
     companies = cursor.fetchall()
     return jsonify(companies)
 
+# translate with gpt
+def translate_gpt(prompt):
+    response = openai.ChatCompletion.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": "You are a helpful translator."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.3,
+    )
+    return response.choices[0].message["content"].strip()
+
+# calculate BLEU score
+def get_bleu(translations, references, weights=(0.5, 0.5, 0, 0)):
+    bleu_scores = [
+        sentence_bleu([ref.split()], trans.split(), weights=weights)
+        for ref, trans in zip(references, translations)
+    ]
+    return sum(bleu_scores) / len(bleu_scores)
+
+@app.route('/spanish-gpt-evaluation', methods=['POST'])
+@cross_origin(supports_credentials=True)
+def spanish_gpt_evaluation():
+    try:
+        # get number of sentences to translate
+        data = request.get_json()
+        count = data.get('count', 10)
+
+        # load datasets
+        source_lang = "eng_Latn"
+        target_lang = "spa_Latn"
+        source_dataset = load_dataset("openlanguagedata/flores_plus", source_lang, split="devtest")
+        target_dataset = load_dataset("openlanguagedata/flores_plus", target_lang, split="devtest")
+
+        # compile sentences into lists
+        source_sentences = [ex["text"] for ex in source_dataset.select(range(count))]
+        reference_sentences = [ex["text"] for ex in target_dataset.select(range(count))]
+
+        # generate gpt translations from benchmark source sentences
+        spa_gpt_translations = []
+        for sentence in source_sentences:
+            prompt = f"Translate this sentence to Spanish:\n\n{sentence}"
+            translation = translate_gpt(prompt)
+            spa_gpt_translations.append(translation)
+            time.sleep(1)
+
+        bleu_score = get_bleu(spa_gpt_translations, reference_sentences)
+
+        # return results as json
+        return jsonify({
+            "bleu_score": bleu_score,
+            "translations": spa_gpt_translations,
+            "references": reference_sentences
+        })
+
+    except Exception as e:
+        print("Error:", str(e))
+        return jsonify({"error": str(e)}), 500
 
 api = Blueprint('api', __name__)
 app.register_blueprint(api)
