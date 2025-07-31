@@ -18,7 +18,7 @@ import json
 import jwt
 import requests
 from database.db_auth import api_key_access_invalid
-from flask_jwt_extended import jwt_required, create_access_token, create_refresh_token, decode_token, JWTManager
+from flask_jwt_extended import jwt_required, create_access_token, create_refresh_token, decode_token, JWTManager, get_jwt_identity
 from flask_mail import Mail
 from jwt import InvalidTokenError
 from urllib.parse import urlparse
@@ -298,6 +298,7 @@ def login():
       )
       response.headers.add('Access-Control-Allow-Headers',
                           'Origin, Content-Type, Accept')
+      
       return response
 
 
@@ -1672,22 +1673,29 @@ def get_user_from_token(token):
             return user
     return None
 
-@app.route("/api/user/companies", methods=["GET"])
-def get_user_companies():
-    session_token = request.cookies.get("sessionToken")
-    if not session_token:
-        return jsonify({"error": "Not authenticated"}), 401
 
-    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-    cursor.execute("SELECT id FROM users WHERE session_token = %s", (session_token,))
+@app.route("/api/user/companies", methods=["GET"])
+@jwt_required()
+def get_user_companies():
+    user_email = get_jwt_identity()
+
+    cursor = mysql.connection.cursor(dictionary=True)
+
+    # Get user ID from email
+    cursor.execute("SELECT id FROM users WHERE email = %s", (user_email,))
     user = cursor.fetchone()
 
     if not user:
-        return jsonify({"error": "Invalid session token"}), 401
+        cursor.close()
+        return jsonify({"error": "Invalid user"}), 401
 
     user_id = user["id"]
+
+    # Get companies for this user
     cursor.execute("SELECT name, path FROM user_company_chatbots WHERE user_id = %s", (user_id,))
     companies = cursor.fetchall()
+
+    cursor.close()
     return jsonify(companies)
 
 

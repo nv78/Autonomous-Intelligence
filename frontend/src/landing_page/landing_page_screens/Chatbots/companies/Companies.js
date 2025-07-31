@@ -37,17 +37,20 @@ const Companies = () => {
       .then(res => setCompanies(res.data))
       .catch(err => console.error("Error fetching companies:", err));
   
-    if (isLoggedIn) {
+    if (isLoggedIn && accessToken) {
       axios.get("/api/user/companies", {
+        withCredentials: true,
         headers: {
-          Authorization: `Bearer ${accessToken || sessionToken}`
-        },
-        withCredentials: true
+          Authorization: `Bearer ${accessToken}`
+        }
       })
-      .then(res => setUserChatbots(res.data))
+      .then(res => {
+        console.log("User Chatbots API Response:", res.data); // Add this
+        setUserChatbots(res.data);
+      })
       .catch(err => console.error("Error fetching user chatbots:", err));
     }
-  }, [isLoggedIn, accessToken, sessionToken]);
+  }, [isLoggedIn, accessToken]);
 
   
 
@@ -79,12 +82,12 @@ const Companies = () => {
 
 
         <div className="sm:w-1/2 w-full flex flex-col items-center text-center">
-          {/*<h2 className="text-2xl font-semibold mb-3">Make Your Own</h2>
+          <h2 className="text-2xl font-semibold mb-3">Make Your Own</h2>
           <p className="text-sm text-gray-400 max-w-xs mb-6">
             Create an intelligent chatbot for your company, no coding necessary.
           </p>
 
-          {showRestrictedRouteRequiringUserSession && ( */}
+          {showRestrictedRouteRequiringUserSession && ( 
           <div className="w-full max-w-md border border-gray-600 rounded-md mb-6 p-4">
             <h3 className="text-lg font-semibold mb-2 text-left">Your Existing Chatbots</h3>
             <table className="w-full text-sm text-left text-gray-300">
@@ -108,7 +111,7 @@ const Companies = () => {
               </tbody>
             </table>
           </div>
-        {/*})} */}
+        )}
         
         {showRestrictedRouteRequiringUserSession ? (
           <Link
