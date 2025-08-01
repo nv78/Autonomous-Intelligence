@@ -81,7 +81,6 @@ const Companies = () => {
           </div>
         </div>
 
-
         <div className="sm:w-1/2 w-full flex flex-col items-center text-center">
           <h2 className="text-2xl font-semibold mb-3">Make Your Own</h2>
           <p className="text-sm text-gray-400 max-w-xs mb-6">

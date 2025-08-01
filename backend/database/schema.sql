@@ -46,7 +46,6 @@ CREATE TABLE users (
     num_chatgpt_requests INTEGER NOT NULL DEFAULT 0
 );
 
-
 CREATE TABLE StripeInfo (
     id INTEGER PRIMARY KEY AUTO_INCREMENT,
     user_id INTEGER NOT NULL,
