@@ -51,6 +51,10 @@ class ChatHistoryTool(BaseTool):
     
     def _run(self, limit: int = 5) -> str:
         try:
+
+            data = json.loads(limit)
+            limit = int(data.get("n", 5))
+
             messages = retrieve_message_from_db(self.user_email, self.chat_id, 0)
             if not messages:
                 return "No chat history found."
@@ -161,13 +165,14 @@ class ReactiveDocumentAgent:
             Final Answer: the final answer to the original input question
 
             IMPORTANT GUIDELINES:
-            1. Always try the document_retrieval tool first to find relevant information in uploaded documents
-            2. If document_retrieval returns "No relevant documents found" or the documents don't contain sufficient information to answer the question, then use the general_knowledge tool
-            3. When using document information, base your answers on the documents and include document names and relevant quotes
-            4. When using general knowledge, clearly indicate that the answer is based on general knowledge rather than the uploaded documents
-            5. Be concise but comprehensive
-            6. If you need more context, use the chat_history tool
-            7. You can use document_list to see what documents are available
+            1. ALWAYS check if the question refers to previous conversation (words like "it", "that", "the one", "shorter", "longer", "what I said", etc.) - if so, use chat_history tool FIRST
+            2. Try the document_retrieval tool to find relevant information in uploaded documents
+            3. If document_retrieval returns "No relevant documents found" or the documents don't contain sufficient information to answer the question, then use the general_knowledge tool
+            4. When using document information, base your answers on the documents and include document names and relevant quotes
+            5. When using general knowledge, clearly indicate that the answer is based on general knowledge rather than the uploaded documents
+            6. Be concise but comprehensive
+            7. For follow-up questions or when context is unclear, ALWAYS use the chat_history tool
+            8. You can use document_list to see what documents are available
 
             Question: {input}
             {agent_scratchpad}
@@ -191,13 +196,14 @@ class ReactiveDocumentAgent:
             Final Answer: the final answer to the original input question
 
             IMPORTANT GUIDELINES:
-            1. Always use the document_retrieval tool to find relevant information before answering
-            2. Base your answers ONLY on the information found in the documents
-            3. If no relevant information is found, say so clearly
-            4. Include document names and relevant quotes in your answer
-            5. Be concise but comprehensive
-            6. If you need more context, use the chat_history tool
-            7. You can use document_list to see what documents are available
+            1. ALWAYS check if the question refers to previous conversation (words like "it", "that", "the one", "shorter", "longer", "what I said", etc.) - if so, use chat_history tool FIRST
+            2. Use the document_retrieval tool to find relevant information before answering
+            3. Base your answers ONLY on the information found in the documents
+            4. If no relevant information is found, say so clearly
+            5. Include document names and relevant quotes in your answer
+            6. Be concise but comprehensive
+            7. For follow-up questions or when context is unclear, ALWAYS use the chat_history tool
+            8. You can use document_list to see what documents are available
 
             Question: {input}
             {agent_scratchpad}
@@ -209,7 +215,7 @@ class ReactiveDocumentAgent:
         return AgentExecutor(
             agent=agent, 
             tools=tools, 
-            verbose=False,  # Disable verbose to avoid callback issues
+            verbose=AgentConfig.ENABLE_AGENT_VERBOSE,  # Enable verbose for debugging
             max_iterations=AgentConfig.AGENT_MAX_ITERATIONS,
             handle_parsing_errors=True
         )
