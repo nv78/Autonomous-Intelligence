@@ -81,6 +81,9 @@ from api_endpoints.financeGPT.chatbot_endpoints import add_prompt_to_workflow_db
     ensure_SDK_user_exists, get_chat_info, ensure_demo_user_exists, get_message_info, get_text_from_url, \
     add_organization_to_db, get_organization_from_db, update_workflow_name_db, retrieve_messages_from_share_uuid
 
+from agents.reactive_agent import ReactiveDocumentAgent, WorkflowReactiveAgent
+from agents.config import AgentConfig
+
 from datetime import datetime
 
 from database.db_auth import get_db_connection
@@ -898,17 +901,43 @@ def reset_chat():
 def process_message_pdf():
     message = request.json.get('message')
     chat_id = request.json.get('chat_id')
-    model_type = request.json.get('model_type')
+    model_type = request.json.get('model_type', 0)
     model_key = request.json.get('model_key')
 
     try:
         user_email = extractUserEmailFromRequest(request)
     except InvalidTokenError:
-    # If the JWT is invalid, return an error
         return jsonify({"error": "Invalid JWT"}), 401
 
-    ##Include part where we verify if user actually owns the chat_id later
+    # Check if agents are enabled
+    if AgentConfig.is_agent_enabled():
+        try:
+            # Initialize the reactive agent
+            agent = ReactiveDocumentAgent(model_type=model_type, model_key=model_key)
+            
+            # Process the query using the reactive agent
+            result = agent.process_query(message.strip(), chat_id, user_email)
+            
+            return jsonify({
+                "answer": result["answer"],
+                "message_id": result.get("message_id"),
+                "sources": result.get("sources", []),
+                "reasoning": result.get("agent_reasoning", []) if AgentConfig.LOG_AGENT_REASONING else []
+            })
+            
+        except Exception as e:
+            print(f"Error in reactive agent processing: {str(e)}")
+            # Fallback to original implementation if agent fails and fallback is enabled
+            if AgentConfig.should_use_fallback():
+                return _process_message_pdf_fallback(message, chat_id, model_type, model_key, user_email)
+            else:
+                return jsonify({"error": f"Agent processing failed: {str(e)}"}), 500
+    else:
+        # Agents disabled, use original implementation
+        return _process_message_pdf_fallback(message, chat_id, model_type, model_key, user_email)
 
+def _process_message_pdf_fallback(message, chat_id, model_type, model_key, user_email):
+    """Fallback implementation using the original direct LLM approach without the ReActive Agent"""
     query = message.strip()
 
     #This adds user message to db
@@ -1312,9 +1341,17 @@ def generate_financial_report():
 
             # Including Q&A in PDF
             for question in questions:
-                print(f"for loop")
-                answer = process_prompt_answer(question, workflowId, user_email)
-                print("Successfully processed answer: ", )
+                print(f"Processing question: {question}")
+                try:
+                    # Use workflow reactive agent for processing
+                    workflow_agent = WorkflowReactiveAgent()
+                    answer = workflow_agent.process_workflow_query(question, workflowId, user_email)
+                except Exception as e:
+                    print(f"Workflow agent failed, using fallback: {e}")
+                    # Fallback to original process_prompt_answer
+                    answer = process_prompt_answer(question, workflowId, user_email)
+                
+                print("Successfully processed answer")
                 answer_encoded = answer.encode('latin-1', 'replace').decode('latin-1')
                 question_encoded = question.encode('latin-1', 'replace').decode('latin-1')
 
@@ -1477,19 +1514,42 @@ def upload():
 @valid_api_key_required
 def public_ingest_pdf():
     user_email = USER_EMAIL_API
-    ensure_SDK_user_exists(user_email) #do this here in case the user hasn't uploaded a document yet
+    ensure_SDK_user_exists(user_email)
 
     message = request.json['message']
     chat_id = request.json['chat_id']
+    model_key = request.json.get('model_key')
 
     model_type, task_type = get_chat_info(chat_id)
 
-    model_key = request.json['model_key']
+    if AgentConfig.is_agent_enabled():
+        try:
+            # Use reactive agent for public API
+            agent = ReactiveDocumentAgent(model_type=model_type, model_key=model_key)
+            result = agent.process_query(message.strip(), chat_id, user_email)
+            
+            # Format sources for compatibility
+            sources_swapped = [[str(elem) for elem in source[::-1]] for source in result.get("sources", [])]
+            
+            return jsonify(
+                message_id=result.get("message_id"),
+                answer=result["answer"],
+                sources=sources_swapped
+            )
+            
+        except Exception as e:
+            print(f"Public chat agent error: {e}")
+            # Fallback to original implementation if enabled
+            if AgentConfig.should_use_fallback():
+                return _public_chat_fallback(message, chat_id, model_type, model_key, user_email)
+            else:
+                return jsonify({"error": f"Agent processing failed: {str(e)}"}), 500
+    else:
+        # Agents disabled, use original implementation
+        return _public_chat_fallback(message, chat_id, model_type, model_key, user_email)
 
-    #at the moment don't think we need to add it to the db?
-    #if model_key:
-    #    add_model_key_to_db(model_key, chat_id, user_email)
-
+def _public_chat_fallback(message, chat_id, model_type, model_key, user_email):
+    """Fallback implementation for public chat API"""
     query = message.strip()
 
     #This adds user message to db
@@ -1500,7 +1560,6 @@ def public_ingest_pdf():
     sources_str = " ".join([", ".join(str(elem) for elem in source) for source in sources])
 
     sources_swapped = [[str(elem) for elem in source[::-1]] for source in sources]
-    print('sources swapped', sources_swapped)
 
     if (model_type == 0):
         if model_key:
@@ -1508,8 +1567,6 @@ def public_ingest_pdf():
         else:
            model_use = "llama2:latest"
 
-        print("using OpenAI and model is", model_use)
-        
         try:
             completion = client.chat.completions.create(
                 model=model_use,
@@ -1518,10 +1575,8 @@ def public_ingest_pdf():
                      "content": f"You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. These are the sources from the text:{sources_str} And this is the question:{query}."}
                 ]
             )
-            print("using fine tuned model")
             answer = str(completion.choices[0].message.content)
         except openai.NotFoundError:
-            print(f"The model `{model_use}` does not exist. Falling back to 'gpt-4'.")
             completion = client.chat.completions.create(
                 model="llama2:latest",
                 messages=[
@@ -1531,15 +1586,10 @@ def public_ingest_pdf():
             )
             answer = str(completion.choices[0].message.content)
     else:
-        print("using Claude")
-
         if model_key:
            return jsonify({"Error": "You cannot enter a fine-tuned model key when using Claude"}), 400
 
-        anthropic = Anthropic(
-            api_key = os.getenv("ANTHROPIC_API_KEY")
-        )
-
+        anthropic = Anthropic(api_key = os.getenv("ANTHROPIC_API_KEY"))
         completion = anthropic.completions.create(
             model="claude-2",
             max_tokens_to_sample=700,
@@ -1560,7 +1610,7 @@ def public_ingest_pdf():
     except:
         print("no sources")
 
-    return jsonify(message_id=message_id, answer=answer, sources=sources_swapped) #can modify the sources here if we don't want to return the sources
+    return jsonify(message_id=message_id, answer=answer, sources=sources_swapped)
 
 @app.route('/public/evaluate', methods = ['POST'])
 @valid_api_key_required
