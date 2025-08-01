@@ -33,6 +33,7 @@ export const LANGUAGE_ROUTES = {
   chinese: "/languages/chinese",
   arabic: "/languages/arabic",
 };
+export const createcompany = "/companies/create";
 
 // Connector options with paths
 export const connectorOptions = [

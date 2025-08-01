@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
+import { createcompany } from "../../../../constants/RouteConstants";
 
 const Companies = () => {
   const [companies, setCompanies] = useState([]);
@@ -114,12 +115,12 @@ const Companies = () => {
         )}
         
         {showRestrictedRouteRequiringUserSession ? (
-          <Link
-            to="/"
+          <a
+            href={createcompany}
             className="btn-black px-6 py-2 border border-white rounded hover:bg-white hover:text-black transition"
           >
             Get Started
-          </Link>
+          </a>
         ) : (
           <a
             href={startPath}
