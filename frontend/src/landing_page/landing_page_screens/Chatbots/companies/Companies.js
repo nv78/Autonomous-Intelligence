@@ -27,14 +27,33 @@ const Companies = () => {
   }
   urlObject.hostname = `dashboard.${hostname}`;
 
+  //getting user's made chatbots
+  const [userChatbots, setUserChatbots] = useState([]);
+
+
   var startPath = urlObject.toString();
   useEffect(() => {
-    axios.get("http://localhost:5050/api/companies", { //port 5050 because of conflicts with 5000
-      withCredentials: true
-    })  // Flask runs on port 5000
+    axios.get("/api/companies", { withCredentials: true })
       .then(res => setCompanies(res.data))
       .catch(err => console.error("Error fetching companies:", err));
-  }, []);
+  
+    if (isLoggedIn && accessToken) {
+      axios.get("/api/user/companies", {
+        withCredentials: true,
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      })
+      .then(res => {
+        console.log("User Chatbots API Response:", res.data); // Add this
+        setUserChatbots(res.data);
+      })
+      .catch(err => console.error("Error fetching user chatbots:", err));
+    }
+  }, [isLoggedIn, accessToken]);
+
+  
+
 
   return (
     <section className="text-gray-100 body-font overflow-hidden min-h-screen bg-black px-4 py-10">
@@ -67,7 +86,7 @@ const Companies = () => {
             Create an intelligent chatbot for your company, no coding necessary.
           </p>
 
-          {showRestrictedRouteRequiringUserSession && (
+          {showRestrictedRouteRequiringUserSession && ( 
           <div className="w-full max-w-md border border-gray-600 rounded-md mb-6 p-4">
             <h3 className="text-lg font-semibold mb-2 text-left">Your Existing Chatbots</h3>
             <table className="w-full text-sm text-left text-gray-300">
@@ -78,16 +97,16 @@ const Companies = () => {
                 </tr>
               </thead>
               <tbody>
-                {/* Replace with actual chatbot data */}
-                <tr>
-                  <td className="px-2 py-2">ExampleBot</td>
-                  <td className="px-2 py-2">
-                    <Link to="/chatbots/examplebot" className="text-yellow-400 hover:underline">
-                      View
-                    </Link>
-                  </td>
-                </tr>
-                {/* Add more rows dynamically here */}
+                {userChatbots.map((bot) => (
+                  <tr key={bot.id}>
+                    <td className="px-2 py-2">{bot.name}</td>
+                    <td className="px-2 py-2">
+                      <Link to={bot.path} className="text-yellow-400 hover:underline">
+                        View
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

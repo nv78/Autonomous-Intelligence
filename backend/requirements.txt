@@ -57,3 +57,4 @@ transformers>=4.36.0
 httpx>=0.27.0
 pytest
 flask-mysql-connector
+mysqlclient

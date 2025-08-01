@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, abort, redirect, send_file
+from flask import Flask, request, jsonify, abort, redirect, send_file, Blueprint
 from flask_cors import CORS, cross_origin
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -18,7 +18,7 @@ import json
 import jwt
 import requests
 from database.db_auth import api_key_access_invalid
-from flask_jwt_extended import jwt_required, create_access_token, create_refresh_token, decode_token, JWTManager
+from flask_jwt_extended import jwt_required, create_access_token, create_refresh_token, decode_token, JWTManager, get_jwt_identity
 from flask_mail import Mail
 from jwt import InvalidTokenError
 from urllib.parse import urlparse
@@ -65,6 +65,7 @@ from ragas.metrics import (
 )
 from bs4 import BeautifulSoup
 from flask_mysql_connector import MySQL
+import MySQLdb.cursors
 
 #WESLEY
 from api_endpoints.financeGPT.chatbot_endpoints import create_chat_shareable_url, access_sharable_chat
@@ -92,6 +93,9 @@ from api_endpoints.languages.japanese import japanese_blueprint
 from api_endpoints.languages.korean import korean_blueprint
 from api_endpoints.languages.spanish import spanish_blueprint
 from api_endpoints.languages.arabic import arabic_blueprint
+from datetime import datetime
+from flask import current_app
+
 
 
 
@@ -124,6 +128,7 @@ config = {
   'ORIGINS': [
     'http://localhost:3000',  # React
     'http://localhost:5000',
+    'http://localhost:8000',
     'http://localhost:5050',
     'http://dashboard.localhost:3000',  # React
     'https://anote.ai', # Frontend prod URL,
@@ -293,6 +298,7 @@ def login():
       )
       response.headers.add('Access-Control-Allow-Headers',
                           'Origin, Content-Type, Accept')
+      
       return response
 
 
@@ -1647,6 +1653,54 @@ def get_companies():
     cursor.close()
     return jsonify(companies)
 
+
+def get_user_from_token(token):
+    if not token:
+        return None
+
+    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    cursor.execute("""
+        SELECT * FROM users WHERE session_token = %s
+    """, (token,))
+    user = cursor.fetchone()
+
+    if user and user.get("session_token_expiration"):
+        # session_token_expiration is usually stored as a datetime string
+        expiration = user["session_token_expiration"]
+        # Convert expiration string to datetime object (assuming ISO format)
+        expiration_dt = datetime.strptime(expiration, "%Y-%m-%d %H:%M:%S")
+        if expiration_dt > datetime.utcnow():
+            return user
+    return None
+
+
+@app.route("/api/user/companies", methods=["GET"])
+@jwt_required()
+def get_user_companies():
+    user_email = get_jwt_identity()
+
+    cursor = mysql.connection.cursor(dictionary=True)
+
+    # Get user ID from email
+    cursor.execute("SELECT id FROM users WHERE email = %s", (user_email,))
+    user = cursor.fetchone()
+
+    if not user:
+        cursor.close()
+        return jsonify({"error": "Invalid user"}), 401
+
+    user_id = user["id"]
+
+    # Get companies for this user
+    cursor.execute("SELECT name, path FROM user_company_chatbots WHERE user_id = %s", (user_id,))
+    companies = cursor.fetchall()
+
+    cursor.close()
+    return jsonify(companies)
+
+
+api = Blueprint('api', __name__)
+app.register_blueprint(api)
 
 if __name__ == '__main__':
     debug_mode = os.getenv("FLASK_ENV") == "development"

@@ -6,7 +6,7 @@ services:
     container_name: anote-backend
     restart: unless-stopped
     ports:
-      - "5050:5000"  # Map container's 5000 to host's 8000
+      - "8000:5000"  # Map container's 5000 to host's 8000
       - "6379:6379"  # Ray
       - "9998:9998"  # Tika
     volumes:
@@ -53,7 +53,7 @@ services:
     networks:
       - anote-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "db", "-u", "root"]
       interval: 10s
       timeout: 5s
       retries: 5
