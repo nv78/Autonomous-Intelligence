@@ -1143,12 +1143,14 @@ def get_relevant_chunks(k, question, chat_id, user_email):
             
         embeddings.append(embeddingVector)
 
-    if (len(embeddings) == 0):
-        res_list = []
-        for i in range(k):
-            res_list.append("No text found")
-        return res_list
-
+    # if (len(embeddings) == 0):
+    #     res_list = []
+    #     for i in range(k):
+    #         res_list.append("No text found")
+    #     return res_list
+    if not embeddings:
+        return None
+    
     embeddings = np.array(embeddings)
 
     try:

@@ -916,7 +916,7 @@ def process_message_pdf():
 
     #Get most relevant section from the document
     sources = get_relevant_chunks(2, query, chat_id, user_email)
-    sources_str = " ".join([", ".join(str(elem) for elem in source) for source in sources])
+    sources_str = " ".join([", ".join(str(elem) for elem in source) for source in sources or []])
 
     if (model_type == 0):
         if model_key:
@@ -926,11 +926,12 @@ def process_message_pdf():
 
         print("using OpenAI and model is", model_use)
         try:
+            valid_sources = "Unable to provide source" if len(sources_str) == 0 else sources_str
             completion = client.chat.completions.create(
                 model=model_use,
                 messages=[
                     {"role": "user",
-                     "content": f"You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. These are the sources from the text:{sources_str} And this is the question:{query}."}
+                     "content": f"You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. These are the sources from the text: {valid_sources}. if user didn't provide any sources, please response nicely to the user And user asked the following question: {query}."}
                 ]
             )
             print("using fine tuned model")
