@@ -19,11 +19,11 @@ from .config import AgentConfig
 class DocumentRetrievalTool(BaseTool):
     name = "document_retrieval"
     description = "Retrieve relevant document chunks based on a query for a specific chat"
+    chat_id: int = Field(...)
+    user_email: str = Field(...)
     
-    def __init__(self, chat_id: int, user_email: str):
-        super().__init__()
-        self.chat_id = chat_id
-        self.user_email = user_email
+    def __init__(self, chat_id: int, user_email: str, **kwargs):
+        super().__init__(chat_id=chat_id, user_email=user_email, **kwargs)
     
     def _run(self, query: str, k: int = 2) -> str:
         try:
@@ -43,11 +43,11 @@ class DocumentRetrievalTool(BaseTool):
 class ChatHistoryTool(BaseTool):
     name = "chat_history"
     description = "Retrieve chat history for context understanding"
+    chat_id: int = Field(...)
+    user_email: str = Field(...)
     
-    def __init__(self, chat_id: int, user_email: str):
-        super().__init__()
-        self.chat_id = chat_id
-        self.user_email = user_email
+    def __init__(self, chat_id: int, user_email: str, **kwargs):
+        super().__init__(chat_id=chat_id, user_email=user_email, **kwargs)
     
     def _run(self, limit: int = 5) -> str:
         try:
@@ -70,11 +70,11 @@ class ChatHistoryTool(BaseTool):
 class DocumentListTool(BaseTool):
     name = "document_list"
     description = "List all documents available in the current chat"
+    chat_id: int = Field(...)
+    user_email: str = Field(...)
     
-    def __init__(self, chat_id: int, user_email: str):
-        super().__init__()
-        self.chat_id = chat_id
-        self.user_email = user_email
+    def __init__(self, chat_id: int, user_email: str, **kwargs):
+        super().__init__(chat_id=chat_id, user_email=user_email, **kwargs)
     
     def _run(self, dummy: str = "") -> str:
         try:
@@ -89,6 +89,23 @@ class DocumentListTool(BaseTool):
             return "Available documents:\n" + "\n".join(doc_list)
         except Exception as e:
             return f"Error listing documents: {str(e)}"
+
+
+class GeneralKnowledgeTool(BaseTool):
+    name = "general_knowledge"
+    description = "Use general LLM knowledge to answer questions when documents don't contain relevant information"
+    llm: Any = Field(..., exclude=True)
+    
+    def __init__(self, llm, **kwargs):
+        super().__init__(llm=llm, **kwargs)
+    
+    def _run(self, query: str) -> str:
+        try:
+            # Use the same LLM as the agent to provide general knowledge answers
+            response = self.llm.invoke(f"Please provide a helpful and accurate answer to this question using your general knowledge: {query}")
+            return f"Based on general knowledge: {response.content}"
+        except Exception as e:
+            return f"Error accessing general knowledge: {str(e)}"
 
 
 class ReactiveDocumentAgent:
@@ -120,7 +137,43 @@ class ReactiveDocumentAgent:
             DocumentListTool(chat_id, user_email),
         ]
         
-        prompt = PromptTemplate.from_template("""
+        # Add general knowledge tool if enabled
+        if AgentConfig.is_general_knowledge_enabled():
+            tools.append(GeneralKnowledgeTool(self.llm))
+        
+        # Create prompt based on whether general knowledge is enabled
+        if AgentConfig.is_general_knowledge_enabled():
+            prompt_template = """
+            You are a helpful AI assistant that answers questions based on uploaded documents, with fallback to general knowledge when needed.
+            You have access to the following tools to help you:
+
+            {tools}
+
+            Use the following format:
+
+            Question: the input question you must answer
+            Thought: you should always think about what to do
+            Action: the action to take, should be one of [{tool_names}]
+            Action Input: the input to the action
+            Observation: the result of the action
+            ... (this Thought/Action/Action Input/Observation can repeat N times)
+            Thought: I now know the final answer
+            Final Answer: the final answer to the original input question
+
+            IMPORTANT GUIDELINES:
+            1. Always try the document_retrieval tool first to find relevant information in uploaded documents
+            2. If document_retrieval returns "No relevant documents found" or the documents don't contain sufficient information to answer the question, then use the general_knowledge tool
+            3. When using document information, base your answers on the documents and include document names and relevant quotes
+            4. When using general knowledge, clearly indicate that the answer is based on general knowledge rather than the uploaded documents
+            5. Be concise but comprehensive
+            6. If you need more context, use the chat_history tool
+            7. You can use document_list to see what documents are available
+
+            Question: {input}
+            {agent_scratchpad}
+            """
+        else:
+            prompt_template = """
             You are a helpful AI assistant that answers questions based on uploaded documents. 
             You have access to the following tools to help you:
 
@@ -148,7 +201,9 @@ class ReactiveDocumentAgent:
 
             Question: {input}
             {agent_scratchpad}
-        """)
+            """
+        
+        prompt = PromptTemplate.from_template(prompt_template)
         
         agent = create_react_agent(self.llm, tools, prompt)
         return AgentExecutor(

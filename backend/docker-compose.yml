@@ -24,14 +24,11 @@ services:
       - PYTHONDONTWRITEBYTECODE=1
       - REDIS_HOST=redis # Use Docker service name
       - REDIS_PORT=6379 # Use internal Redis port
-      - MCP_SERVER_URL=http://mcp_server:8000
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
-      mcp_server:
-        condition: service_started
       # tika:
       #   condition: service_healthy
     networks:
@@ -43,23 +40,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-
-  mcp_server:
-    build:
-      context: .
-      dockerfile: Dockerfile.mcp
-    container_name: anote-mcp-server
-    restart: unless-stopped
-    ports:
-      - "8000:8000"
-    environment:
-      - PYTHONUNBUFFERED=1
-      - PYTHONDONTWRITEBYTECODE=1
-    volumes:
-      - ./:/app
-    networks:
-      - anote-network
-    command: ["python", "mcp_server.py"]
 
   db:
     image: mysql:8.0
