@@ -44,14 +44,14 @@ const ChatbotLanding = () => {
       <div className="container px-5 pb-16 mx-auto flex flex-wrap justify-center gap-y-16">
         {/* Optional additional block */}
         <div className="p-6 md:w-1/2 w-full flex flex-col items-center text-center">
-          <h2 className="text-2xl font-semibold title-font mb-3">Model Leaderboard</h2>
-          <Link to={companies} className="btn-black py-2 px-6 mb-4">Try Now</Link>
+          <h2 className="text-2xl font-semibold title-font mb-3">Models and Datasets</h2>
+          <Link to={companies} className="btn-black py-2 px-6 mb-4">Visit</Link>
          
         </div>
 
         <div className="p-6 md:w-1/2 w-full flex flex-col items-center text-center">
           <h2 className="text-2xl font-semibold title-font mb-3">Evaluation Leaderboard</h2>
-          <button className="btn-black py-2 px-6 mb-4">Try Now</button>
+          <button className="btn-black py-2 px-6 mb-4">Visit</button>
           
         </div>
       </div>
