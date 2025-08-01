@@ -3,6 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPaperPlane, faUndoAlt } from "@fortawesome/free-solid-svg-icons";
 
 const GTMChatbot = () => {
+  const [file, setFile] = useState(null);
   const [messages, setMessages] = useState([
     {
       message: "Hello, I’m your chatbot. How can I help you today?",
@@ -11,6 +12,7 @@ const GTMChatbot = () => {
   ]);
   const inputRef = useRef(null);
   const scrollRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -25,23 +27,41 @@ const GTMChatbot = () => {
     inputRef.current.value = "";
 
     const tempId = Date.now();
-    setMessages((prev) => [
-      ...prev,
+    const newMessages = [
+      ...messages,
       { message: text, direction: "outgoing" },
       { message: "Loading...", direction: "incoming", id: tempId },
-    ]);
+    ];
+    setMessages(newMessages);
+
+    // Convert full history to OpenAI format
+    const openAIMessages = [
+      ...messages
+        .filter((msg) => !msg.id) // skip loading messages
+        .map((msg) => ({
+          role: msg.direction === "outgoing" ? "user" : "assistant",
+          content: msg.message,
+        })),
+      { role: "user", content: text },
+    ];
 
     try {
+      const formData = new FormData();
+      formData.append("prompt", text);
+      formData.append("messages", JSON.stringify(openAIMessages));
+      if (file) {
+        formData.append("file", file);
+      }
+
       console.log("Sending message:", text);
 
       const res = await fetch("/gtm/respond", {
         method: "POST",
         credentials: "include", //necessary to avoid CORS issues 
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: text }),
+        // headers: { "Content-Type": "application/json" },
+        body: formData,
       });
 
-      
       const data = await res.json();
 
       console.log("Received response:", res);
@@ -53,6 +73,7 @@ const GTMChatbot = () => {
             : msg
         )
       );
+      // setFile(null); // Clear file after successful send
     } catch (e) {
       setMessages((prev) =>
         prev.map((msg) =>
@@ -65,7 +86,8 @@ const GTMChatbot = () => {
   };
 
   const handleKeyPress = (e) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
       sendMessage(inputRef.current.value);
     }
   };
@@ -108,6 +130,24 @@ const GTMChatbot = () => {
           onKeyDown={handleKeyPress}
           className="flex-grow px-4 py-2 rounded-xl bg-[#141414] text-white border border-[#9b9b9b] focus:outline-none focus:ring-1 focus:ring-white placeholder:text-[#9B9B9B]"
         />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.docx,.txt,.csv"
+          onChange={(e) => setFile(e.target.files[0])}
+          className="text-sm text-gray-400"
+        />     
+        <button
+          onClick={() => {
+            setFile(null);
+            if (fileInputRef.current) {
+              fileInputRef.current.value = ""; // Clear the native file input
+            }
+          }}
+          className="ml-2 text-sm text-gray-400 underline"
+        >
+          X
+        </button>
         <button
           onClick={() => sendMessage(inputRef.current.value)}
           className="ml-3 bg-[#3A3B41] p-3 rounded-xl text-white"

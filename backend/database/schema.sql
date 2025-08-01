@@ -239,7 +239,6 @@ CREATE TABLE user_company_chatbots (
 
 
 
-
 CREATE UNIQUE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_chats_user_id ON chats(user_id);
 CREATE INDEX idx_messages_chat_id ON messages(chat_id);
