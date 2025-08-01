@@ -49,8 +49,8 @@ sec_api_key = os.getenv('SEC_API_KEY')
 # Embedding Configuration
 EMBEDDING_MODEL = 'sentence-transformers/all-mpnet-base-v2'
 EMBEDDING_DIMENSIONS = 768
-MAX_CHUNK_SIZE = 800
-CHUNK_OVERLAP = 100
+MAX_CHUNK_SIZE = 1500
+CHUNK_OVERLAP = 200
 
 # Global model cache for optimal performance
 _embedding_model = None

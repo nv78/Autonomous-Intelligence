@@ -25,7 +25,7 @@ class DocumentRetrievalTool(BaseTool):
     def __init__(self, chat_id: int, user_email: str, **kwargs):
         super().__init__(chat_id=chat_id, user_email=user_email, **kwargs)
     
-    def _run(self, query: str, k: int = 2) -> str:
+    def _run(self, query: str, k: int = 6) -> str:
         try:
             sources = get_relevant_chunks(k, query, self.chat_id, self.user_email)
             if not sources or sources == ["No text found"]:

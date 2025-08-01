@@ -19,7 +19,7 @@ class AgentConfig:
     AGENT_MAX_ITERATIONS = int(os.getenv("AGENT_MAX_ITERATIONS", "5"))
     
     # Document retrieval settings
-    DEFAULT_CHUNK_RETRIEVAL_COUNT = int(os.getenv("DEFAULT_CHUNK_RETRIEVAL_COUNT", "2"))
+    DEFAULT_CHUNK_RETRIEVAL_COUNT = int(os.getenv("DEFAULT_CHUNK_RETRIEVAL_COUNT", "6"))
     MAX_CHUNK_RETRIEVAL_COUNT = int(os.getenv("MAX_CHUNK_RETRIEVAL_COUNT", "10"))
     
     # Logging and debugging
