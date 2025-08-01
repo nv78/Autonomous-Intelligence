@@ -11,6 +11,27 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
+<<<<<<< HEAD
+=======
+# Create and activate virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Upgrade pip and install wheel
+RUN pip install --no-cache-dir --upgrade pip wheel setuptools
+
+# Install tokenizers and anthropic separately
+RUN pip install --no-cache-dir tokenizers==0.13.3 anthropic==0.7.4
+
+# Install system dependencies needed for lxml (and python-docx)
+RUN apt-get update && apt-get install -y \
+    libxml2-dev \
+    libxslt-dev \
+    python3-dev \
+    build-essential \
+ && rm -rf /var/lib/apt/lists/*
+
+>>>>>>> gtm-chatbot-docker
 # Set up application directory
 WORKDIR /app
 

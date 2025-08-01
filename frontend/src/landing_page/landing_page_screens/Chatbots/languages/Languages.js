@@ -4,11 +4,11 @@ import { useParams, useNavigate } from "react-router-dom";
 
 
 const LANGUAGE_MODELS = {
-  korean: "GPT-4",
-  spanish: "GPT-3.5",
-  japanese: "Claude 3",
-  arabic: "GPT-4",
-  chinese: "GPT-4",
+  korean: "GPT-4.1",
+  spanish: "GPT-4.1",
+  japanese: "GPT-4.1",
+  arabic: "GPT-4.1",
+  chinese: "GPT-4.1",
 };
 
 const LANGUAGE_API_ENDPOINTS = { //fill in with model fetch links
@@ -21,17 +21,19 @@ const LANGUAGE_API_ENDPOINTS = { //fill in with model fetch links
 
 const validLanguages = Object.keys(LANGUAGE_MODELS);
 const Languages = () => {
-    const [selectedLanguage, setSelectedLanguage] = useState("english");
-    const navigate = useNavigate();
     const { lang } = useParams();
-
     const initialLang = validLanguages.includes(lang) ? lang : "spanish";
+    const [selectedLanguage, setSelectedLanguage] = useState(initialLang);
+    const navigate = useNavigate();
+
     // Hooks must be called always, so move this above the early return
     const [messages, setMessages] = useState([
       { message: "Hello! Choose a language and start chatting.", direction: "incoming" },
     ]);
     const inputRef = useRef(null);
     const scrollRef = useRef(null);
+    const [file, setFile] = useState(null);
+    const fileInputRef = useRef(null);
   
     // Redirect to Spanish if no language is selected
     useEffect(() => {
@@ -39,10 +41,17 @@ const Languages = () => {
         navigate("/languages/spanish", { replace: true });
         }
     }, [lang, navigate]);
-  
+
+
+  // Update selectedLanguage when URL param changes
     useEffect(() => {
         if (lang && validLanguages.includes(lang)) {
           setSelectedLanguage(lang);
+          setMessages([
+            { message: "Hello! Choose a language and start chatting.", direction: "incoming" },
+          ]);
+          setFile(null);
+          if (fileInputRef.current) fileInputRef.current.value = "";
         }
       }, [lang]);
 
@@ -57,6 +66,7 @@ const Languages = () => {
       
   
     const sendMessage = async (text) => {
+      console.log("🟡 Attempting to send:", text);
       if (!text.trim()) return;
       inputRef.current.value = "";
   
@@ -83,15 +93,24 @@ const Languages = () => {
 
       try {
         const apiUrl = LANGUAGE_API_ENDPOINTS[selectedLanguage] || "/api/chat/spanish";
+        const formData = new FormData();
+        formData.append("prompt", text);
+        formData.append("messages", JSON.stringify(openAIMessages));
+        if (file) {
+          formData.append("file", file);
+        }
+
+        console.log("Sending message:", text);
 
         const res = await fetch(apiUrl, {
-
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: openAIMessages }),
+          // headers: { "Content-Type": "application/json" },
+          body: formData,
         });
   
         const data = await res.json();
+
+        console.log("Received response:", res);
   
         setMessages((prev) =>
           prev.map((msg) =>
@@ -202,6 +221,26 @@ const Languages = () => {
                 onKeyDown={handleKeyPress}
                 className="flex-grow px-4 py-2 rounded-xl bg-[#141414] text-white border border-[#9b9b9b] focus:outline-none placeholder:text-[#9B9B9B]"
               />
+            {/* File Upload */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.docx,.txt,.csv"
+                onChange={(e) => setFile(e.target.files[0])}
+                className="ml-2 text-sm text-gray-400"
+              />
+              {file && (
+                <button
+                  onClick={() => {
+                    setFile(null);
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                  }}
+                  className="ml-2 text-sm text-gray-400 underline"
+                >
+                  Clear
+                </button>
+              )}
+            {/* Submit */}
               <button
                 onClick={() => sendMessage(inputRef.current.value)}
                 className="ml-3 bg-[#3A3B41] p-3 rounded-xl text-white"
@@ -214,6 +253,4 @@ const Languages = () => {
       </section>
     );
   };
-  
   export default Languages;
-  
