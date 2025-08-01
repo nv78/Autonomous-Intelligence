@@ -209,8 +209,9 @@ class ReactiveDocumentAgent:
         return AgentExecutor(
             agent=agent, 
             tools=tools, 
-            verbose=AgentConfig.ENABLE_AGENT_VERBOSE, 
-            max_iterations=AgentConfig.AGENT_MAX_ITERATIONS
+            verbose=False,  # Disable verbose to avoid callback issues
+            max_iterations=AgentConfig.AGENT_MAX_ITERATIONS,
+            handle_parsing_errors=True
         )
     
     def process_query(self, query: str, chat_id: int, user_email: str) -> Dict[str, Any]:
