@@ -69,7 +69,9 @@ def generate_response_openai():
             try:
                 file_content = extract_text_from_file(file)
             except Exception as e:
-                return jsonify({"error": f"Failed to parse file: {str(e)}"}), 400
+                import logging
+                logging.error(f"[ERROR] Failed to parse file: {str(e)}", exc_info=True)
+                return jsonify({"error": "Failed to parse file."}), 400
 
         if file_content:
             # If there's file content, inject it into the final user message
