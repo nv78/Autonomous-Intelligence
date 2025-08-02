@@ -104,6 +104,13 @@ class TestFlaskApp(unittest.TestCase):
         # --- The test will now pass because it doesn't try to connect to a real DB ---
         self.assertIn(response.status_code, [200, 201])
 
+
+    @patch("api_endpoints.financeGPT.chatbot_endpoints.OpenAIEmbeddings")
+    def test_app_startup(mock_embeddings):
+        mock_embeddings.return_value = MagicMock()
+        from app import app
+        assert app is not None
+
     def test_refresh_credits(self):
         # Mock the JWT decorator and user email extraction
         with patch("app.extractUserEmailFromRequest") as mock_extract, patch(
@@ -569,9 +576,12 @@ class TestFlaskApp(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertIn("Success", response.get_data(as_text=True))
 
-@pytest.fixture(autouse=True)
-def set_dummy_openai_key(monkeypatch):
-    monkeypatch.setenv("OPENAI_API_KEY", "sk-test-dummy")
+
+@patch("api_endpoints.financeGPT.chatbot_endpoints.OpenAIEmbeddings")
+def test_app_startup(mock_embeddings):
+    mock_embeddings.return_value = MagicMock()
+    from app import app
+    assert app is not None
 
 
 if __name__ == "__main__":
