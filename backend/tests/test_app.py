@@ -110,7 +110,7 @@ class TestFlaskApp(unittest.TestCase):
 
 
     @patch("api_endpoints.financeGPT.chatbot_endpoints.OpenAIEmbeddings")
-    def test_app_startup(mock_embeddings):
+    def test_app_startup(self, mock_embeddings):
         mock_embeddings.return_value = MagicMock()
         from app import app
         assert app is not None
