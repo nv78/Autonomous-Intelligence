@@ -171,7 +171,7 @@ app.config['MYSQL_DATABASE'] = 'agents'
 print("MySQL config:", {
     "host": app.config['MYSQL_HOST'],
     "user": app.config['MYSQL_USER'],
-    "password": app.config['MYSQL_PASSWORD'],
+    "password": "***REDACTED***",
     "database": app.config['MYSQL_DATABASE']
 })
 
