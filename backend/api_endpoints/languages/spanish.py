@@ -6,7 +6,7 @@ import PyPDF2
 import pandas as pd
 from docx import Document
 import json
-
+import logging
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -77,7 +77,8 @@ def chat_spanish():
                 # print(f"🟢 Content starts with: {repr(file_content[:50])}")
                 # print(f"🟢 Extracted file content: {file_content[:200]}...")
             except Exception as e:
-                return jsonify({"error": f"Failed to parse file: {str(e)}"}), 400
+                logging.exception("Failed to parse file")
+                return jsonify({"error": "Failed to parse file."}), 400
             
             if not file_content.strip():
                 return jsonify({"response": "Lo siento, no puedo leer el documento adjunto."})
