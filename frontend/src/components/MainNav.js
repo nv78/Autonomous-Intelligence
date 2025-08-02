@@ -10,6 +10,7 @@ import {
   downloadPrivateGPTPath,
   gtmPath,
   landing,
+  chatbots,
 } from "../constants/RouteConstants";
 import { Dropdown, Navbar, Avatar, DarkThemeToggle } from "flowbite-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -50,7 +51,7 @@ function MainNav(props) {
   }
 
   return (
-    <Navbar className="fixed w-full z-50 bg-anoteblack-800" fluid>
+    <Navbar className="w-full bg-anoteblack-800" fluid>
       {/* <Navbar.Brand href="https://privatechatbot.ai"> */}
       <Navbar.Brand onClick={() => navigate(landing)}>
         <div className="h-8 w-8 bg-center bg-contain bg-[url('../public/logonew.png')] dark:bg-[url('../public/logonew.png')]"></div>
@@ -70,9 +71,9 @@ function MainNav(props) {
         </div>
         <div
           className="text-white text-xs font-medium cursor-pointer mr-3"
-          onClick={() => navigate(gtmPath)}
+          onClick={() => navigate(chatbots)}
         >
-          Chat with Us
+          Chatbots
         </div>
         <Dropdown
           theme={{

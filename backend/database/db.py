@@ -409,6 +409,8 @@ def view_user(user_email):
     conn, cursor = get_db_connection()
     cursor.execute('SELECT * FROM users WHERE email = %s LIMIT 1', [user_email])
     user = cursor.fetchone()
+    if user is None:
+        return {"error": "User not found"}, 404
     # if user["credits_updated"]:
     #     credits_refresh_date = user["credits_updated"] + relativedelta(months=1)
     #     credits_refresh_str = credits_refresh_date.strftime('%Y-%m-%d')

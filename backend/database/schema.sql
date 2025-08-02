@@ -6,11 +6,16 @@ DROP TABLE IF EXISTS prompts;
 DROP TABLE IF EXISTS chunks;
 DROP TABLE IF EXISTS documents;
 DROP TABLE IF EXISTS messages;
+DROP TABLE IF EXISTS chat_share_chunks;
+DROP TABLE IF EXISTS chat_share_documents;
+DROP TABLE IF EXISTS chat_share_messages;
+DROP TABLE IF EXISTS chat_shares;
 DROP TABLE IF EXISTS chats;
 DROP TABLE IF EXISTS reports;
 DROP TABLE IF EXISTS tickers;
 DROP TABLE IF EXISTS workflows;
 DROP TABLE IF EXISTS apiKeys;
+DROP TABLE IF EXISTS user_company_chatbots;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS freeTrialAllowlist;
 DROP TABLE IF EXISTS organizations;
@@ -215,6 +220,24 @@ CREATE TABLE apiKeys (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
+CREATE TABLE IF NOT EXISTS companies (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(255),
+  path VARCHAR(255)
+  -- other columns
+);
+INSERT INTO companies (name, path) VALUES ('Anote Chatbot', '/companies/anote');
+
+
+CREATE TABLE user_company_chatbots (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    user_id INTEGER NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    path VARCHAR(255) NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+
 
 CREATE UNIQUE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_chats_user_id ON chats(user_id);
@@ -231,3 +254,4 @@ CREATE INDEX idx_prompt_answers_citation_id ON prompt_answers(citation_id);
 CREATE INDEX idx_reports_workflow_id ON reports(workflow_id);
 CREATE INDEX idx_tickers_workflow_id ON tickers(workflow_id);
 CREATE INDEX idx_organizations_name ON organizations(name);
+CREATE UNIQUE INDEX idx_user_chatbot_unique ON user_company_chatbots(user_id, path);
