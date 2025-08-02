@@ -124,5 +124,5 @@ Uploaded document:
 
     except Exception as e:
         import logging
-        logging.error(f"[ERROR] {str(e)}", exc_info=True)
+        logging.error(f"[ERROR]", exc_info=True)
         return jsonify({"error": "An internal error has occurred"}), 500

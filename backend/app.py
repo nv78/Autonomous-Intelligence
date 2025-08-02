@@ -168,12 +168,12 @@ app.config['MYSQL_DATABASE'] = 'agents'
 
 
 #debug
-print("MySQL config:", {
-    "host": app.config['MYSQL_HOST'],
-    "user": app.config['MYSQL_USER'],
-    "password": "***REDACTED***",
-    "database": app.config['MYSQL_DATABASE']
-})
+#print("MySQL config:", {
+#    "host": app.config['MYSQL_HOST'],
+#    "user": app.config['MYSQL_USER'],
+#    "password": "***REDACTED***",
+#    "database": app.config['MYSQL_DATABASE']
+#})
 
 mysql = MySQL(app)
 

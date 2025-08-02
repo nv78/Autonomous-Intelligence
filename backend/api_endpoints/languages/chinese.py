@@ -74,7 +74,7 @@ def chat_chinese():
                 file_content = extract_text_from_file(file)
             except Exception as e:
                 import logging
-                logging.error(f"Failed to parse file: {str(e)}", exc_info=True)
+                logging.error(f"Failed to parse file: ", exc_info=True)
                 return jsonify({"error": "Failed to parse file."}), 400
             
             if not file_content.strip():
