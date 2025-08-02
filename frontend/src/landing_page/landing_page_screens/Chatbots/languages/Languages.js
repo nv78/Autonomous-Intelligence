@@ -11,13 +11,14 @@ const LANGUAGE_MODELS = {
   chinese: "GPT-4.1",
 };
 
-const LANGUAGE_API_ENDPOINTS = { //fill in with model fetch links
-    spanish: "/api/chat/spanish",
-    korean: "/api/chat/korean",
-    japanese: "/api/chat/japanese",
-    arabic: "/api/chat/arabic",
-    chinese: "/api/chat/chinese",
-  };
+const API_BASE = process.env.REACT_APP_BACK_END_HOST || "";
+const LANGUAGE_API_ENDPOINTS = {
+  spanish: `${API_BASE}/api/chat/spanish`,
+  korean: `${API_BASE}/api/chat/korean`,
+  japanese: `${API_BASE}/api/chat/japanese`,
+  arabic: `${API_BASE}/api/chat/arabic`,
+  chinese: `${API_BASE}/api/chat/chinese`,
+};
 
 const validLanguages = Object.keys(LANGUAGE_MODELS);
 const Languages = () => {
