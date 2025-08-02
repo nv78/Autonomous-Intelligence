@@ -5,7 +5,8 @@ from unittest.mock import patch, MagicMock
 import jwt
 import time
 import pytest
-
+from unittest.mock import patch, MagicMock
+patch("api_endpoints.financeGPT.chatbot_endpoints.OpenAIEmbeddings", MagicMock()).start()
 # Add the parent directory to the path so we can import from backend
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app import app
