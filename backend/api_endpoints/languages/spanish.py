@@ -46,7 +46,6 @@ def extract_text_from_file(file_storage):
 
 @spanish_blueprint.route("/api/chat/spanish", methods=["POST"])
 def chat_spanish():
-    print("Received request:", request.json)  # or use logging
     try:
         file = request.files.get("file")
         messages_json = request.form.get("messages")
