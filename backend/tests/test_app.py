@@ -1,3 +1,5 @@
+import os
+os.environ["OPENAI_API_KEY"] = "dummy"
 from unittest.mock import patch, MagicMock
 patch("api_endpoints.financeGPT.chatbot_endpoints.OpenAIEmbeddings", MagicMock()).start()
 import unittest
