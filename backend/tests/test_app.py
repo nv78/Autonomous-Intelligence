@@ -1,3 +1,5 @@
+from unittest.mock import patch, MagicMock
+patch("api_endpoints.financeGPT.chatbot_endpoints.OpenAIEmbeddings", MagicMock()).start()
 import unittest
 import sys
 import os
@@ -5,8 +7,6 @@ from unittest.mock import patch, MagicMock
 import jwt
 import time
 import pytest
-from unittest.mock import patch, MagicMock
-patch("api_endpoints.financeGPT.chatbot_endpoints.OpenAIEmbeddings", MagicMock()).start()
 # Add the parent directory to the path so we can import from backend
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app import app
@@ -576,13 +576,6 @@ class TestFlaskApp(unittest.TestCase):
             response = self.app.post("/reset-chat", json=data, headers=headers)
             self.assertEqual(response.status_code, 200)
             self.assertIn("Success", response.get_data(as_text=True))
-
-
-@patch("api_endpoints.financeGPT.chatbot_endpoints.OpenAIEmbeddings")
-def test_app_startup(mock_embeddings):
-    mock_embeddings.return_value = MagicMock()
-    from app import app
-    assert app is not None
 
 
 if __name__ == "__main__":
