@@ -4,6 +4,7 @@ import os
 from unittest.mock import patch, MagicMock
 import jwt
 import time
+import pytest
 
 # Add the parent directory to the path so we can import from backend
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -567,6 +568,10 @@ class TestFlaskApp(unittest.TestCase):
             response = self.app.post("/reset-chat", json=data, headers=headers)
             self.assertEqual(response.status_code, 200)
             self.assertIn("Success", response.get_data(as_text=True))
+
+@pytest.fixture(autouse=True)
+def set_dummy_openai_key(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test-dummy")
 
 
 if __name__ == "__main__":
