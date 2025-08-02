@@ -55,7 +55,7 @@ function MainNav(props) {
       {/* <Navbar.Brand href="https://privatechatbot.ai"> */}
       <Navbar.Brand onClick={() => navigate(landing)}>
         <div className="h-8 w-8 bg-center bg-contain bg-[url('../public/logonew.png')] dark:bg-[url('../public/logonew.png')]"></div>
-        <span className="self-center whitespace-nowrap text-lg font-semibold text-white pl-2">
+        <span className="self-center md:block hidden whitespace-nowrap text-lg font-semibold text-white pl-2">
           Panacea
         </span>
       </Navbar.Brand>
@@ -123,7 +123,6 @@ function MainNav(props) {
             Sign out
           </Dropdown.Item>
         </Dropdown>
-        
       </div>
     </Navbar>
   );

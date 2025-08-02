@@ -4,7 +4,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 import pandas as pd
-from opensearchpy import OpenSearch, RequestsHttpConnection, AWSV4SignerAuth
+#from opensearchpy import OpenSearch, RequestsHttpConnection, AWSV4SignerAuth
 import boto3
 from api_endpoints.login.handler import LoginHandler, SignUpHandler, ForgotPasswordHandler, ResetPasswordHandler
 import os
@@ -68,8 +68,8 @@ from flask_mysql_connector import MySQL
 import MySQLdb.cursors
 
 #WESLEY
-from api_endpoints.financeGPT.chatbot_endpoints import create_chat_shareable_url, access_sharable_chat
-
+from api_endpoints.financeGPT.chatbot_endpoints import create_chat_shareable_url, access_sharable_chat, _get_model
+_get_model()
 from database.db import get_db_connection
 
 from api_endpoints.financeGPT.chatbot_endpoints import add_prompt_to_workflow_db, add_workflow_to_db, \
@@ -111,7 +111,7 @@ app.register_blueprint(arabic_blueprint)
 
 #if ray.is_initialized() == False:
    #ray.init(logging_level="INFO", log_to_driver=True)
-client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"), base_url="http://host.docker.internal:11434/v1")
 def ensure_ray_started():
     if not ray.is_initialized():
         try:
@@ -123,6 +123,7 @@ def ensure_ray_started():
         except Exception as e:
             print(f"Ray init failed: {e}")
 
+# ensure_ray_started()
 # TODO: Replace with your URLs.
 config = {
   'ORIGINS': [
@@ -179,6 +180,7 @@ mysql = MySQL(app)
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
+ensure_ray_started()
 
 def valid_api_key_required(fn):
   @wraps(fn)
@@ -534,7 +536,6 @@ def create_organization():
                 # Ingest each sub-URL's text as a document
                 doc_id, doesExist = add_document_to_db(link_text, link, organization_id)
                 if not doesExist:
-                    ensure_ray_started()
                     chunk_document.remote(link_text, 1000, doc_id)
 
         return jsonify({"organization_id": organization_id}), 201
@@ -698,10 +699,14 @@ def retrieve_messages_from_chat():
 
     chat_type = request.json.get('chat_type')
     chat_id = request.json.get('chat_id')
-
+    
     messages = retrieve_message_from_db(user_email, chat_id, chat_type)
-
-    return jsonify(messages=messages)
+    chat_name = get_chat_info(chat_id)[2]
+    print("chat_name", chat_name[2])
+    return jsonify({
+        "messages": messages,
+        "chat_name": chat_name
+    })
 
 @app.route('/retrieve-shared-messages-from-chat', methods=['POST'])
 def get_playbook_messages():
@@ -742,7 +747,7 @@ def infer_chat_name():
 
     
     completion = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="llama2:latest",
         messages=[
             {"role": "user",
              "content": f"Based off these 2 messages between me and my chatbot, please infer a name for the chat. Keep it to a maximum of 4 words, 5 if you must. Do not use the word chat in it. Some good examples are, AI research paper, Apple financial report, Questions about earnings calls. Return only the chatname and nothing else. Here are the messages: {chat_messages}"}
@@ -822,7 +827,6 @@ def ingest_pdfs():
         doc_id, doesExist = add_document_to_db(text, filename, chat_id=chat_id)
 
         if not doesExist:
-            ensure_ray_started()
             chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
 
 
@@ -851,7 +855,6 @@ def ingest_pdfs_wf():
         doc_id, doesExist = add_document_to_db(text, filename, workflow_id)
 
         if not doesExist:
-            ensure_ray_started()
             chunk_document.remote(text_pages, MAX_CHUNK_SIZE, doc_id)
     return text, filename
 
@@ -927,41 +930,30 @@ def process_message_pdf():
     model_type = request.json.get('model_type')
     model_key = request.json.get('model_key')
 
+    try:
+        user_email = extractUserEmailFromRequest(request)
+    except InvalidTokenError:
+    # If the JWT is invalid, return an error
+        return jsonify({"error": "Invalid JWT"}), 401
 
-    is_guest = chat_id == 0
+    ##Include part where we verify if user actually owns the chat_id later
 
-    if not is_guest:
-        try:
-            user_email = extractUserEmailFromRequest(request)
-        except InvalidTokenError:
-        # If the JWT is invalid, return an error
-            return jsonify({"error": "Invalid JWT"}), 401
-
-        ##Include part where we verify if user actually owns the chat_id later
-    else:
-        user_email = "guest@gmail.com"
     query = message.strip()
 
     #This adds user message to db
-    if not is_guest:
-        add_message_to_db(query, chat_id, 1)
+    add_message_to_db(query, chat_id, 1)
 
     #Get most relevant section from the document
-    if not is_guest:
-        sources = get_relevant_chunks(2, query, chat_id, user_email)
-    else: 
-        sources = []
-    
+    sources = get_relevant_chunks(2, query, chat_id, user_email)
     sources_str = " ".join([", ".join(str(elem) for elem in source) for source in sources])
 
     if (model_type == 0):
         if model_key:
            model_use = model_key
         else:
-           model_use = "gpt-4o-mini"
+           model_use = "llama2:latest"
 
         print("using OpenAI and model is", model_use)
-        
         try:
             completion = client.chat.completions.create(
                 model=model_use,
@@ -975,7 +967,7 @@ def process_message_pdf():
         except openai.NotFoundError:
             print(f"The model `{model_use}` does not exist. Falling back to 'gpt-4'.")
             completion = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="llama2:latest",
                 messages=[
                     {"role": "user",
                      "content": f"First, tell the user that their given model key does not exist, and that you have resorted to using GPT-4 before answering their question, then add a line break and answer their question. You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. These are the sources from the text:{sources[0]}{sources[1]} And this is the question:{query}."}
@@ -1002,15 +994,12 @@ def process_message_pdf():
         answer = completion.completion
 
     #This adds bot message
-    message_id = None
-    if not is_guest:
-        message_id = add_message_to_db(answer, chat_id, 0)
-        if message_id:
+    message_id = add_message_to_db(answer, chat_id, 0)
 
-            try:
-                add_sources_to_db(message_id, sources)
-            except:
-                print("no sources")
+    try:
+        add_sources_to_db(message_id, sources)
+    except:
+        print("no sources")
 
     return jsonify(answer=answer)
 
@@ -1040,7 +1029,7 @@ def process_message_pdf_demo():
 
     
     completion = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="llama2:latest",
         messages=[
             {"role": "user",
              "content": f"You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. These are the sources from the text:{sources_str} And this is the question:{query}."}
@@ -1076,7 +1065,6 @@ def ingest_pdfs_demo():
         # Assuming add_document_to_db and chunk_document.remote are implemented
         doc_id, doesExist = add_document_to_db(text, filename, chat_id=chat_id)
         if not doesExist:
-            ensure_ray_started()
             chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
 
     # This mapping is now redundant since we're using a static demo_chat_id, but you could maintain it if you plan to extend functionality
@@ -1216,7 +1204,6 @@ def process_ticker_info():
 
         if not doesExist:
             print("test")
-            ensure_ray_started()
             chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
             #remote_task = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
             #result = ray.get(remote_task)
@@ -1466,9 +1453,7 @@ def upload():
 
             if not doesExist:
                 #chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
-                ensure_ray_started()
                 result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
-                ensure_ray_started()
                 result = ray.get(result_id)
         for path in paths:
 
@@ -1478,9 +1463,7 @@ def upload():
 
             if not doesExist:
                 #chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
-                ensure_ray_started()
                 result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
-                ensure_ray_started()
                 result = ray.get(result_id)
     elif chat_type == "edgar": #edgar
         print("ticker")
@@ -1510,7 +1493,6 @@ def upload():
             if not doesExist:
                 #print("test")
                 #chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
-                ensure_ray_started()
                 result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
                 
                 result = ray.get(result_id)
@@ -1553,7 +1535,7 @@ def public_ingest_pdf():
         if model_key:
            model_use = model_key
         else:
-           model_use = "gpt-4o-mini"
+           model_use = "llama2:latest"
 
         print("using OpenAI and model is", model_use)
         
@@ -1570,7 +1552,7 @@ def public_ingest_pdf():
         except openai.NotFoundError:
             print(f"The model `{model_use}` does not exist. Falling back to 'gpt-4'.")
             completion = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="llama2:latest",
                 messages=[
                     {"role": "user",
                      "content": f"First, tell the user that their given model key does not exist, and that you have resorted to using GPT-4 before answering their question, then add a line break and answer their question. You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. These are the sources from the text:{sources[0]}{sources[1]} And this is the question:{query}."}

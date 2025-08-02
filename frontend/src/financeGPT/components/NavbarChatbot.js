@@ -55,6 +55,8 @@ function NavbarChatbot(props) {
         } md:max-w-none`}
       >
         <div className="flex items-center bg-anoteblack-800 w-full  fixed top-0 ">
+          <div className="h-10 w-10  bg-center bg-contain bg-[url('../public/logonew.png')] dark:bg-[url('../public/logonew.png')]"></div>
+          <div className="text-anoteblack-100 md:hidden font-bold text-xl">Panacea</div>
           <button
             onClick={() => props.handleMenu()}
             className={`flex md:p-3 p-5 ml-auto cursor-w-resize ${

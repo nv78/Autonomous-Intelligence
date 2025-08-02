@@ -1,53 +1,44 @@
-# Core Dependencies
+# # Core Dependencies
 Flask==2.0.3
 Flask-Cors==3.0.10
-opensearch-py
-torch>=2.0.0
-boto3
+# torch>=2.0.0
 mysql-connector-python
 flask-jwt-extended==4.4.4
-PyJWT==2.6.0
+python-dateutil
+# PyJWT==2.6.0
 bcrypt==4.0.1
-cryptography==41.0.7
+boto3
 python-dotenv==1.0.0
+datasets
 
-# ML/AI Dependencies
-numpy>=1.24.0,<2.0.0
-pandas==1.4.2
+# # ML/AI Dependencies
+# numpy>=1.24.0,<2.0.0
+# pandas==1.4.2
 flask_mail
-scikit-learn==1.3.0
-openai>=1.0.0
-# ray==2.5.1 ommiting this for now to make sure things don't cause a short circuit in aws 
+# scikit-learn==1.3.0
+ray==2.5.1 #ommiting this for now to make sure things don't cause a short circuit in aws 
 ragas==0.1.0
-pydantic==1.10.13
+pydantic==1.10.13c
 transformers==4.40.1
 torch==2.2.2
 python-docx
 
-# Document Processing
+# # Document Processing
 tika==1.24
 PyPDF2==3.0.1
 fpdf==1.7.2
 
-# External Services
-boto3==1.34.11
-opensearch-py==2.2.0
+# # External Services
 stripe==5.5.0
 google-auth-oauthlib==0.4.6
-google-pasta==0.2.0
-python-dotenv==1.0.0
-ray==2.10.0
 openai>=1.13.3
 google-api-python-client==2.95.0
 flask-socketio>=5.3.6
 Werkzeug==2.2.2
-twilio
-cryptography
 fpdf
 anthropic
-PyPDF2
 ratelimit
-langchain-community
+# langchain-community
 langchain
 sec_api
 pycryptodome==3.20.0
@@ -56,8 +47,10 @@ ragas
 mkdocstrings
 mkdocstrings-python
 beautifulsoup4
-transformers>=4.36.0
-httpx>=0.27.0
+# transformers>=4.36.0
+sentence-transformers>=2.2.2
+# httpx>=0.27.0
 pytest
 flask-mysql-connector
 mysqlclient
+redis
