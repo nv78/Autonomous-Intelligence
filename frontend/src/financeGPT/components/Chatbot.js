@@ -75,6 +75,8 @@ const Chatbot = (props) => {
             content: m.message_text,
             role: m.sent_from_user === 1 ? "user" : "assistant",
             relevant_chunks: m.relevant_chunks,
+            reasoning: m.reasoning || [], // Include reasoning data from database
+            sources: m.sources || [], // Include sources if available
           }));
           setMessages(formatted);
           localStorage.removeItem(`pending-message-${chatId}`);
@@ -188,6 +190,8 @@ const Chatbot = (props) => {
         content: m.message_text,
         role: m.sent_from_user === 1 ? "user" : "assistant",
         relevant_chunks: m.relevant_chunks,
+        reasoning: m.reasoning || [], // Include reasoning data from database
+        sources: m.sources || [], // Include sources if available
       }));
       setMessages(formatted);
     } catch (err) {

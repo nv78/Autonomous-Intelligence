@@ -5,6 +5,7 @@ from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
 from typing import Dict, List, Any, Optional, Generator, Union
 import os
+import time
 from pydantic import BaseModel, Field
 import json
 import requests
@@ -433,6 +434,9 @@ class ReactiveDocumentAgent:
             # Create a list to collect streaming events
             streaming_events = []
             
+            # Track the final reasoning steps as built by frontend logic
+            final_reasoning_steps = []
+            
             # Create a callback to capture streaming events
             def stream_callback(event):
                 streaming_events.append(event)
@@ -475,9 +479,54 @@ class ReactiveDocumentAgent:
                 
                 # Add bot message to database
                 print("*"*50)
-                thought = next((item['thought'] for item in streaming_events if item.get('type') == 'llm_reasoning'), None)
-                print("hello world", thought)
-                message_id = add_message_to_db(answer, chat_id, reasoning=thought, isUser=0)
+                
+                # Build reasoning steps using same logic as frontend
+                for event_data in streaming_events:
+                    if event_data.get('type') == 'tool_start' or event_data.get('type') == 'tools_start':
+                        # Add reasoning step for tool start
+                        tool_start_step = {
+                            'id': f'step-{int(time.time() * 1000)}',
+                            'type': event_data['type'],
+                            'tool_name': event_data.get('tool_name', ''),
+                            'message': f"Using {event_data.get('tool_name', 'tool')}...",
+                            'timestamp': int(time.time() * 1000)
+                        }
+                        final_reasoning_steps.append(tool_start_step)
+                    
+                    elif event_data.get('type') == 'tool_end':
+                        # Update the last tool step with output (same as frontend logic)
+                        last_tool_index = -1
+                        for i in range(len(final_reasoning_steps) - 1, -1, -1):
+                            if final_reasoning_steps[i]['type'] in ['tool_start', 'tools_start']:
+                                last_tool_index = i
+                                break
+                        
+                        if last_tool_index != -1:
+                            final_reasoning_steps[last_tool_index].update({
+                                'tool_output': event_data.get('output', ''),
+                                'message': 'Tool execution completed'
+                            })
+                    
+                    elif event_data.get('type') == 'agent_thinking':
+                        # Add thinking step
+                        thinking_step = {
+                            'id': f'step-{int(time.time() * 1000)}',
+                            'type': event_data['type'],
+                            'agent_thought': event_data.get('thought', ''),
+                            'planned_action': event_data.get('action', ''),
+                            'message': 'Planning next step...',
+                            'timestamp': int(time.time() * 1000)
+                        }
+                        final_reasoning_steps.append(thinking_step)
+                    
+                    # Note: 'complete' events are not processed here because they happen 
+                    # after the database save, so they're handled by the frontend
+                
+                # Convert reasoning steps to JSON string for database storage
+                reasoning_json = json.dumps(final_reasoning_steps) if final_reasoning_steps else None
+                print(f"Saving reasoning steps: {len(final_reasoning_steps)} steps")
+                
+                message_id = add_message_to_db(answer, chat_id, 0, reasoning_json)
                 
                 # Try to extract sources from the agent's reasoning
                 sources = self._extract_sources_from_response(response, chat_id, user_email, query)
@@ -488,13 +537,20 @@ class ReactiveDocumentAgent:
                     except Exception as e:
                         print(f"Error adding sources to db: {e}")
                 
+                # Extract final thought from streaming events if available
+                final_thought = None
+                for event in reversed(streaming_events):
+                    if event.get('type') == 'llm_reasoning' and event.get('thought'):
+                        final_thought = event['thought']
+                        break
+                
                 # Yield final result with metadata
                 yield {
                     "type": "complete",
                     "answer": answer,
                     "message_id": message_id,
                     "sources": sources if sources else [],
-                    "thought": thought,
+                    "thought": final_thought,
                     "agent_reasoning": response.get("intermediate_steps", []),
                     "timestamp": self._get_timestamp()
                 }

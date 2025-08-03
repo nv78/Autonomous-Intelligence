@@ -326,7 +326,69 @@ def retrieve_message_from_db(user_email, chat_id, chat_type):
     conn.close()
 
     print("messages")
-
+    
+    # Process messages to parse reasoning JSON and format for frontend
+    if messages:
+        processed_messages = []
+        for msg in messages:
+            msg_dict = dict(msg)
+            
+            # Parse reasoning JSON if it exists
+            if msg_dict.get('reasoning'):
+                try:
+                    reasoning_data = json.loads(msg_dict['reasoning'])
+                    # Convert reasoning data to frontend format
+                    if isinstance(reasoning_data, list):
+                        # Already in array format
+                        msg_dict['reasoning'] = reasoning_data
+                    elif isinstance(reasoning_data, dict):
+                        # Convert single reasoning object to array format
+                        msg_dict['reasoning'] = [reasoning_data]
+                    elif isinstance(reasoning_data, str):
+                        # If it's a string, wrap it in a reasoning step object
+                        msg_dict['reasoning'] = [{
+                            'id': f'step-{msg_dict["id"]}',
+                            'type': 'llm_reasoning',
+                            'thought': reasoning_data,
+                            'message': 'AI Reasoning',
+                            'timestamp': int(time.time() * 1000)
+                        }]
+                    else:
+                        msg_dict['reasoning'] = []
+                
+                    # Add the "complete" step that the frontend would have added during streaming
+                    # This ensures consistency between streaming and reloaded messages
+                    if msg_dict.get('reasoning') and msg_dict.get('sent_from_user') == 0:
+                        # Extract the final thought from the last reasoning step if available
+                        final_thought = None
+                        for step in reversed(msg_dict['reasoning']):
+                            if step.get('thought'):
+                                final_thought = step['thought']
+                                break
+                        
+                        # If no thought found in reasoning steps, use part of the message text as thought
+                        if not final_thought and msg_dict.get('message_text'):
+                            # Use first 100 characters of the response as the thought
+                            final_thought = msg_dict['message_text'][:100] + "..." if len(msg_dict['message_text']) > 100 else msg_dict['message_text']
+                        
+                        complete_step = {
+                            'id': f'step-complete-{msg_dict["id"]}',
+                            'type': 'complete',
+                            'thought': final_thought,
+                            'message': 'Response complete',
+                            'timestamp': int(time.time() * 1000)
+                        }
+                        msg_dict['reasoning'].append(complete_step)
+                except (json.JSONDecodeError, TypeError) as e:
+                    print(f"Error parsing reasoning JSON for message {msg_dict.get('id')}: {e}")
+                    msg_dict['reasoning'] = []
+            else:
+                msg_dict['reasoning'] = []
+            
+            processed_messages.append(msg_dict)
+        
+        return processed_messages
+    
     return None if messages is None else messages
 
 def delete_chat_from_db(chat_id, user_email):
