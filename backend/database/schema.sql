@@ -135,6 +135,7 @@ CREATE TABLE messages (
     message_text TEXT NOT NULL,
     chat_id INTEGER NOT NULL,
     sent_from_user INTEGER NOT NULL,
+    reasoning TEXT DEFAULT(NULL),
     relevant_chunks TEXT,
     FOREIGN KEY (chat_id) REFERENCES chats(id)
 );

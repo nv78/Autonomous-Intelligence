@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, abort, redirect, send_file
+from flask import Flask, request, jsonify, Response, abort, redirect, stream_with_context
 from flask_cors import CORS, cross_origin
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -13,7 +13,6 @@ from google_auth_oauthlib.flow import Flow
 from google.oauth2 import id_token
 from pip._vendor import cachecontrol
 import google.auth.transport.requests
-from flask.wrappers import Response
 import json
 import jwt
 import requests
@@ -897,6 +896,19 @@ def reset_chat():
 
     return jsonify({"Success": "Success"}), 200
 
+class CustomJSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if hasattr(o, '__dict__'):
+            return o.__dict__
+        elif hasattr(o, 'dict') and callable(o.dict):
+            # For Pydantic models
+            return o.dict()
+        elif hasattr(o, '__dataclass_fields__'):
+            # For dataclasses
+            from dataclasses import asdict
+            return asdict(o)
+        return super().default(o)
+    
 @app.route('/process-message-pdf', methods=['POST'])
 def process_message_pdf():
     message = request.json.get('message')
@@ -916,14 +928,34 @@ def process_message_pdf():
             agent = ReactiveDocumentAgent(model_type=model_type, model_key=model_key)
             
             # Process the query using the reactive agent
-            result = agent.process_query(message.strip(), chat_id, user_email)
+            result = agent.process_query_stream(message.strip(), chat_id, user_email)
+            def generate():
+                for chunk in result:
+                    try:
+                        if isinstance(chunk, dict):
+                            chunk_data = chunk
+                        elif hasattr(chunk, 'dict') and callable(getattr(chunk, 'dict', None)):
+                            chunk_data = chunk.dict()
+                        elif hasattr(chunk, '__dict__'):
+                            chunk_data = chunk.__dict__
+                        else:
+                            chunk_data = chunk
+
+                        json_data = json.dumps(chunk_data, cls=CustomJSONEncoder)
+                        yield f"data: {json_data}\n\n"
+                        print(f"Streamed chunk: {chunk}")
+                    except (TypeError, ValueError) as e:
+                        print(f"Error serializing chunk {chunk}: {e}")
             
-            return jsonify({
-                "answer": result["answer"],
-                "message_id": result.get("message_id"),
-                "sources": result.get("sources", []),
-                "reasoning": result.get("agent_reasoning", []) if AgentConfig.LOG_AGENT_REASONING else []
-            })
+            return Response(generate(), status=200)
+               
+
+            # return jsonify({
+            #     "answer": 1, # result["answer"],
+            #     "message_id": 1,# result.get("message_id"),
+            #     "sources": 1, # result.get("sources", []),
+            #     "reasoning": 1 # result.get("agent_reasoning", []) if AgentConfig.LOG_AGENT_REASONING else []
+            # })
             
         except Exception as e:
             print(f"Error in reactive agent processing: {str(e)}")

@@ -3,7 +3,7 @@ from langchain.tools import BaseTool
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Generator, Union
 import os
 from pydantic import BaseModel, Field
 import json
@@ -112,6 +112,189 @@ class GeneralKnowledgeTool(BaseTool):
             return f"Error accessing general knowledge: {str(e)}"
 
 
+from langchain_core.callbacks import BaseCallbackHandler
+from langchain_core.outputs import LLMResult
+from langchain_core.agents import AgentAction, AgentFinish
+from typing import Dict, List, Any, Optional
+import re
+
+class StreamingAgentCallbackHandler(BaseCallbackHandler):
+    """Custom callback handler to capture intermediate steps for streaming"""
+    
+    def __init__(self, stream_callback):
+        super().__init__()
+        self.stream_callback = stream_callback
+        self.intermediate_steps = []
+    
+    def on_llm_start(
+        self, 
+        serialized: Dict[str, Any], 
+        prompts: List[str], 
+        **kwargs: Any
+    ) -> None:
+        """Called when LLM starts generating"""
+        try:
+            self.stream_callback({
+                "type": "llm_start",
+                "message": "LLM is thinking...",
+                "model": serialized.get("name", "unknown_model"),
+                "timestamp": self._get_timestamp()
+            })
+        except Exception as e:
+            print(f"Error in llm_start callback: {e}")
+    
+    def on_llm_end(
+        self, 
+        response: LLMResult, 
+        **kwargs: Any
+    ) -> None:
+        """Called when LLM finishes generating"""
+        try:
+            # Extract the LLM's raw output/reasoning
+            if response.generations and len(response.generations) > 0:
+                generation = response.generations[0][0]
+                llm_output = generation.text
+                
+                # Parse the reasoning from the LLM output
+                thought_match = re.search(r'Thought:\s*(.*?)(?=\nAction:|$)', llm_output, re.DOTALL)
+                action_match = re.search(r'Action:\s*(.*?)(?=\nAction Input:|$)', llm_output, re.DOTALL)
+                
+                self.stream_callback({
+                    "type": "llm_reasoning",
+                    "raw_output": llm_output[:500] + "..." if len(llm_output) > 500 else llm_output,
+                    "thought": thought_match.group(1).strip() if thought_match else None,
+                    "planned_action": action_match.group(1).strip() if action_match else None,
+                    "timestamp": self._get_timestamp()
+                })
+        except Exception as e:
+            print(f"Error in llm_end callback: {e}")
+    
+    def on_chain_start(
+        self, 
+        serialized: Dict[str, Any], 
+        inputs: Dict[str, Any], 
+        **kwargs: Any
+    ) -> None:
+        """Called when a chain starts"""
+        try:
+            chain_name = serialized.get("name", "unknown_chain")
+            if chain_name != "AgentExecutor":  # Avoid too much noise
+                self.stream_callback({
+                    "type": "chain_start",
+                    "chain_name": chain_name,
+                    "inputs": str(inputs)[:200] + "..." if len(str(inputs)) > 200 else str(inputs),
+                    "timestamp": self._get_timestamp()
+                })
+        except Exception as e:
+            print(f"Error in chain_start callback: {e}")
+    
+    def on_tool_start(
+        self, 
+        serialized: Dict[str, Any], 
+        input_str: str, 
+        **kwargs: Any
+    ) -> None:
+        """Called when a tool starts running"""
+        tool_name = serialized.get("name", "unknown_tool")
+        try:
+            self.stream_callback({
+                "type": "tool_start",
+                "tool_name": tool_name,
+                "input": input_str,
+                "message": f"Using tool: {tool_name}",
+                "timestamp": self._get_timestamp()
+            })
+        except Exception as e:
+            print(f"Error in tool_start callback: {e}")
+    
+    def on_tool_end(
+        self, 
+        output: str, 
+        **kwargs: Any
+    ) -> None:
+        """Called when a tool finishes running"""
+        try:
+            self.stream_callback({
+                "type": "tool_end",
+                "output": output[:300] + "..." if len(str(output)) > 300 else str(output),
+                "message": "Tool execution completed",
+                "timestamp": self._get_timestamp()
+            })
+        except Exception as e:
+            print(f"Error in tool_end callback: {e}")
+    
+    def on_agent_action(
+        self, 
+        action: AgentAction, 
+        **kwargs: Any
+    ) -> None:
+        """Called when agent decides on an action"""
+        try:
+            # Extract detailed reasoning from the action log
+            action_log = getattr(action, 'log', '')
+            
+            # Parse different parts of the reasoning
+            thought_match = re.search(r'Thought:\s*(.*?)(?=\nAction:|$)', action_log, re.DOTALL)
+            action_match = re.search(r'Action:\s*(.*?)(?=\nAction Input:|$)', action_log, re.DOTALL)
+            action_input_match = re.search(r'Action Input:\s*(.*?)(?=\nObservation:|$)', action_log, re.DOTALL)
+            
+            self.stream_callback({
+                "type": "agent_thinking",
+                "thought": thought_match.group(1).strip() if thought_match else "Thinking...",
+                "action": action.tool,
+                "action_input": str(action.tool_input),
+                "reasoning": action_log[:400] + "..." if len(action_log) > 400 else action_log,
+                "message": f"Agent decided to use: {action.tool}",
+                "timestamp": self._get_timestamp()
+            })
+        except Exception as e:
+            print(f"Error in agent_action callback: {e}")
+    
+    def on_agent_finish(
+        self, 
+        finish: AgentFinish, 
+        **kwargs: Any
+    ) -> None:
+        """Called when agent finishes"""
+        try:
+            # Extract the final reasoning
+            finish_log = getattr(finish, 'log', '')
+            final_thought_match = re.search(r'Thought:\s*(.*?)(?=\nFinal Answer:|$)', finish_log, re.DOTALL)
+            
+            self.stream_callback({
+                "type": "agent_finish",
+                "output": finish.return_values.get("output", ""),
+                "final_thought": final_thought_match.group(1).strip() if final_thought_match else None,
+                "reasoning": finish_log[:400] + "..." if len(finish_log) > 400 else finish_log,
+                "message": "Agent reached final conclusion",
+                "timestamp": self._get_timestamp()
+            })
+        except Exception as e:
+            print(f"Error in agent_finish callback: {e}")
+    
+    def on_text(
+        self, 
+        text: str, 
+        **kwargs: Any
+    ) -> None:
+        """Called when there's text output (verbose thoughts)"""
+        try:
+            # Filter out empty or system messages
+            if text.strip() and not text.startswith("Entering") and not text.startswith("Finished"):
+                self.stream_callback({
+                    "type": "verbose_text",
+                    "text": text.strip(),
+                    "timestamp": self._get_timestamp()
+                })
+        except Exception as e:
+            print(f"Error in text callback: {e}")
+    
+    @staticmethod
+    def _get_timestamp():
+        import time
+        return time.time()
+
+
 class ReactiveDocumentAgent:
     def __init__(self, model_type: int = 0, model_key: Optional[str] = None):
         self.model_type = model_type
@@ -125,13 +308,15 @@ class ReactiveDocumentAgent:
             return ChatOpenAI(
                 model=model_name,
                 temperature=AgentConfig.AGENT_TEMPERATURE,
-                openai_api_key=os.getenv("OPENAI_API_KEY")
+                openai_api_key=os.getenv("OPENAI_API_KEY"),
+                streaming=True  # Enable streaming for OpenAI
             )
         else:  # Anthropic/Claude
             return ChatAnthropic(
                 model="claude-3-sonnet-20240229",
                 temperature=AgentConfig.AGENT_TEMPERATURE,
-                anthropic_api_key=os.getenv("ANTHROPIC_API_KEY")
+                anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),
+                streaming=True  # Enable streaming for Anthropic
             )
     
     def _create_agent(self, chat_id: int, user_email: str) -> AgentExecutor:
@@ -211,16 +396,131 @@ class ReactiveDocumentAgent:
         
         prompt = PromptTemplate.from_template(prompt_template)
         
-        agent = create_react_agent(self.llm, tools, prompt)
+        agent = create_react_agent(self.llm, tools, prompt, stop_sequence=["Observation:"])
         return AgentExecutor(
             agent=agent, 
             tools=tools, 
-            verbose=AgentConfig.ENABLE_AGENT_VERBOSE,  # Enable verbose for debugging
+            verbose=True,  # Always enable verbose for streaming
             max_iterations=AgentConfig.AGENT_MAX_ITERATIONS,
-            handle_parsing_errors=True
+            handle_parsing_errors=True,
+            return_intermediate_steps=True  # Important for capturing reasoning
         )
     
+    def process_query_stream(self, query: str, chat_id: int, user_email: str) -> Generator[Dict[str, Any], None, None]:
+        """
+        Streamable version of process_query that yields intermediate results and final response
+        """
+        try:
+            # Create agent for this specific chat context
+            agent_executor = self._create_agent(chat_id, user_email)
+            
+            # Add user message to database
+            add_message_to_db(query, chat_id, 1)
+            
+            # Yield initial status
+            yield {
+                "type": "start",
+                "message": "Processing your query...",
+                "timestamp": self._get_timestamp()
+            }
+            
+            # Track intermediate steps and current answer
+            intermediate_steps = []
+            current_answer = ""
+            
+            # Create a list to collect streaming events
+            streaming_events = []
+            
+            # Create a callback to capture streaming events
+            def stream_callback(event):
+                streaming_events.append(event)
+            
+            try:
+                # Process the query with callbacks
+                callback_handler = StreamingAgentCallbackHandler(stream_callback)
+                
+                response = agent_executor.invoke(
+                    {"input": query},
+                    config={"callbacks": [callback_handler]}
+                )
+                
+                # Yield any streaming events that were captured
+                for event in streaming_events:
+                    yield event
+                
+                # Extract the final answer
+                answer = response.get("output", "I couldn't process your query.")
+                
+                # Yield thinking/processing updates from intermediate steps
+                intermediate_steps = response.get("intermediate_steps", [])
+                if intermediate_steps:
+                    for i, (action, observation) in enumerate(intermediate_steps):
+                        yield {
+                            "type": "tool_execution",
+                            "step": i + 1,
+                            "tool": getattr(action, 'tool', 'unknown_tool'),
+                            "input": str(getattr(action, 'tool_input', '')),
+                            "output": str(observation)[:200] + "..." if len(str(observation)) > 200 else str(observation),
+                            "timestamp": self._get_timestamp()
+                        }
+                
+                # Yield final answer
+                yield {
+                    "type": "final_answer",
+                    "answer": answer,
+                    "timestamp": self._get_timestamp()
+                }
+                
+                # Add bot message to database
+                print("*"*50)
+                thought = next((item['thought'] for item in streaming_events if item.get('type') == 'llm_reasoning'), None)
+                print("hello world", thought)
+                message_id = add_message_to_db(answer, chat_id, reasoning=thought, isUser=0)
+                
+                # Try to extract sources from the agent's reasoning
+                sources = self._extract_sources_from_response(response, chat_id, user_email, query)
+                
+                if sources and message_id:
+                    try:
+                        add_sources_to_db(message_id, sources)
+                    except Exception as e:
+                        print(f"Error adding sources to db: {e}")
+                
+                # Yield final result with metadata
+                yield {
+                    "type": "complete",
+                    "answer": answer,
+                    "message_id": message_id,
+                    "sources": sources if sources else [],
+                    "thought": thought,
+                    "agent_reasoning": response.get("intermediate_steps", []),
+                    "timestamp": self._get_timestamp()
+                }
+                
+            except Exception as e:
+                error_msg = f"Agent processing error: {str(e)}"
+                print(f"Agent error: {e}")  # Debug logging
+                yield {
+                    "type": "error",
+                    "error": error_msg,
+                    "timestamp": self._get_timestamp()
+                }
+                
+        except Exception as e:
+            error_msg = f"Agent initialization error: {str(e)}"
+            message_id = add_message_to_db(error_msg, chat_id, 0)
+            print(f"Initialization error: {e}")  # Debug logging
+            yield {
+                "type": "error",
+                "error": error_msg,
+                "message_id": message_id,
+                "timestamp": self._get_timestamp()
+            }
+    
     def process_query(self, query: str, chat_id: int, user_email: str) -> Dict[str, Any]:
+        """
+        Non-streaming version (original method) - kept for backward compatibility
+        """
         try:
             # Create agent for this specific chat context
             agent_executor = self._create_agent(chat_id, user_email)
@@ -273,6 +573,11 @@ class ReactiveDocumentAgent:
             print(f"Error extracting sources: {e}")
         
         return []
+    
+    @staticmethod
+    def _get_timestamp():
+        import time
+        return time.time()
 
 
 class WorkflowReactiveAgent(ReactiveDocumentAgent):

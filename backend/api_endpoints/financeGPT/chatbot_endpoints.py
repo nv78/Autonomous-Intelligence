@@ -311,7 +311,7 @@ def retrieve_message_from_db(user_email, chat_id, chat_type):
     conn, cursor = get_db_connection()
 
     query = """
-        SELECT messages.created, chats.id, messages.id, messages.message_text, messages.sent_from_user, messages.relevant_chunks
+        SELECT messages.created, chats.id, messages.id, messages.reasoning, messages.message_text, messages.sent_from_user, messages.relevant_chunks
         FROM messages
         JOIN chats ON messages.chat_id = chats.id
         JOIN users ON chats.user_id = users.id
@@ -693,7 +693,8 @@ def _get_model():
     global _embedding_model
 
 
-    if _embedding_model is not None:
+    if _embedding_model:
+        print("Skipping embedding model")
         return _embedding_model
 
     try:
@@ -1294,14 +1295,14 @@ def add_wf_sources_to_db(prompt_id, sources):
     conn.close()
 
 
-def add_message_to_db(text, chat_id, isUser):
+def add_message_to_db(text, chat_id, isUser, reasoning=None):
 
     if chat_id == 0:
         return None #don't save guest messages
     #If isUser is 0, it is a bot message, 1 is a user message
     conn, cursor = get_db_connection()
 
-    cursor.execute('INSERT INTO messages (message_text, chat_id, sent_from_user) VALUES (%s,%s,%s)', (text, chat_id, isUser))
+    cursor.execute('INSERT INTO messages (message_text, chat_id, reasoning, sent_from_user) VALUES (%s,%s,%s, %s)', (text, chat_id, reasoning, isUser))
     message_id = cursor.lastrowid
 
     conn.commit()

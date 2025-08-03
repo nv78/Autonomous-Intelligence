@@ -156,8 +156,8 @@ function HomeChatbot() {
             onUploadClick={handleUploadClick}
           />
         )}
-        <div className="w-72 hidden lg:block">
-          <SidebarChatbot
+        <div className="hidden">
+          {/* <SidebarChatbot
             ref={sidebarRef}
             selectedChatId={selectedChatId}
             chat_type={currTask}
@@ -179,7 +179,7 @@ function HomeChatbot() {
             setIsUploading={setIsUploading}
             setUploadProgress={setUploadProgress}
             onChatReady={(chatId) => navigate(`/chat/${chatId}`)}
-          />
+          /> */}
         </div>
         {/* {currTask === 1 && (
           <ChatbotEdgar
