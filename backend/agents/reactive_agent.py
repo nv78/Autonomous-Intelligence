@@ -21,24 +21,26 @@ class DocumentRetrievalTool(BaseTool):
     description = "Retrieve relevant document chunks based on a query for a specific chat"
     chat_id: int = Field(...)
     user_email: str = Field(...)
-    
+
     def __init__(self, chat_id: int, user_email: str, **kwargs):
         super().__init__(chat_id=chat_id, user_email=user_email, **kwargs)
-    
+
     def _run(self, query: str, k: int = 6) -> str:
         try:
             sources = get_relevant_chunks(k, query, self.chat_id, self.user_email)
-            if not sources or sources == ["No text found"]:
+            if not sources:
                 return "No relevant documents found for this query."
-            
+
+            print("SOURCES:", sources)
+
             result = []
             for i, (chunk_text, document_name) in enumerate(sources):
-                result.append(f"Document {i+1} ({document_name}): {chunk_text}")
-            
+                result.append(f"Document {i+1} ({document_name}): {chunk_text.strip()}")
+
             return "\n\n".join(result)
+
         except Exception as e:
             return f"Error retrieving documents: {str(e)}"
-
 
 class ChatHistoryTool(BaseTool):
     name = "chat_history"

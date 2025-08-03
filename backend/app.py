@@ -779,6 +779,12 @@ def find_most_recent_chat():
 
 @app.route('/ingest-pdf', methods=['POST'])
 def ingest_pdfs():
+    try:
+        user_email = extractUserEmailFromRequest(request)
+    except InvalidTokenError:
+        # If the JWT is invalid, return an error
+        return jsonify({"error": "Invalid JWT"}), 401
+
     start_time = datetime.now()
     print("start time is", start_time)
 
@@ -803,7 +809,7 @@ def ingest_pdfs():
             chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
 
 
-    return jsonify({"error": "Invalid JWT"}), 200
+    return jsonify({"Success": "Document Uploaded"}), 200
 
 
     #return text, filename

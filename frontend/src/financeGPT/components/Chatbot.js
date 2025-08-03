@@ -861,10 +861,10 @@ const Chatbot = (props) => {
             <button
               type="button"
               onClick={() => {
-                console.log("Upload button clicked in Chatbot");
+                console.log("Upload button clicked in Chatbot", "selectedChatId:", props.selectedChatId);
                 if (props.onUploadClick) {
                   setUploadButtonClicked(true);
-                  props.onUploadClick();
+                  props.onUploadClick(props.selectedChatId);
                   setTimeout(() => setUploadButtonClicked(false), 1000);
                 }
               }}

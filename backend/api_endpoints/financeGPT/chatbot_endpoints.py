@@ -1118,74 +1118,66 @@ def knn(x, y):
 
     return results
 
-def get_relevant_chunks(k, question, chat_id, user_email):
+def get_relevant_chunks(k: int, question: str, chat_id: int, user_email: str):
     conn, cursor = get_db_connection()
 
+    #Fetch all document chunks with their embeddings for the given user and chat
     query = """
-    SELECT c.start_index, c.end_index, c.embedding_vector, c.document_id, c.page_number, d.document_name
+    SELECT c.start_index, c.end_index, c.embedding_vector, c.document_id, d.document_name, d.document_text
     FROM chunks c
     JOIN documents d ON c.document_id = d.id
     JOIN chats ch ON d.chat_id = ch.id
     JOIN users u ON ch.user_id = u.id
     WHERE u.email = %s AND ch.id = %s
     """
-
     cursor.execute(query, (user_email, chat_id))
     rows = cursor.fetchall()
 
-    embeddings = []
+    #Prepare chunk embeddings and metadata
+    chunk_embeddings = []
+    chunk_metadata = []
     for row in rows:
-        embeddingVectorBlob = row["embedding_vector"]
-        embeddingVector = np.frombuffer(embeddingVectorBlob)
+        embedding_blob = row["embedding_vector"]
+        embedding = np.frombuffer(embedding_blob)
 
-        #embedding validation
-        if len(embeddingVector) != EMBEDDING_DIMENSIONS:
-            print(f"[WARNING] Found embedding with unexpected dimension: {len(embeddingVector)}, expected {EMBEDDING_DIMENSIONS}")
-            
-        embeddings.append(embeddingVector)
+        if len(embedding) != EMBEDDING_DIMENSIONS:
+            print(f"[WARNING] Skipping chunk with bad dimensions: {len(embedding)}")
+            continue
 
-    if (len(embeddings) == 0):
-        res_list = []
-        for i in range(k):
-            res_list.append("No text found")
-        return res_list
+        chunk_embeddings.append(embedding)
+        chunk_metadata.append({
+            "start": row["start_index"],
+            "end": row["end_index"],
+            "document_id": row["document_id"],
+            "document_name": row["document_name"],
+            "document_text": row["document_text"]
+        })
 
-    embeddings = np.array(embeddings)
+    #Return early if no valid embeddings found
+    if not chunk_embeddings:
+        return []
 
+    #Get embedding for the query
     try:
-        embeddingVector = get_embedding(question)
-        embeddingVector = np.array(embeddingVector)
-        
-        # Validate query embedding dimensions
-        if len(embeddingVector) != EMBEDDING_DIMENSIONS:
-            raise ValueError(f"Query embedding dimension mismatch: expected {EMBEDDING_DIMENSIONS}, got {len(embeddingVector)}")
-            
+        query_embedding = np.array(get_embedding(question))
+        if len(query_embedding) != EMBEDDING_DIMENSIONS:
+            raise ValueError(f"Query embedding has wrong dimensions: {len(query_embedding)}")
     except Exception as e:
         print(f"[ERROR] Failed to generate query embedding: {e}")
-        res_list = []
-        for i in range(k):
-            res_list.append("Error generating embedding")
-        return res_list
+        return []
 
-    res = knn(embeddingVector, embeddings)
-    num_results = min(k, len(res))
+    #Compute similarity and get top-k indices
+    results = knn(query_embedding, np.array(chunk_embeddings))
+    top_k = min(k, len(results))
 
-    # Get k most relevant chunks
+    #Prepare result chunks
     source_chunks = []
-    for i in range(num_results):
-        source_id = res[i]['index']
-
-        document_id = rows[source_id]['document_id']
-        #page_number = rows[source_id]['page_number']
-        document_name = rows[source_id]['document_name']
-
-
-        cursor.execute('SELECT document_text FROM documents WHERE id = %s', [document_id])
-        doc_text = cursor.fetchone()['document_text']
-
-        source_chunk = doc_text[rows[source_id]['start_index']:rows[source_id]['end_index']]
-        source_chunks.append((source_chunk, document_name))
-        #source_chunks.append(source_chunk)
+    for i in range(top_k):
+        idx = results[i]['index']
+        meta = chunk_metadata[idx]
+        chunk_text = meta["document_text"][meta["start"]:meta["end"]]
+        document_name = meta["document_name"]
+        source_chunks.append((chunk_text, document_name))
 
     return source_chunks
 
@@ -1264,9 +1256,21 @@ def get_relevant_chunks_wf(k, question, workflow_id, user_email):
 
 def add_sources_to_db(message_id, sources):
     combined_sources = ""
+    
+    print(f"DEBUG: sources type: {type(sources)}")
+    print(f"DEBUG: sources content: {sources}")
 
-    for source in sources:
-        chunk_text, document_name = source
+    for i, source in enumerate(sources):
+        print(f"DEBUG: source {i} type: {type(source)}")
+        print(f"DEBUG: source {i} content: {source}")
+        print(f"DEBUG: source {i} length: {len(source) if hasattr(source, '__len__') else 'no length'}")
+        
+        if len(source) >= 2:
+            chunk_text, document_name = source[0], source[1]
+        else:
+            print(f"WARNING: Skipping malformed source {i}: {source}")
+            continue
+            
         combined_sources += f"Document: {document_name}: {chunk_text}\n\n"
 
     conn, cursor = get_db_connection()

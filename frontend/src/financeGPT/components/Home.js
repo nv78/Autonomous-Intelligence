@@ -31,6 +31,7 @@ function HomeChatbot() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [triggerUpload, setTriggerUpload] = useState(false);
   const sidebarRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const handleMenu = () => {
     setMenu((prev) => !prev);
@@ -64,13 +65,25 @@ function HomeChatbot() {
 
   // Handle upload trigger from chatbot - direct approach
   const handleUploadClick = (chatId) => {
+    console.log("handleUploadClick called with chatId:", chatId);
     // If a chatId is provided, ensure selectedChatId is set
     if (chatId && chatId !== selectedChatId) {
       setSelectedChatId(chatId);
     }
+    
+    // Try direct file input first
+    if (fileInputRef.current) {
+      console.log("Triggering file input dialog");
+      fileInputRef.current.click();
+      return;
+    }
+    
+    // Fallback to sidebar approach
     if (sidebarRef.current && sidebarRef.current.openFileDialog) {
+      console.log("Using sidebar openFileDialog");
       sidebarRef.current.openFileDialog();
     } else {
+      console.log("Using trigger upload fallback");
       // Fallback to trigger approach
       setTriggerUpload(true);
     }
@@ -79,6 +92,51 @@ function HomeChatbot() {
   // Reset upload trigger (called by sidebar after handling)
   const resetUploadTrigger = () => {
     setTriggerUpload(false);
+  };
+
+  // Handle file upload
+  const handleFileUpload = async (event) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    if (!selectedChatId) {
+      console.error("No chat selected for file upload");
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const formData = new FormData();
+      for (let i = 0; i < files.length; i++) {
+        formData.append("files[]", files[i]);
+      }
+      formData.append("chat_id", selectedChatId);
+
+      console.log("Uploading files for chat:", selectedChatId);
+      
+      const response = await fetcher("ingest-pdf", {
+        method: "POST",
+        body: formData,
+      });
+
+      const responseData = await response.json();
+      console.log("Upload response:", responseData);
+      
+      // Force update to refresh documents list
+      handleForceUpdate();
+      
+    } catch (error) {
+      console.error("File upload error:", error);
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
+      // Clear the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
   useEffect(() => {
@@ -205,6 +263,16 @@ function HomeChatbot() {
           />
         )} */}
       </div>
+      
+      {/* Hidden file input for direct upload */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileUpload}
+        accept=".pdf,.doc,.docx,.txt,.csv"
+        multiple
+        style={{ display: 'none' }}
+      />
     </div>
   );
 }
