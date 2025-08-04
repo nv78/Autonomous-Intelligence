@@ -2,7 +2,7 @@ name: Run Unit Tests
 
 on:
   push:
-    branches: [development]
+    branches: [main,development]
     paths:
       - 'frontend/**'
       - 'backend/**'
