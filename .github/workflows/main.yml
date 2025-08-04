@@ -6,10 +6,12 @@ on:
     paths:
       - 'frontend/**'
       - 'backend/**'
+      - 'test-env.yml'
   pull_request:
     paths:
       - 'frontend/**'
       - 'backend/**'
+      - 'test-env.yml'
 
 jobs:
   lint:
