@@ -1821,17 +1821,76 @@ def create_test_api_key():
             "error": str(e)
         }), 500
 
+@app.route('/public/get_source_sentences', methods=['GET'])
+def get_source_sentences():
+    """
+    Get source sentences from a benchmark dataset for translation
+    
+    Query parameters:
+    - dataset: benchmark dataset name (default: flores_spanish_translation)  
+    - count: number of sentences (default: 5)
+    - start_idx: starting index (default: 0)
+    
+    Returns:
+    {
+        "success": true,
+        "source_sentences": ["English sentence 1", "English sentence 2", ...],
+        "sentence_ids": [0, 1, 2, 3, 4],
+        "dataset": "flores_spanish_translation"
+    }
+    """
+    try:
+        dataset_name = request.args.get('dataset', 'flores_spanish_translation')
+        count = int(request.args.get('count', 5))
+        start_idx = int(request.args.get('start_idx', 0))
+        
+        if dataset_name == 'flores_spanish_translation':
+            # Set HF token for dataset access
+            import os
+            hf_token = os.getenv("HF_TOKEN")
+            if hf_token:
+                os.environ["HF_TOKEN"] = hf_token
+            
+            # Load FLORES+ English source sentences
+            source_lang = "eng_Latn"
+            source_dataset = load_dataset("openlanguagedata/flores_plus", source_lang, split="devtest")
+            
+            # Get requested range of sentences
+            end_idx = start_idx + count
+            source_sentences = [ex["text"] for ex in source_dataset.select(range(start_idx, end_idx))]
+            sentence_ids = list(range(start_idx, end_idx))
+            
+            return jsonify({
+                "success": True,
+                "source_sentences": source_sentences,
+                "sentence_ids": sentence_ids,
+                "dataset": dataset_name,
+                "total_available": len(source_dataset)
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "error": f"Dataset '{dataset_name}' not supported. Available: flores_spanish_translation"
+            }), 400
+            
+    except Exception as e:
+        print(f"Error in get_source_sentences: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": "Internal server error"
+        }), 500
+
 @app.route('/public/submit_model', methods=['POST'])
-@valid_api_key_required
 def submit_model():
     """
     Submit a model's results to a benchmark dataset for evaluation
     
-    Expected JSON input:
+    Expected JSON input:  
     {
         "benchmarkDatasetName": "flores_spanish_translation",
-        "modelName": "my-model-v1",
-        "modelResults": ["Hola mundo", "Buenos días", ...]
+        "modelName": "my-model-v1", 
+        "modelResults": ["Traducción 1", "Traducción 2", ...],
+        "sentence_ids": [0, 1, 2, 3, 4]  // Required: specify which FLORES+ sentences were translated
     }
     
     Returns:
@@ -1852,12 +1911,13 @@ def submit_model():
         benchmark_dataset_name = data.get('benchmarkDatasetName')
         model_name = data.get('modelName')
         model_results = data.get('modelResults')
+        sentence_ids = data.get('sentence_ids')  # Optional: specific FLORES+ sentence positions
         
-        # Validate required fields
-        if not all([benchmark_dataset_name, model_name, model_results]):
+                # Validate required fields
+        if not all([benchmark_dataset_name, model_name, model_results, sentence_ids]):
             return jsonify({
-                "success": False, 
-                "error": "Missing required fields: benchmarkDatasetName, modelName, modelResults"
+                "success": False,
+                "error": "Missing required fields: benchmarkDatasetName, modelName, modelResults, sentence_ids"
             }), 400
         
         if not isinstance(model_results, list):
@@ -1906,62 +1966,55 @@ def submit_model():
                         if hf_token:
                             os.environ["HF_TOKEN"] = hf_token
                         
-                        # Load FLORES+ reference sentences (same as Angela's approach)
+                        # Load FLORES+ reference sentences
                         target_lang = "spa_Latn"
                         target_dataset = load_dataset("openlanguagedata/flores_plus", target_lang, split="devtest")
-                        reference_sentences = [ex["text"] for ex in target_dataset.select(range(len(model_results)))]
+                        
+                        # Use specific sentence positions (Option C - now required)
+                        if len(sentence_ids) != len(model_results):
+                            return jsonify({
+                                "success": False,
+                                "error": "Length of sentence_ids must match length of modelResults"
+                            }), 400
+                        reference_sentences = [target_dataset[idx]["text"] for idx in sentence_ids]
                         
                         # Calculate real BLEU score using Angela's function
                         bleu_score = get_bleu(model_results, reference_sentences)
                         
-                        evaluation_details = {
-                            "metric": "bleu", 
-                            "num_predictions": len(model_results),
-                            "num_references": len(reference_sentences),
-                            "note": "Real BLEU evaluation using FLORES+ dataset"
-                        }
+                        # No evaluation details needed for spec compliance
                         score = bleu_score
                         
                     except Exception as e:
                         print(f"BLEU evaluation failed: {str(e)}")
-                        # Fallback to mock if BLEU evaluation fails
-                        score = 0.234
-                        evaluation_details = {
-                            "metric": "bleu",
-                            "num_predictions": len(model_results),
-                            "note": f"BLEU evaluation failed, using mock score: {str(e)}"
-                        }
+                        return jsonify({
+                            "success": False,
+                            "error": "BLEU evaluation failed"
+                        }), 500
+                        
                 else:
-                    # Other translation datasets - use mock for now
-                    score = 0.234
-                    evaluation_details = {
-                        "metric": "bleu",
-                        "num_predictions": len(model_results),
-                        "note": "Mock evaluation - only flores_spanish_translation supported"
-                    }
+                    return jsonify({
+                        "success": False,
+                        "error": "Only flores_spanish_translation dataset supported"
+                    }), 400
             else:
-                # Default mock evaluation for other types
-                score = 0.500  # Mock score
-                evaluation_details = {
-                    "metric": evaluation_metric,
-                    "num_predictions": len(model_results),
-                    "note": "Mock evaluation"
-                }
+                return jsonify({
+                    "success": False,
+                    "error": "Only translation tasks with BLEU metric supported"
+                }), 400
             
-            # Store evaluation result
+            # Store evaluation result (simplified)
             cursor.execute("""
                 INSERT INTO evaluation_results (model_submission_id, score, evaluation_details)
                 VALUES (%s, %s, %s)
-            """, (submission_id, score, json.dumps(evaluation_details)))
+            """, (submission_id, score, json.dumps({"metric": "bleu"})))
             
             # Commit the transaction
             conn.commit()
             
+             # Return spec-compliant response: success boolean + score
             return jsonify({
                 "success": True,
-                "bleu_score": score,
-                "submission_id": submission_id,
-                "evaluation_details": evaluation_details
+                "score": score
             })
             
         finally:
@@ -2030,7 +2083,11 @@ def get_user_companies():
 
 # translate with gpt
 def translate_gpt(prompt):
-    response = openai.ChatCompletion.create(
+    from openai import OpenAI
+    import os
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    
+    response = client.chat.completions.create(
         model="gpt-4o",
         messages=[
             {"role": "system", "content": "You are a helpful translator."},
@@ -2038,7 +2095,7 @@ def translate_gpt(prompt):
         ],
         temperature=0.3,
     )
-    return response.choices[0].message["content"].strip()
+    return response.choices[0].message.content.strip()
 
 # calculate BLEU score
 def get_bleu(translations, references, weights=(0.5, 0.5, 0, 0)):
