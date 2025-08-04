@@ -331,8 +331,10 @@ def callback():
     )
 
     # TODO: COMMENT OUT WHEN DEPLOY TO PROD
-    default_referrer = "http://dashboard.localhost:3000"
+    default_referrer = os.getenv("DEFAULT_REFERRER")
     # default_referrer = "https://dashboard.privatechatbot.ai"
+    if not default_referrer:
+        default_referrer = "http://dashboard.localhost:3000"
     user_id = create_user_if_does_not_exist(id_info.get("email"), id_info.get("sub"), id_info.get("name"), id_info.get("picture"))
 
     access_token = create_access_token(identity=id_info.get("email"))
