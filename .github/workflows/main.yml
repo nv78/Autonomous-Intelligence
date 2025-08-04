@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, development]
     paths:
-      - '**'   # make sure changes to your env config also trigger this
+      - '**'   # ensure changes to any file trigger this
   pull_request:
     paths:
       - 'backend/**'
@@ -40,6 +40,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Create test-env.yml dynamically
+        run: |
+          echo "is_testing: true" > test-env.yml
+          echo 'start_time: "2025-08-04T10:00:00Z"' >> test-env.yml
+          echo 'end_time: "2025-08-04T10:05:00Z"' >> test-env.yml
 
       - name: Install yq for YAML parsing
         run: |
