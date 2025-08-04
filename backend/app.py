@@ -934,6 +934,9 @@ def process_message_pdf():
             agent = ReactiveDocumentAgent(model_type=model_type, model_key=model_key)
             
             # Process the query using the reactive agent
+            if not user_email or not isinstance(user_email, str):
+                return jsonify({"error": "User email is missing or invalid"}), 401
+            
             result = agent.process_query_stream(message.strip(), chat_id, user_email)
             def generate():
                 for chunk in result:

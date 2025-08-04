@@ -518,24 +518,9 @@ class ReactiveDocumentAgent:
                             'timestamp': int(time.time() * 1000)
                         }
                         final_reasoning_steps.append(thinking_step)
-                    
-                    # Note: 'complete' events are not processed here because they happen 
-                    # after the database save, so they're handled by the frontend
-                
-                # Convert reasoning steps to JSON string for database storage
-                reasoning_json = json.dumps(final_reasoning_steps) if final_reasoning_steps else None
-                print(f"Saving reasoning steps: {len(final_reasoning_steps)} steps")
-                
-                message_id = add_message_to_db(answer, chat_id, 0, reasoning_json)
                 
                 # Try to extract sources from the agent's reasoning
                 sources = self._extract_sources_from_response(response, chat_id, user_email, query)
-                
-                if sources and message_id:
-                    try:
-                        add_sources_to_db(message_id, sources)
-                    except Exception as e:
-                        print(f"Error adding sources to db: {e}")
                 
                 # Extract final thought from streaming events if available
                 final_thought = None
@@ -544,7 +529,33 @@ class ReactiveDocumentAgent:
                         final_thought = event['thought']
                         break
                 
-                # Yield final result with metadata
+                # Create the complete step for database storage
+                complete_step = {
+                    'id': f'step-{int(time.time() * 1000)}',
+                    'type': 'step-complete',
+                    'answer': answer,
+                    'sources': sources if sources else [],
+                    'thought': final_thought,
+                    'message': 'Query processing completed',
+                    'timestamp': int(time.time() * 1000)
+                }
+                yield complete_step
+                final_reasoning_steps.append(complete_step)
+                
+                # Convert reasoning steps to JSON string for database storage
+                reasoning_json = json.dumps(final_reasoning_steps) if final_reasoning_steps else None
+                print(f"Saving reasoning steps: {len(final_reasoning_steps)} steps")
+                
+                # Save to database with complete reasoning steps
+                message_id = add_message_to_db(answer, chat_id, 0, reasoning_json)
+                
+                if sources and message_id:
+                    try:
+                        add_sources_to_db(message_id, sources)
+                    except Exception as e:
+                        print(f"Error adding sources to db: {e}")
+                
+                # Yield final result with metadata (reuse the complete_step data)
                 yield {
                     "type": "complete",
                     "answer": answer,
@@ -574,7 +585,7 @@ class ReactiveDocumentAgent:
                 "message_id": message_id,
                 "timestamp": self._get_timestamp()
             }
-    
+
     def process_query(self, query: str, chat_id: int, user_email: str) -> Dict[str, Any]:
         """
         Non-streaming version (original method) - kept for backward compatibility

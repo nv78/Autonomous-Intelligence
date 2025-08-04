@@ -476,7 +476,26 @@ const Chatbot = (props) => {
         ];
         updatedMessage.currentStep = null;
         break;
+      case "step-complete":
+        // Set final answer and sources
+        updatedMessage.content = eventData.answer || "";
+        updatedMessage.sources = eventData.sources || [];
+        updatedMessage.isThinking = false;
 
+        // Add completion step to reasoning
+        const StepComplete = {
+          id: `step-${Date.now()}`,
+          type: eventData.type,
+          thought: eventData.thought,
+          message: "Query processing completed",
+          timestamp: Date.now(),
+        };
+        updatedMessage.reasoning = [
+          ...(updatedMessage.reasoning || []),
+          StepComplete,
+        ];
+        updatedMessage.currentStep = null;
+        break;
       default:
         console.warn("Unhandled event type:", eventData.type);
     }
@@ -497,6 +516,7 @@ const Chatbot = (props) => {
         case "agent_thinking":
           return <FontAwesomeIcon icon={faCog} className="text-purple-400" />;
         case "complete":
+        case "step-complete":
           return (
             <FontAwesomeIcon icon={faCheckCircle} className="text-green-500" />
           );
@@ -504,7 +524,7 @@ const Chatbot = (props) => {
           return <FontAwesomeIcon icon={faCog} className="text-gray-400" />;
       }
     };
-
+    console.log("stepsss", step)
     const getStepColor = (type) => {
       switch (type) {
         case "llm_reasoning":
@@ -521,9 +541,8 @@ const Chatbot = (props) => {
           return "border-l-gray-400 bg-gray-800/20";
       }
     };
-
+    console.log(`${step.message || "Processing"}: `, step);
     if (!step) return null;
-
     return (
       <div
         className={`border-l-2 ${getStepColor(
