@@ -143,9 +143,9 @@ const Languages = () => {
   <section className="min-h-screen bg-[#111827] text-white p-8">
     {/* Title */}
     <h1 className="text-4xl font-bold text-center mb-10 tracking-tight">
-      <span className="bg-gradient-to-r from-[#defe47] to-[#28b2fb] bg-clip-text text-transparent">
-        Languages
-      </span>
+     <span className="text-[#defe47]">
+  Languages
+</span>
     </h1>
 
     {/* Main Layout */}
