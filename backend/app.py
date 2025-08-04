@@ -67,6 +67,12 @@ from bs4 import BeautifulSoup
 from flask_mysql_connector import MySQL
 import MySQLdb.cursors
 from nltk.translate.bleu_score import sentence_bleu
+import nltk
+# Download required NLTK data for BLEU calculation
+try:
+    nltk.data.find('tokenizers/punkt')
+except LookupError:
+    nltk.download('punkt', quiet=True)
 
 #WESLEY
 from api_endpoints.financeGPT.chatbot_endpoints import create_chat_shareable_url, access_sharable_chat
@@ -1831,7 +1837,9 @@ def submit_model():
     Returns:
     {
         "success": true/false,
-        "score": 0.234,
+        "bleu_score": 0.543,
+        "submission_id": 123,
+        "evaluation_details": {...},
         "error": "error message if any"
     }
     """
@@ -1889,13 +1897,48 @@ def submit_model():
             
             # Run evaluation based on the dataset type
             if task_type == 'translation' and evaluation_metric == 'bleu':
-                # For now, return a mock score - we'll connect real BLEU evaluation later
-                score = 0.234  # Mock score
-                evaluation_details = {
-                    "metric": "bleu",
-                    "num_predictions": len(model_results),
-                    "note": "Mock evaluation - real BLEU evaluation to be implemented"
-                }
+                # Real BLEU evaluation using Angela's functions
+                if benchmark_dataset_name == 'flores_spanish_translation':
+                    try:
+                        # Set HF token for dataset access (environment variable approach)
+                        import os
+                        hf_token = os.getenv("HF_TOKEN")
+                        if hf_token:
+                            os.environ["HF_TOKEN"] = hf_token
+                        
+                        # Load FLORES+ reference sentences (same as Angela's approach)
+                        target_lang = "spa_Latn"
+                        target_dataset = load_dataset("openlanguagedata/flores_plus", target_lang, split="devtest")
+                        reference_sentences = [ex["text"] for ex in target_dataset.select(range(len(model_results)))]
+                        
+                        # Calculate real BLEU score using Angela's function
+                        bleu_score = get_bleu(model_results, reference_sentences)
+                        
+                        evaluation_details = {
+                            "metric": "bleu", 
+                            "num_predictions": len(model_results),
+                            "num_references": len(reference_sentences),
+                            "note": "Real BLEU evaluation using FLORES+ dataset"
+                        }
+                        score = bleu_score
+                        
+                    except Exception as e:
+                        print(f"BLEU evaluation failed: {str(e)}")
+                        # Fallback to mock if BLEU evaluation fails
+                        score = 0.234
+                        evaluation_details = {
+                            "metric": "bleu",
+                            "num_predictions": len(model_results),
+                            "note": f"BLEU evaluation failed, using mock score: {str(e)}"
+                        }
+                else:
+                    # Other translation datasets - use mock for now
+                    score = 0.234
+                    evaluation_details = {
+                        "metric": "bleu",
+                        "num_predictions": len(model_results),
+                        "note": "Mock evaluation - only flores_spanish_translation supported"
+                    }
             else:
                 # Default mock evaluation for other types
                 score = 0.500  # Mock score
@@ -1916,7 +1959,7 @@ def submit_model():
             
             return jsonify({
                 "success": True,
-                "score": score,
+                "bleu_score": score,
                 "submission_id": submission_id,
                 "evaluation_details": evaluation_details
             })

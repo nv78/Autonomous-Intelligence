@@ -86,4 +86,79 @@ cd backend/database && python run_migration.py
 
 **Files:**
 - `database/migrations/001_add_leaderboard_tables.sql` - Migration SQL
-- `database/run_migration.py` - Python migration runner 
+- `database/run_migration.py` - Python migration runner
+
+## 🔐 Hugging Face Authentication Setup
+
+**Required for FLORES+ Dataset Access**
+
+The BLEU evaluation uses the `openlanguagedata/flores_plus` dataset, which is gated and requires authentication.
+
+### Step 1: Create Hugging Face Account
+1. Go to https://huggingface.co/join
+2. Sign up for a free account
+3. Verify your email
+
+### Step 2: Request Dataset Access
+1. Visit https://huggingface.co/datasets/openlanguagedata/flores_plus
+2. Click "Request Access" button  
+3. Fill out the form (agree to terms)
+4. Wait for approval (usually instant to 24 hours)
+
+### Step 3: Login via CLI in Docker Container
+Once you have access, authenticate inside the Docker container:
+
+```bash
+# Enter the running Docker container
+docker exec -it anote-backend bash
+
+# Login to Hugging Face (inside container)
+huggingface-cli login
+# Enter your HF username and password when prompted
+
+# Exit container
+exit
+```
+
+### Step 4: Restart Backend
+```bash
+cd backend
+docker-compose restart backend
+```
+
+### Verification
+Test that the dataset loads correctly:
+```bash
+curl -X POST http://localhost:8000/public/submit_model \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-api-key" \
+  -d '{
+    "benchmarkDatasetName": "flores_spanish_translation",
+    "modelName": "test-model",
+    "modelResults": ["Hola mundo", "Buenos días"]
+  }'
+```
+
+**Expected**: Real BLEU scores (0.0-1.0 range) instead of mock scores.
+
+**Example successful response:**
+```json
+{
+  "success": true,
+  "bleu_score": 0.543,
+  "submission_id": 6,
+  "evaluation_details": {
+    "metric": "bleu",
+    "note": "Real BLEU evaluation using FLORES+ dataset",
+    "num_predictions": 5,
+    "num_references": 5
+  }
+}
+```
+
+## 📝 Notes
+
+- **Authentication persists** across container restarts
+- **One-time setup** per environment  
+- **Required for real BLEU evaluation** - without this, the API falls back to mock scores
+- **Alternative**: Use sample reference data for testing (modify code to skip dataset loading) 
