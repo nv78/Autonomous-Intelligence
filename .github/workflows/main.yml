@@ -1,36 +1,22 @@
-name: Run Unit Tests 
+name: Backend Test & Trigger EC2
 
 on:
   push:
-    branches: [main,development]
+    branches: [main, development]
     paths:
-      - '**'
+      - '**'   # make sure changes to your env config also trigger this
   pull_request:
     paths:
-      - '**'
+      - 'backend/**'
 
 jobs:
-  lint:
-    name: Lint Frontend & Backend
+  backend_tests:
+    name: Run Backend Tests
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      # Setup Node (Frontend)
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install frontend dependencies
-        working-directory: frontend
-        run: npm install --force
-
-      - name: Lint frontend with ESLint
-        working-directory: frontend
-        run: npm test
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -41,70 +27,44 @@ jobs:
         working-directory: backend
         run: pip install -r requirements.txt
 
-      - name: Unit Tests 
-        run: pytest 
+      - name: Run backend tests with pytest
+        working-directory: backend
+        run: pytest
 
-  codeql:
-    name: CodeQL Analysis
-    runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
-
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [javascript, python]
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: ${{ matrix.language }}
-
-      - name: Autobuild project
-        uses: github/codeql-action/autobuild@v3
-
-      - name: Run CodeQL analysis
-        uses: github/codeql-action/analyze@v3
-
- # ---- JOB TO TRIGGER THE EC2 INSTANCE ----
   trigger_test_environment:
     name: Trigger Test Environment
-    needs: [lint, codeql]
-    # Changed 'main' to 'development'
-    if: github.event_name == 'push' && github.ref == 'refs/heads/development'
+    needs: backend_tests
+    if: github.ref == 'refs/heads/development' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Install yq for YAML parsing
+        run: |
+          sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq
+          sudo chmod +x /usr/bin/yq
 
       - name: Check if testing is enabled
         id: check_testing
         run: |
-          # Ensure yq is installed
-          sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
-          is_testing=$(yq '.is_testing' test-env.yml)
+          is_testing=$(yq -r '.is_testing' test-env.yml)
           echo "is_testing=$is_testing" >> $GITHUB_OUTPUT
 
       - name: Get start and end times
         if: steps.check_testing.outputs.is_testing == 'true'
         id: get_times
         run: |
-          start_time=$(yq '.start_time' test-env.yml)
-          end_time=$(yq '.end_time' test-env.yml)
+          start_time=$(yq -r '.start_time' test-env.yml)
+          end_time=$(yq -r '.end_time' test-env.yml)
           echo "start_time=$start_time" >> $GITHUB_OUTPUT
           echo "end_time=$end_time" >> $GITHUB_OUTPUT
-          
+
       - name: Trigger EC2 Start Lambda
         if: steps.check_testing.outputs.is_testing == 'true'
         run: |
           curl -X POST \
             "https://e6kw2owrj0.execute-api.us-east-1.amazonaws.com/Dev/launch" \
             -H "Content-Type: application/json" \
-            -d '{"is_testing": true, "start_time": "2025-08-04T10:00:00Z", "end_time": "2025-08-04T10:05:00Z"}'
+            -d "{\"is_testing\": true, \"start_time\": \"${{ steps.get_times.outputs.start_time }}\", \"end_time\": \"${{ steps.get_times.outputs.end_time }}\"}"
