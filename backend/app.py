@@ -1001,7 +1001,7 @@ def process_message_pdf():
             if AgentConfig.should_use_fallback():
                 return _process_message_pdf_fallback(message, chat_id, model_type, model_key, user_email)
             else:
-                return jsonify({"error": f"Agent processing failed: {str(e)}"}), 500
+                return jsonify({"error": "Agent processing failed due to an internal error."}), 500
     else:
         # Agents disabled, use original implementation
         return _process_message_pdf_fallback(message, chat_id, model_type, model_key, user_email)
