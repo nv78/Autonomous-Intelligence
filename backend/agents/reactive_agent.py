@@ -623,10 +623,11 @@ class ReactiveDocumentAgent:
             }
             
         except Exception as e:
-            error_msg = f"Agent processing error: {str(e)}"
-            message_id = add_message_to_db(error_msg, chat_id, 0)
+            print(f"Agent processing error: {e}")  # Log the detailed error server-side
+            generic_error_msg = "An internal error has occurred."
+            message_id = add_message_to_db(generic_error_msg, chat_id, 0)
             return {
-                "answer": error_msg,
+                "answer": generic_error_msg,
                 "message_id": message_id,
                 "sources": [],
                 "agent_reasoning": []
