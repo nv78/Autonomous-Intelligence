@@ -21,7 +21,7 @@ export const customerCaseStudyPath = "/customercasestudy";
 export const apiKeyDashboardPath = "/api";
 export const registryPath = "/registry";
 export const homePath = "/home";
-export const gtmPath = "/gtmchatbot";
+export const gtmPath = "/companies/anote";
 export const landing = "/landing";
 export const chatbots = "/chatbots";
 export const languages = "/languages";
@@ -33,6 +33,7 @@ export const LANGUAGE_ROUTES = {
   chinese: "/languages/chinese",
   arabic: "/languages/arabic",
 };
+export const createcompany = "/companies/create";
 
 // Connector options with paths
 export const connectorOptions = [

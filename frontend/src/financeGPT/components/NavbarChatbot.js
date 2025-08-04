@@ -99,5 +99,8 @@ function NavbarChatbot(props) {
     </nav>
   );
 }
-
+/*
+ <div className="h-10 w-10  bg-center bg-contain bg-[url('../public/logonew.png')] dark:bg-[url('../public/logonew.png')]"></div>
+          <div className="text-anoteblack-100 font-bold text-xl">Panacea</div>
+*/
 export default NavbarChatbot;

@@ -878,7 +878,7 @@ const Chatbot = (props) => {
         )}
 
         {/* Input form */}
-        <div className="flex w-full justify-center my-5 px-4">
+        <div className="flex w-full justify-center my-5  px-4">
           <div className="flex items-center gap-3 w-full max-w-4xl">
             {/* Left side - Upload button */}
             <button
