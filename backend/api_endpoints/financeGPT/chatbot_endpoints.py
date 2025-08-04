@@ -326,13 +326,13 @@ def retrieve_message_from_db(user_email, chat_id, chat_type):
     conn.close()
 
     print("messages")
-    
+
     # Process messages to parse reasoning JSON and format for frontend
     if messages:
         processed_messages = []
         for msg in messages:
             msg_dict = dict(msg)
-            
+
             # Parse reasoning JSON if it exists
             if msg_dict.get('reasoning'):
                 try:
@@ -355,7 +355,7 @@ def retrieve_message_from_db(user_email, chat_id, chat_type):
                         }]
                     else:
                         msg_dict['reasoning'] = []
-                
+
                     # Add the "complete" step that the frontend would have added during streaming
                     # This ensures consistency between streaming and reloaded messages
                     if msg_dict.get('reasoning') and msg_dict.get('sent_from_user') == 0:
@@ -365,12 +365,12 @@ def retrieve_message_from_db(user_email, chat_id, chat_type):
                             if step.get('thought'):
                                 final_thought = step['thought']
                                 break
-                        
+
                         # If no thought found in reasoning steps, use part of the message text as thought
                         if not final_thought and msg_dict.get('message_text'):
                             # Use first 100 characters of the response as the thought
                             final_thought = msg_dict['message_text'][:100] + "..." if len(msg_dict['message_text']) > 100 else msg_dict['message_text']
-                        
+
                         complete_step = {
                             'id': f'step-complete-{msg_dict["id"]}',
                             'type': 'complete',
@@ -384,11 +384,11 @@ def retrieve_message_from_db(user_email, chat_id, chat_type):
                     msg_dict['reasoning'] = []
             else:
                 msg_dict['reasoning'] = []
-            
+
             processed_messages.append(msg_dict)
-        
+
         return processed_messages
-    
+
     return None if messages is None else messages
 
 def delete_chat_from_db(chat_id, user_email):
@@ -443,7 +443,7 @@ def delete_chat_from_db(chat_id, user_email):
         conn.close()
         cursor.close()
         return 'Could not delete'
-    
+
 def retrieve_messages_from_share_uuid(share_uuid):
     conn, cursor = get_db_connection()
 
@@ -454,7 +454,7 @@ def retrieve_messages_from_share_uuid(share_uuid):
         WHERE cs.share_uuid = %s
         ORDER BY csm.created ASC
     """, (share_uuid,))
-    
+
     messages = cursor.fetchall()
 
     conn.close()
@@ -462,7 +462,7 @@ def retrieve_messages_from_share_uuid(share_uuid):
 
 def get_document_content_from_db(id, email):
     conn, cursor = get_db_connection()
-    
+
     # Query to get document content with user verification through chat ownership
     query = """
     SELECT d.document_text, d.document_name, d.id
@@ -471,13 +471,13 @@ def get_document_content_from_db(id, email):
     JOIN users u ON c.user_id = u.id
     WHERE d.id = %s AND u.email = %s
     """
-    
+
     cursor.execute(query, (id, email))
     document = cursor.fetchone()
-    
+
     conn.close()
     cursor.close()
-    
+
     if document:
         return {
             'id': document['id'],
@@ -588,7 +588,7 @@ def add_document_to_db(text, document_name, chat_id=None, organization_id=None):
     if chat_id == 0:
         print(f"Guest session: Skipping database storage for document '{document_name}'")
         return None, False
-    
+
     conn, cursor = get_db_connection()
 
     try:
@@ -597,7 +597,7 @@ def add_document_to_db(text, document_name, chat_id=None, organization_id=None):
             SELECT id, document_text
             FROM documents
             WHERE document_name = %s
-            AND chat_id = %s 
+            AND chat_id = %s
         """, (document_name, chat_id)) #organization_id #OR organization_id = %s)
         existing_doc = cursor.fetchone()
 
@@ -663,13 +663,13 @@ def chunk_document_by_page_optimized(text_pages, maxChunkSize, document_id):
     try:
         # Get the global text splitter instance
         text_splitter = _get_text_splitter(maxChunkSize)
-        
+
         # Process each page with semantic chunking
         for page_text in text_pages:
             # Split page text into semantic chunks
             page_chunks = text_splitter.split_text(page_text)
             print(f"Page {page_number}: Created {len(page_chunks)} semantic chunks")
-            
+
             # Track position within this page for accurate indexing
             page_pos = 0
             for chunk in page_chunks:
@@ -678,20 +678,20 @@ def chunk_document_by_page_optimized(text_pages, maxChunkSize, document_id):
                 chunk_start_in_page = page_text.find(chunk, page_pos)
                 if chunk_start_in_page == -1:
                     chunk_start_in_page = page_text.find(chunk)
-                
+
                 chunk_end_in_page = chunk_start_in_page + len(chunk)
-                
+
                 # Calculate global positions
                 global_start = globalStartIndex + chunk_start_in_page
                 global_end = globalStartIndex + chunk_end_in_page
-                
+
                 chunk_texts.append(chunk)
                 chunk_metadata.append({
                     "global_start": global_start,
                     "global_end": global_end,
                     "page_number": page_number
                 })
-                
+
                 # Update page position for next chunk search
                 page_pos = chunk_start_in_page + 1
 
@@ -701,21 +701,21 @@ def chunk_document_by_page_optimized(text_pages, maxChunkSize, document_id):
         # Generate embeddings for all chunks in batches
         print(f"Generating embeddings for {len(chunk_texts)} semantic page chunks in batches...")
         embeddings = get_embeddings_batch(chunk_texts, batch_size=32)
-        
+
         # Validate dimensions
         for i, embedding in enumerate(embeddings):
             if len(embedding) != EMBEDDING_DIMENSIONS:
                 raise RuntimeError(f"Page chunk {i} embedding dimension mismatch: expected {EMBEDDING_DIMENSIONS}, got {len(embedding)}")
-        
+
         # Insert the chunks into database
         chunk_data = []
         for i, (metadata, embedding) in enumerate(zip(chunk_metadata, embeddings)):
             embedding_array = np.array(embedding)
             blob = embedding_array.tobytes()
-            
+
             chunk_data.append((
                 metadata["global_start"],
-                metadata["global_end"], 
+                metadata["global_end"],
                 document_id,
                 blob,
                 metadata["page_number"]
@@ -729,7 +729,7 @@ def chunk_document_by_page_optimized(text_pages, maxChunkSize, document_id):
 
         print(f"Successfully processed {len(chunk_data)} semantic page chunks with batch embeddings")
         conn.commit()
-        
+
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -748,7 +748,7 @@ def chunk_document_by_page(text_pages, maxChunkSize, document_id):
 def _get_model():
     """
     Get the global embedding model instance with thread-safe initialization.
-    
+
     Returns:
         SentenceTransformer: The embedding model
     """
@@ -763,22 +763,22 @@ def _get_model():
         if _model_lock:
             with _model_lock:
                 if _embedding_model is None:
-                    print(f"Loading {EMBEDDING_MODEL} model with optimizations...")
-                    from sentence_transformers import SentenceTransformer
+                    # print(f"Loading {EMBEDDING_MODEL} model with optimizations...")
+                    # from sentence_transformers import SentenceTransformer
                     import torch
-                        
-                        # Use GPU if available for faster inference
+
+                    #     # Use GPU if available for faster inference
                     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-                    _embedding_model = SentenceTransformer(EMBEDDING_MODEL, device=device)
+                    # _embedding_model = SentenceTransformer(EMBEDDING_MODEL, device=device)
                     print(f"Model loaded on device: {device}")
         else:
             print(f"Loading {EMBEDDING_MODEL} model...")
-            from sentence_transformers import SentenceTransformer
-            _embedding_model = SentenceTransformer(EMBEDDING_MODEL)
+            # from sentence_transformers import SentenceTransformer
+            # _embedding_model = SentenceTransformer(EMBEDDING_MODEL)
     except Exception as e:
         print(f"[ERROR] Failed to load embedding model: {e}")
         raise RuntimeError(f"Model loading failed: {str(e)}")
-    
+
     return _embedding_model
 
 # Dictionary to cache text splitters by chunk size
@@ -788,18 +788,18 @@ def _get_text_splitter(chunk_size=None):
     """
     Get a text splitter instance with thread-safe initialization.
     Caches splitters by chunk size to avoid recreating them.
-    
+
     Args:
         chunk_size (int, optional): Chunk size. Defaults to MAX_CHUNK_SIZE.
-    
+
     Returns:
         RecursiveCharacterTextSplitter: The text splitter
     """
     global _text_splitters
-    
+
     if chunk_size is None:
         chunk_size = MAX_CHUNK_SIZE
-    
+
     if chunk_size not in _text_splitters:
         try:
             if _splitter_lock:
@@ -824,7 +824,7 @@ def _get_text_splitter(chunk_size=None):
         except Exception as e:
             print(f"[ERROR] Failed to initialize text splitter: {e}")
             raise RuntimeError(f"Text splitter initialization failed: {str(e)}")
-    
+
     return _text_splitters[chunk_size]
 
 def preload_text_splitter():
@@ -862,29 +862,29 @@ def preload_models():
 def get_embedding(question):
     """
     Get embedding for a given text using Multilingual-E5-large model.
-    
+
     Args:
         question (str): The text to embed
-    
+
     Returns:
         list: The embedding vector (1024 dimensions)
-        
+
     Raises:
         RuntimeError: If the embedding generation fails
     """
     try:
         model = _get_model()
-        
+
         # Add prefix for better performance as recommended by the model
         prefixed_question = f"query: {question}"
         embedding = model.encode(prefixed_question,  show_progress_bar=True, normalize_embeddings=True).tolist()
-        
+
         # Validate dimensions using constant
         if len(embedding) != EMBEDDING_DIMENSIONS:
             raise RuntimeError(f"Unexpected embedding dimension: {len(embedding)}, expected {EMBEDDING_DIMENSIONS}")
-            
+
         return embedding
-        
+
     except Exception as e:
         print(f"[ERROR] Failed to get embedding: {e}")
         raise RuntimeError(f"Embedding generation failed: {str(e)}")
@@ -897,38 +897,38 @@ def chunk_document(text, maxChunkSize, document_id):
 def get_embeddings_batch(texts, batch_size=32):
     """
     Get embeddings for multiple texts in batches for better performance.
-    
+
     Args:
         texts (list): List of text strings to embed
         batch_size (int): Number of texts to process in each batch (increased default)
-    
+
     Returns:
         list: List of embedding vectors
     """
     try:
         model = _get_model()
         embeddings = []
-        
+
         # Process texts in batches
         for i in range(0, len(texts), batch_size):
             batch_texts = texts[i:i + batch_size]
             # Add prefix for better performance as recommended by the model
             prefixed_texts = [f"passage: {text}" for text in batch_texts]
-            
+
             # Get batch embeddings with optimized settings
             batch_embeddings = model.encode(
-                prefixed_texts, 
+                prefixed_texts,
                 normalize_embeddings=True,
                 batch_size=batch_size,
                 show_progress_bar=False,  # Reduce overhead
                 convert_to_tensor=False   # Direct to list for efficiency
             )
-            
+
             embeddings.extend(batch_embeddings.tolist())
             print(f"Processed batch {i//batch_size + 1}/{(len(texts) + batch_size - 1)//batch_size}")
-        
+
         return embeddings
-        
+
     except Exception as e:
         print(f"[ERROR] Failed to get batch embeddings: {e}")
         raise RuntimeError(f"Batch embedding generation failed: {str(e)}")
@@ -937,11 +937,11 @@ def prepare_chunks_for_embedding(text_pages, maxChunkSize):
     """
     Prepare semantic text chunks from pages using RecursiveCharacterTextSplitter without generating embeddings.
     This separates chunk preparation from embedding generation for optimization.
-    
+
     Args:
         text_pages (list): List of page texts
         maxChunkSize (int): Maximum size for each chunk
-    
+
     Returns:
         tuple: (chunk_texts, chunk_metadata) for batch processing
     """
@@ -957,7 +957,7 @@ def prepare_chunks_for_embedding(text_pages, maxChunkSize):
     for page_text in text_pages:
         # Split page text into semantic chunks
         page_chunks = text_splitter.split_text(page_text)
-        
+
         # Track position within this page for accurate indexing
         page_pos = 0
         for chunk in page_chunks:
@@ -965,20 +965,20 @@ def prepare_chunks_for_embedding(text_pages, maxChunkSize):
             chunk_start_in_page = page_text.find(chunk, page_pos)
             if chunk_start_in_page == -1:
                 chunk_start_in_page = page_text.find(chunk)
-            
+
             chunk_end_in_page = chunk_start_in_page + len(chunk)
-            
+
             # Calculate global positions
             global_start = globalStartIndex + chunk_start_in_page
             global_end = globalStartIndex + chunk_end_in_page
-            
+
             chunk_texts.append(chunk)
             chunk_metadata.append({
                 "global_start": global_start,
                 "global_end": global_end,
                 "page_number": page_number
             })
-            
+
             # Update page position for next chunk search
             page_pos = chunk_start_in_page + 1
 
@@ -991,30 +991,30 @@ def fast_pdf_ingestion(text_pages, maxChunkSize, document_id):
     """
     Fast PDF ingestion using RecursiveCharacterTextSplitter for semantic chunking and optimized batch embedding generation.
     This is the fastest way to process PDFs for embedding while preserving semantic boundaries.
-    
+
     Args:
         text_pages (list): List of page texts from PDF
         maxChunkSize (int): Maximum chunk size
         document_id (int): Database document ID
-    
+
     Returns:
         int: Number of chunks processed
     """
     print(f"Starting fast semantic PDF ingestion for document {document_id}")
-    
+
     # Prepare all chunks using semantic chunking
     chunk_texts, chunk_metadata = prepare_chunks_for_embedding(text_pages, maxChunkSize)
     print(f"Prepared {len(chunk_texts)} semantic chunks for processing")
-    
+
     # Generate all embeddings in optimized batches
     print("Generating embeddings in optimized batches...")
     embeddings = get_embeddings_batch(chunk_texts, batch_size=64)  # Larger batch for speed
-    
+
     # Validate all embeddings
     for i, embedding in enumerate(embeddings):
         if len(embedding) != EMBEDDING_DIMENSIONS:
             raise RuntimeError(f"Chunk {i} embedding dimension mismatch: expected {EMBEDDING_DIMENSIONS}, got {len(embedding)}")
-    
+
     # Batch insert to database
     conn, cursor = get_db_connection()
     try:
@@ -1022,10 +1022,10 @@ def fast_pdf_ingestion(text_pages, maxChunkSize, document_id):
         for metadata, embedding in zip(chunk_metadata, embeddings):
             embedding_array = np.array(embedding)
             blob = embedding_array.tobytes()
-            
+
             chunk_data.append((
                 metadata["global_start"],
-                metadata["global_end"], 
+                metadata["global_end"],
                 document_id,
                 blob,
                 metadata["page_number"]
@@ -1037,10 +1037,10 @@ def fast_pdf_ingestion(text_pages, maxChunkSize, document_id):
             chunk_data
         )
         conn.commit()
-        
+
         print(f"Fast semantic PDF ingestion completed: {len(chunk_data)} chunks processed")
         return len(chunk_data)
-        
+
     except Exception as e:
         print(f"[ERROR] Fast semantic PDF ingestion failed: {e}")
         raise RuntimeError(f"Fast semantic PDF ingestion failed: {str(e)}")
@@ -1058,15 +1058,15 @@ def chunk_document_optimized(text, maxChunkSize, document_id):
 
     chunk_texts = []
     chunk_metadata = []
-    
+
     try:
-        # Get the global text splitter instance for semantic-aware chunking  
+        # Get the global text splitter instance for semantic-aware chunking
         text_splitter = _get_text_splitter(maxChunkSize)
-        
+
         # Split text into semantic chunks
         chunks = text_splitter.split_text(text)
         print(f"RecursiveCharacterTextSplitter created {len(chunks)} semantic chunks")
-        
+
         # Finding each chunk's positions in original text
         current_pos = 0
         for chunk in chunks:
@@ -1074,36 +1074,36 @@ def chunk_document_optimized(text, maxChunkSize, document_id):
             chunk_start = text.find(chunk, current_pos)
             if chunk_start == -1:
                 chunk_start = text.find(chunk)
-            
+
             chunk_end = chunk_start + len(chunk)
-            
+
             chunk_texts.append(chunk)
             chunk_metadata.append({
                 "start_index": chunk_start,
                 "end_index": chunk_end
             })
-            
+
             # Update current position for next search
             current_pos = chunk_start + 1
 
         # Generate embeddings for all chunks in batches
         print(f"Generating embeddings for {len(chunk_texts)} semantic chunks in batches...")
         embeddings = get_embeddings_batch(chunk_texts, batch_size=32)
-        
+
         # Make sure dimensions match
         for i, embedding in enumerate(embeddings):
             if len(embedding) != EMBEDDING_DIMENSIONS:
                 raise RuntimeError(f"Chunk {i} embedding dimension mismatch: expected {EMBEDDING_DIMENSIONS}, got {len(embedding)}")
-        
+
         # Insert all of the chunks into database
         chunk_data = []
         for i, (metadata, embedding) in enumerate(zip(chunk_metadata, embeddings)):
             embedding_array = np.array(embedding)
             blob = embedding_array.tobytes()
-            
+
             chunk_data.append((
                 metadata["start_index"],
-                metadata["end_index"], 
+                metadata["end_index"],
                 document_id,
                 blob
             ))
@@ -1116,7 +1116,7 @@ def chunk_document_optimized(text, maxChunkSize, document_id):
 
         print(f"Successfully processed {len(chunk_data)} semantic chunks with batch embeddings")
         conn.commit()
-        
+
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -1129,44 +1129,44 @@ def chunk_document_optimized(text, maxChunkSize, document_id):
 def knn(x, y):
     """
     Calculate k-nearest neighbors using cosine similarity.
-    
+
     Args:
         x (np.array): Query vector (1D)
         y (np.array): Document vectors (2D: N x dimensions)
-    
+
     Returns:
         list: Results sorted by similarity (best first)
     """
     # Ensure x is 2D: (1, dimensions)
     if x.ndim == 1:
         x = np.expand_dims(x, axis=0)
-    
+
     # Ensure y is 2D: (N, dimensions)
     if y.ndim == 1:
         y = np.expand_dims(y, axis=0)
-    
+
     # Validate dimensions match
     if x.shape[1] != y.shape[1]:
         raise ValueError(f"Dimension mismatch: query has {x.shape[1]} dims, documents have {y.shape[1]} dims")
-    
+
     # Calculate cosine similarity with safety checks
     x_norm = np.linalg.norm(x, axis=1, keepdims=True)
     y_norm = np.linalg.norm(y, axis=1, keepdims=True)
-    
+
     # Avoid division by zero
     x_norm = np.where(x_norm == 0, 1e-8, x_norm)
     y_norm = np.where(y_norm == 0, 1e-8, y_norm)
-    
+
     # Normalize vectors
     x_normalized = x / x_norm
     y_normalized = y / y_norm
-    
+
     # Calculate similarities
     similarities = np.dot(x_normalized, y_normalized.T).flatten()
-    
+
     # Convert similarities to distances (lower is better)
     distances = 1 - similarities
-    
+
     # Sort by similarity (best first)
     nearest_neighbors = np.argsort(distances)
 
@@ -1263,11 +1263,11 @@ def get_relevant_chunks_wf(k, question, workflow_id, user_email):
     for row in rows:
         embeddingVectorBlob = row["embedding_vector"]
         embeddingVector = np.frombuffer(embeddingVectorBlob)
-        
+
         # Basic validation - should match our configured embedding dimensions
         if len(embeddingVector) != EMBEDDING_DIMENSIONS:
             print(f"[WARNING] Found workflow embedding with unexpected dimension: {len(embeddingVector)}, expected {EMBEDDING_DIMENSIONS}")
-            
+
         embeddings.append(embeddingVector)
 
     if (len(embeddings) == 0):
@@ -1279,13 +1279,13 @@ def get_relevant_chunks_wf(k, question, workflow_id, user_email):
     embeddings = np.array(embeddings)
 
     try:
-        embeddingVector = get_embedding(question) 
+        embeddingVector = get_embedding(question)
         embeddingVector = np.array(embeddingVector)
-        
+
         # Validate query embedding dimensions
         if len(embeddingVector) != EMBEDDING_DIMENSIONS:
             raise ValueError(f"Workflow query embedding dimension mismatch: expected {EMBEDDING_DIMENSIONS}, got {len(embeddingVector)}")
-            
+
     except Exception as e:
         print(f"[ERROR] Failed to generate workflow query embedding: {e}")
         res_list = []
@@ -1318,7 +1318,7 @@ def get_relevant_chunks_wf(k, question, workflow_id, user_email):
 
 def add_sources_to_db(message_id, sources):
     combined_sources = ""
-    
+
     print(f"DEBUG: sources type: {type(sources)}")
     print(f"DEBUG: sources content: {sources}")
 
@@ -1326,13 +1326,13 @@ def add_sources_to_db(message_id, sources):
         print(f"DEBUG: source {i} type: {type(source)}")
         print(f"DEBUG: source {i} content: {source}")
         print(f"DEBUG: source {i} length: {len(source) if hasattr(source, '__len__') else 'no length'}")
-        
+
         if len(source) >= 2:
             chunk_text, document_name = source[0], source[1]
         else:
             print(f"WARNING: Skipping malformed source {i}: {source}")
             continue
-            
+
         combined_sources += f"Document: {document_name}: {chunk_text}\n\n"
 
     conn, cursor = get_db_connection()
@@ -1470,7 +1470,8 @@ def add_model_key_to_db(model_key, chat_id, user_email):
     conn.commit()
 
 #For edgar
-queryApi = QueryApi(api_key=sec_api_key)
+# queryApi = QueryApi(api_key=sec_api_key)
+queryApi = ""
 
 def check_valid_api(ticker):
     print("IN CHECK_VALID_API: ", ticker)

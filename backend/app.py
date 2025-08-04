@@ -53,18 +53,18 @@ import io
 from tika import parser as p
 import anthropic
 from anthropic import Anthropic, HUMAN_PROMPT, AI_PROMPT
-from datasets import Dataset
+# from datasets import Dataset
 import re
-import ragas
-from ragas.metrics import (
-    faithfulness,
-    answer_relevancy,
-    context_recall,
-    context_precision,
-)
+# import ragas
+# from ragas.metrics import (
+#     faithfulness,
+#     answer_relevancy,
+#     context_recall,
+#     context_precision,
+# )
 from bs4 import BeautifulSoup
 from flask_mysql_connector import MySQL
-import MySQLdb.cursors
+# import MySQLdb.cursors
 
 #WESLEY
 from api_endpoints.financeGPT.chatbot_endpoints import create_chat_shareable_url, access_sharable_chat, _get_model
@@ -243,7 +243,7 @@ def create_shareable_playbook(chat_id):
 @app.route('/playbook/<string:playbook_url>', methods=["POST"])
 @cross_origin(supports_credentials=True)
 def import_shared_chat(playbook_url):
-    return access_sharable_chat(playbook_url) 
+    return access_sharable_chat(playbook_url)
 
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -275,7 +275,7 @@ def login():
       scheme = "https"
       if "localhost" in netloc:
         scheme = "http"
-    
+
       flow.redirect_uri = f'{scheme}://{netloc}/callback'
     #   flow.redirect_uri = f'https://upreachapi.upreach.ai/callback'
 
@@ -302,7 +302,7 @@ def login():
       )
       response.headers.add('Access-Control-Allow-Headers',
                           'Origin, Content-Type, Accept')
-      
+
       return response
 
 
@@ -701,7 +701,7 @@ def retrieve_messages_from_chat():
 
     chat_type = request.json.get('chat_type')
     chat_id = request.json.get('chat_id')
-    
+
     messages = retrieve_message_from_db(user_email, chat_id, chat_type)
     chat_name = get_chat_info(chat_id)[2]
     print("chat_name", chat_name[2])
@@ -718,7 +718,7 @@ def get_playbook_messages():
     messages = retrieve_message_from_db("anon@anote.ai", chat_id, chat_type)
 
     return jsonify(messages=messages)
-    
+
 @app.route('/update-chat-name', methods=['POST'])
 def update_chat_name():
     try:
@@ -747,7 +747,7 @@ def infer_chat_name():
     chat_messages = request.json.get('messages')
     chat_id = request.json.get('chat_id')
 
-    
+
     completion = client.chat.completions.create(
         model="llama2:latest",
         messages=[
@@ -943,7 +943,7 @@ class CustomJSONEncoder(json.JSONEncoder):
             from dataclasses import asdict
             return asdict(o)
         return super().default(o)
-    
+
 @app.route('/process-message-pdf', methods=['POST'])
 def process_message_pdf():
     message = request.json.get('message')
@@ -961,11 +961,11 @@ def process_message_pdf():
         try:
             # Initialize the reactive agent
             agent = ReactiveDocumentAgent(model_type=model_type, model_key=model_key)
-            
+
             # Process the query using the reactive agent
             if not user_email or not isinstance(user_email, str):
                 return jsonify({"error": "User email is missing or invalid"}), 401
-            
+
             result = agent.process_query_stream(message.strip(), chat_id, user_email)
             def generate():
                 for chunk in result:
@@ -984,9 +984,9 @@ def process_message_pdf():
                         print(f"Streamed chunk: {chunk}")
                     except (TypeError, ValueError) as e:
                         print(f"Error serializing chunk {chunk}: {e}")
-            
+
             return Response(generate(), status=200)
-               
+
 
             # return jsonify({
             #     "answer": 1, # result["answer"],
@@ -994,7 +994,7 @@ def process_message_pdf():
             #     "sources": 1, # result.get("sources", []),
             #     "reasoning": 1 # result.get("agent_reasoning", []) if AgentConfig.LOG_AGENT_REASONING else []
             # })
-            
+
         except Exception as e:
             print(f"Error in reactive agent processing: {str(e)}")
             # Fallback to original implementation if agent fails and fallback is enabled
@@ -1097,7 +1097,7 @@ def process_message_pdf_demo():
     print('sources_str is', sources_str)
 
 
-    
+
     completion = client.chat.completions.create(
         model="llama2:latest",
         messages=[
@@ -1420,7 +1420,7 @@ def generate_financial_report():
                     print(f"Workflow agent failed, using fallback: {e}")
                     # Fallback to original process_prompt_answer
                     answer = process_prompt_answer(question, workflowId, user_email)
-                
+
                 print("Successfully processed answer")
                 answer_encoded = answer.encode('latin-1', 'replace').decode('latin-1')
                 question_encoded = question.encode('latin-1', 'replace').decode('latin-1')
@@ -1572,7 +1572,7 @@ def upload():
                 #print("test")
                 #chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
                 result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
-                
+
                 result = ray.get(result_id)
     else:
         return jsonify({"id": "Please enter a valid task type"}), 400
@@ -1597,16 +1597,16 @@ def public_ingest_pdf():
             # Use reactive agent for public API
             agent = ReactiveDocumentAgent(model_type=model_type, model_key=model_key)
             result = agent.process_query(message.strip(), chat_id, user_email)
-            
+
             # Format sources for compatibility
             sources_swapped = [[str(elem) for elem in source[::-1]] for source in result.get("sources", [])]
-            
+
             return jsonify(
                 message_id=result.get("message_id"),
                 answer=result["answer"],
                 sources=sources_swapped
             )
-            
+
         except Exception as e:
             print(f"Public chat agent error: {e}")
             # Fallback to original implementation if enabled
@@ -1706,16 +1706,16 @@ def evaluate():
         "contexts": contexts
     }
 
-    dataset = Dataset.from_dict(data)
+    # dataset = Dataset.from_dict(data)
 
-    result = ragas.evaluate(
-        dataset = dataset,
-        metrics=[
-            faithfulness,
-            answer_relevancy,
-        ],
-    )
-
+    # result = ragas.evaluate(
+    #     dataset = dataset,
+    #     metrics=[
+    #         faithfulness,
+    #         answer_relevancy,
+    #     ],
+    # )
+    result = data
     return result
 
 @app.route('/api/companies', methods=['GET'])
@@ -1730,8 +1730,8 @@ def get_companies():
 def get_user_from_token(token):
     if not token:
         return None
-
-    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    cursor = mysql.connection.cursor(dictionary=True)
+    # cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
     cursor.execute("""
         SELECT * FROM users WHERE session_token = %s
     """, (token,))
