@@ -49,8 +49,8 @@ sec_api_key = os.getenv('SEC_API_KEY')
 # Embedding Configuration
 EMBEDDING_MODEL = 'sentence-transformers/all-mpnet-base-v2'
 EMBEDDING_DIMENSIONS = 768
-MAX_CHUNK_SIZE = 800
-CHUNK_OVERLAP = 100
+MAX_CHUNK_SIZE = 1500
+CHUNK_OVERLAP = 200
 
 # Global model cache for optimal performance
 _embedding_model = None
@@ -311,7 +311,7 @@ def retrieve_message_from_db(user_email, chat_id, chat_type):
     conn, cursor = get_db_connection()
 
     query = """
-        SELECT messages.created, chats.id, messages.id, messages.message_text, messages.sent_from_user, messages.relevant_chunks
+        SELECT messages.created, chats.id, messages.id, messages.reasoning, messages.message_text, messages.sent_from_user, messages.relevant_chunks
         FROM messages
         JOIN chats ON messages.chat_id = chats.id
         JOIN users ON chats.user_id = users.id
@@ -326,7 +326,69 @@ def retrieve_message_from_db(user_email, chat_id, chat_type):
     conn.close()
 
     print("messages")
-
+    
+    # Process messages to parse reasoning JSON and format for frontend
+    if messages:
+        processed_messages = []
+        for msg in messages:
+            msg_dict = dict(msg)
+            
+            # Parse reasoning JSON if it exists
+            if msg_dict.get('reasoning'):
+                try:
+                    reasoning_data = json.loads(msg_dict['reasoning'])
+                    # Convert reasoning data to frontend format
+                    if isinstance(reasoning_data, list):
+                        # Already in array format
+                        msg_dict['reasoning'] = reasoning_data
+                    elif isinstance(reasoning_data, dict):
+                        # Convert single reasoning object to array format
+                        msg_dict['reasoning'] = [reasoning_data]
+                    elif isinstance(reasoning_data, str):
+                        # If it's a string, wrap it in a reasoning step object
+                        msg_dict['reasoning'] = [{
+                            'id': f'step-{msg_dict["id"]}',
+                            'type': 'llm_reasoning',
+                            'thought': reasoning_data,
+                            'message': 'AI Reasoning',
+                            'timestamp': int(time.time() * 1000)
+                        }]
+                    else:
+                        msg_dict['reasoning'] = []
+                
+                    # Add the "complete" step that the frontend would have added during streaming
+                    # This ensures consistency between streaming and reloaded messages
+                    if msg_dict.get('reasoning') and msg_dict.get('sent_from_user') == 0:
+                        # Extract the final thought from the last reasoning step if available
+                        final_thought = None
+                        for step in reversed(msg_dict['reasoning']):
+                            if step.get('thought'):
+                                final_thought = step['thought']
+                                break
+                        
+                        # If no thought found in reasoning steps, use part of the message text as thought
+                        if not final_thought and msg_dict.get('message_text'):
+                            # Use first 100 characters of the response as the thought
+                            final_thought = msg_dict['message_text'][:100] + "..." if len(msg_dict['message_text']) > 100 else msg_dict['message_text']
+                        
+                        complete_step = {
+                            'id': f'step-complete-{msg_dict["id"]}',
+                            'type': 'complete',
+                            'thought': final_thought,
+                            'message': 'Response complete',
+                            'timestamp': int(time.time() * 1000)
+                        }
+                        msg_dict['reasoning'].append(complete_step)
+                except (json.JSONDecodeError, TypeError) as e:
+                    print(f"Error parsing reasoning JSON for message {msg_dict.get('id')}: {e}")
+                    msg_dict['reasoning'] = []
+            else:
+                msg_dict['reasoning'] = []
+            
+            processed_messages.append(msg_dict)
+        
+        return processed_messages
+    
     return None if messages is None else messages
 
 def delete_chat_from_db(chat_id, user_email):
@@ -693,7 +755,8 @@ def _get_model():
     global _embedding_model
 
 
-    if _embedding_model is not None:
+    if _embedding_model:
+        print("Skipping embedding model")
         return _embedding_model
 
     try:
@@ -1117,74 +1180,66 @@ def knn(x, y):
 
     return results
 
-def get_relevant_chunks(k, question, chat_id, user_email):
+def get_relevant_chunks(k: int, question: str, chat_id: int, user_email: str):
     conn, cursor = get_db_connection()
 
+    #Fetch all document chunks with their embeddings for the given user and chat
     query = """
-    SELECT c.start_index, c.end_index, c.embedding_vector, c.document_id, c.page_number, d.document_name
+    SELECT c.start_index, c.end_index, c.embedding_vector, c.document_id, d.document_name, d.document_text
     FROM chunks c
     JOIN documents d ON c.document_id = d.id
     JOIN chats ch ON d.chat_id = ch.id
     JOIN users u ON ch.user_id = u.id
     WHERE u.email = %s AND ch.id = %s
     """
-
     cursor.execute(query, (user_email, chat_id))
     rows = cursor.fetchall()
 
-    embeddings = []
+    #Prepare chunk embeddings and metadata
+    chunk_embeddings = []
+    chunk_metadata = []
     for row in rows:
-        embeddingVectorBlob = row["embedding_vector"]
-        embeddingVector = np.frombuffer(embeddingVectorBlob)
+        embedding_blob = row["embedding_vector"]
+        embedding = np.frombuffer(embedding_blob)
 
-        #embedding validation
-        if len(embeddingVector) != EMBEDDING_DIMENSIONS:
-            print(f"[WARNING] Found embedding with unexpected dimension: {len(embeddingVector)}, expected {EMBEDDING_DIMENSIONS}")
-            
-        embeddings.append(embeddingVector)
+        if len(embedding) != EMBEDDING_DIMENSIONS:
+            print(f"[WARNING] Skipping chunk with bad dimensions: {len(embedding)}")
+            continue
 
-    if (len(embeddings) == 0):
-        res_list = []
-        for i in range(k):
-            res_list.append("No text found")
-        return res_list
+        chunk_embeddings.append(embedding)
+        chunk_metadata.append({
+            "start": row["start_index"],
+            "end": row["end_index"],
+            "document_id": row["document_id"],
+            "document_name": row["document_name"],
+            "document_text": row["document_text"]
+        })
 
-    embeddings = np.array(embeddings)
+    #Return early if no valid embeddings found
+    if not chunk_embeddings:
+        return []
 
+    #Get embedding for the query
     try:
-        embeddingVector = get_embedding(question)
-        embeddingVector = np.array(embeddingVector)
-        
-        # Validate query embedding dimensions
-        if len(embeddingVector) != EMBEDDING_DIMENSIONS:
-            raise ValueError(f"Query embedding dimension mismatch: expected {EMBEDDING_DIMENSIONS}, got {len(embeddingVector)}")
-            
+        query_embedding = np.array(get_embedding(question))
+        if len(query_embedding) != EMBEDDING_DIMENSIONS:
+            raise ValueError(f"Query embedding has wrong dimensions: {len(query_embedding)}")
     except Exception as e:
         print(f"[ERROR] Failed to generate query embedding: {e}")
-        res_list = []
-        for i in range(k):
-            res_list.append("Error generating embedding")
-        return res_list
+        return []
 
-    res = knn(embeddingVector, embeddings)
-    num_results = min(k, len(res))
+    #Compute similarity and get top-k indices
+    results = knn(query_embedding, np.array(chunk_embeddings))
+    top_k = min(k, len(results))
 
-    # Get k most relevant chunks
+    #Prepare result chunks
     source_chunks = []
-    for i in range(num_results):
-        source_id = res[i]['index']
-
-        document_id = rows[source_id]['document_id']
-        #page_number = rows[source_id]['page_number']
-        document_name = rows[source_id]['document_name']
-
-
-        cursor.execute('SELECT document_text FROM documents WHERE id = %s', [document_id])
-        doc_text = cursor.fetchone()['document_text']
-
-        source_chunk = doc_text[rows[source_id]['start_index']:rows[source_id]['end_index']]
-        source_chunks.append((source_chunk, document_name))
-        #source_chunks.append(source_chunk)
+    for i in range(top_k):
+        idx = results[i]['index']
+        meta = chunk_metadata[idx]
+        chunk_text = meta["document_text"][meta["start"]:meta["end"]]
+        document_name = meta["document_name"]
+        source_chunks.append((chunk_text, document_name))
 
     return source_chunks
 
@@ -1263,9 +1318,21 @@ def get_relevant_chunks_wf(k, question, workflow_id, user_email):
 
 def add_sources_to_db(message_id, sources):
     combined_sources = ""
+    
+    print(f"DEBUG: sources type: {type(sources)}")
+    print(f"DEBUG: sources content: {sources}")
 
-    for source in sources:
-        chunk_text, document_name = source
+    for i, source in enumerate(sources):
+        print(f"DEBUG: source {i} type: {type(source)}")
+        print(f"DEBUG: source {i} content: {source}")
+        print(f"DEBUG: source {i} length: {len(source) if hasattr(source, '__len__') else 'no length'}")
+        
+        if len(source) >= 2:
+            chunk_text, document_name = source[0], source[1]
+        else:
+            print(f"WARNING: Skipping malformed source {i}: {source}")
+            continue
+            
         combined_sources += f"Document: {document_name}: {chunk_text}\n\n"
 
     conn, cursor = get_db_connection()
@@ -1294,14 +1361,14 @@ def add_wf_sources_to_db(prompt_id, sources):
     conn.close()
 
 
-def add_message_to_db(text, chat_id, isUser):
+def add_message_to_db(text, chat_id, isUser, reasoning=None):
 
     if chat_id == 0:
         return None #don't save guest messages
     #If isUser is 0, it is a bot message, 1 is a user message
     conn, cursor = get_db_connection()
 
-    cursor.execute('INSERT INTO messages (message_text, chat_id, sent_from_user) VALUES (%s,%s,%s)', (text, chat_id, isUser))
+    cursor.execute('INSERT INTO messages (message_text, chat_id, reasoning, sent_from_user) VALUES (%s,%s,%s, %s)', (text, chat_id, reasoning, isUser))
     message_id = cursor.lastrowid
 
     conn.commit()

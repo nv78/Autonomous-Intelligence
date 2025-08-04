@@ -54,3 +54,4 @@ pytest
 flask-mysql-connector
 mysqlclient
 redis
+langchain_anthropic
