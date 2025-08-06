@@ -22,6 +22,7 @@ from io import BytesIO
 from fastapi.testclient import TestClient
 
 client = TestClient(app)
+sys.modules['torch'] = MagicMock()
 
 
 class TestFlaskApp(unittest.TestCase):
