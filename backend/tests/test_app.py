@@ -10,10 +10,13 @@ from unittest.mock import patch, MagicMock
 import jwt
 import time
 import pytest
+from io import BytesIO
+
 # Add the parent directory to the path so we can import from backend
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from fastapi.testclient import TestClient
 from app import app
-
+client = TestClient(app)
 
 class TestFlaskApp(unittest.TestCase):
     """Simple Flask app unit test"""
@@ -520,31 +523,27 @@ class TestFlaskApp(unittest.TestCase):
             self.assertEqual(response.status_code, 401)
             self.assertIn("Invalid JWT", response.get_data(as_text=True))
 
-    def test_ingest_pdfs(self):
-        # Mock all dependencies
-        with patch("app.add_document_to_db") as mock_add_doc, patch(
-            "app.p.from_buffer"
-        ) as mock_from_buffer, patch(
-            "app.ensure_ray_started"
-        ) as mock_ensure_ray, patch(
-            "app.chunk_document"
-        ) as mock_chunk_document:
-            mock_add_doc.return_value = ("docid", False)
-            mock_from_buffer.return_value = {"content": "PDF text"}
-            mock_ensure_ray.return_value = None
-            mock_chunk_document.remote.return_value = None
+    def test_ingest_pdf(client):  # assuming you have a test client fixture called `client`
+        with patch("app.Chroma") as mock_chroma:
+            # Create a MagicMock instance to replace the Chroma client
+            mock_client_instance = MagicMock()
+            mock_chroma.return_value = mock_client_instance
 
-            from io import BytesIO
+            # Mock any methods called on the client inside your endpoint
+            mock_client_instance.add_documents.return_value = None
 
-            data = {
-                "chat_id": ["chat1"],
-                "files[]": (BytesIO(b"dummy pdf content"), "test.pdf"),
+            # Prepare a fake PDF file for upload
+            files = {
+                "files[]": ("test.pdf", BytesIO(b"dummy pdf content"), "application/pdf")
             }
-            response = self.app.post(
-                "/ingest-pdf", data=data, content_type="multipart/form-data"
-            )
-            self.assertEqual(response.status_code, 200)
-            self.assertIn("Invalid JWT", response.get_data(as_text=True))
+            data = {"chat_id": "chat1"}
+
+            # Send POST request to your ingest_pdf endpoint
+            response = client.post("/ingest-pdf", data=data, files=files)
+
+            # Assertions
+            assert response.status_code == 200
+            mock_client_instance.add_documents.assert_called_once()
 
     def test_reset_chat(self):
         # --- With delete_docs True ---
