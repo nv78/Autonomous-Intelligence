@@ -523,61 +523,67 @@ class TestFlaskApp(unittest.TestCase):
             self.assertEqual(response.status_code, 401)
             self.assertIn("Invalid JWT", response.get_data(as_text=True))
 
-    def test_ingest_pdf(client):  # assuming you have a test client fixture called `client`
-        with patch("app.Chroma") as mock_chroma:
-            # Create a MagicMock instance to replace the Chroma client
-            mock_client_instance = MagicMock()
-            mock_chroma.return_value = mock_client_instance
+def test_ingest_pdfs(self):
+    with patch("app.add_document_to_db") as mock_add_doc, patch(
+        "app.p.from_buffer"
+    ) as mock_from_buffer, patch(
+        "app.ensure_ray_started"
+    ) as mock_ensure_ray, patch(
+        "app.chunk_document"
+    ) as mock_chunk_document:
+        mock_add_doc.return_value = ("docid", False)
+        mock_from_buffer.return_value = {"content": "PDF text"}
+        mock_ensure_ray.return_value = None
+        mock_chunk_document.remote.return_value = None
 
-            # Mock any methods called on the client inside your endpoint
-            mock_client_instance.add_documents.return_value = None
+        from io import BytesIO
 
-            # Prepare a fake PDF file for upload
-            files = {
-                "files[]": ("test.pdf", BytesIO(b"dummy pdf content"), "application/pdf")
-            }
-            data = {"chat_id": "chat1"}
+        data = {
+            "chat_id": ["chat1"],
+            "files[]": (BytesIO(b"dummy pdf content"), "test.pdf"),
+        }
+        response = self.app.post(
+            "/ingest-pdf",
+            data=data,
+            content_type="multipart/form-data",
+            headers={"Authorization": "Bearer testtoken123"},  # <-- Add here
+        )
+        self.assertEqual(response.status_code, 200)
 
-            # Send POST request to your ingest_pdf endpoint
-            response = client.post("/ingest-pdf", data=data, files=files)
 
-            # Assertions
-            assert response.status_code == 200
-            mock_client_instance.add_documents.assert_called_once()
+def test_reset_chat(self):
+    # --- With delete_docs True ---
+    with patch("app.extractUserEmailFromRequest") as mock_extract_email, patch(
+        "app.reset_chat_db"
+    ) as mock_reset_chat_db, patch(
+        "app.reset_uploaded_docs"
+    ) as mock_reset_uploaded_docs:
+        mock_extract_email.return_value = "test@example.com"
+        mock_reset_chat_db.return_value = None
+        mock_reset_uploaded_docs.return_value = None
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer testtoken",
+        }
+        data = {"chat_id": "chat123", "delete_docs": True}
+        response = self.app.post("/reset-chat", json=data, headers=headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Success", response.get_data(as_text=True))
 
-    def test_reset_chat(self):
-        # --- With delete_docs True ---
-        with patch("app.extractUserEmailFromRequest") as mock_extract_email, patch(
-            "app.reset_chat_db"
-        ) as mock_reset_chat_db, patch(
-            "app.reset_uploaded_docs"
-        ) as mock_reset_uploaded_docs:
-            mock_extract_email.return_value = "test@example.com"
-            mock_reset_chat_db.return_value = None
-            mock_reset_uploaded_docs.return_value = None
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": "Bearer testtoken",
-            }
-            data = {"chat_id": "chat123", "delete_docs": True}
-            response = self.app.post("/reset-chat", json=data, headers=headers)
-            self.assertEqual(response.status_code, 200)
-            self.assertIn("Success", response.get_data(as_text=True))
-
-        # --- With delete_docs False ---
-        with patch("app.extractUserEmailFromRequest") as mock_extract_email, patch(
-            "app.reset_chat_db"
-        ) as mock_reset_chat_db:
-            mock_extract_email.return_value = "test@example.com"
-            mock_reset_chat_db.return_value = None
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": "Bearer testtoken",
-            }
-            data = {"chat_id": "chat123", "delete_docs": False}
-            response = self.app.post("/reset-chat", json=data, headers=headers)
-            self.assertEqual(response.status_code, 200)
-            self.assertIn("Success", response.get_data(as_text=True))
+    # --- With delete_docs False ---
+    with patch("app.extractUserEmailFromRequest") as mock_extract_email, patch(
+        "app.reset_chat_db"
+    ) as mock_reset_chat_db:
+        mock_extract_email.return_value = "test@example.com"
+        mock_reset_chat_db.return_value = None
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer testtoken",
+        }
+        data = {"chat_id": "chat123", "delete_docs": False}
+        response = self.app.post("/reset-chat", json=data, headers=headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Success", response.get_data(as_text=True))
 
 
 if __name__ == "__main__":
