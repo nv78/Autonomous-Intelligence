@@ -508,39 +508,59 @@ class ReactiveDocumentAgent:
                             })
                     
                     elif event_data.get('type') == 'agent_thinking':
-                        # Add thinking step
+                        # Add thinking step with specific planning content and unique thought
+                        thinking_content = event_data.get('thought', '')
+                        planned_action = event_data.get('action', '')
+                        
+                        # Create a more descriptive message based on the planning content
+                        if planned_action:
+                            message = f"Planning to use {planned_action}"
+                        elif thinking_content and len(thinking_content) > 10:
+                            # Use first part of thought as the message
+                            message = f"Analyzing: {thinking_content[:50]}{'...' if len(thinking_content) > 50 else ''}"
+                        else:
+                            message = 'Planning next step...'
+                        
                         thinking_step = {
                             'id': f'step-{int(time.time() * 1000)}',
                             'type': event_data['type'],
-                            'agent_thought': event_data.get('thought', ''),
-                            'planned_action': event_data.get('action', ''),
-                            'message': 'Planning next step...',
+                            'agent_thought': thinking_content,
+                            'thought': thinking_content,  # Use the specific thought from this event
+                            'planned_action': planned_action,
+                            'message': message,
                             'timestamp': int(time.time() * 1000)
                         }
                         final_reasoning_steps.append(thinking_step)
+                    
+                    elif event_data.get('type') == 'agent_finish':
+                        # Add agent finish step with its own unique thought
+                        finish_thought = event_data.get('final_thought', '')
+                        
+                        finish_step = {
+                            'id': f'step-{int(time.time() * 1000)}',
+                            'type': event_data['type'],
+                            'thought': finish_thought,  # Use the specific final thought from agent_finish
+                            'message': 'Agent reached conclusion',
+                            'timestamp': int(time.time() * 1000)
+                        }
+                        final_reasoning_steps.append(finish_step)
                 
                 # Try to extract sources from the agent's reasoning
                 sources = self._extract_sources_from_response(response, chat_id, user_email, query)
                 
-                # Extract final thought from streaming events if available
-                final_thought = None
-                for event in reversed(streaming_events):
-                    if event.get('type') == 'llm_reasoning' and event.get('thought'):
-                        final_thought = event['thought']
-                        break
-                
-                # Create the complete step for database storage
+                # Create the complete step data for yielding to frontend (not added to final_reasoning_steps to avoid duplication)
+                # Don't use any thought for the step-complete to avoid showing duplicate content
                 complete_step = {
                     'id': f'step-{int(time.time() * 1000)}',
                     'type': 'step-complete',
                     'answer': answer,
                     'sources': sources if sources else [],
-                    'thought': final_thought,
+                    'thought': None,  # Don't reuse any existing thought to avoid duplication
                     'message': 'Query processing completed',
                     'timestamp': int(time.time() * 1000)
                 }
                 yield complete_step
-                final_reasoning_steps.append(complete_step)
+                # Don't add to final_reasoning_steps - let frontend handle completion step
                 
                 # Convert reasoning steps to JSON string for database storage
                 reasoning_json = json.dumps(final_reasoning_steps) if final_reasoning_steps else None

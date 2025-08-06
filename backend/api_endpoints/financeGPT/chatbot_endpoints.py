@@ -356,29 +356,31 @@ def retrieve_message_from_db(user_email, chat_id, chat_type):
                     else:
                         msg_dict['reasoning'] = []
                 
-                    # Add the "complete" step that the frontend would have added during streaming
-                    # This ensures consistency between streaming and reloaded messages
+                    # Add the "complete" step only if there are no proper reasoning steps
+                    # This ensures consistency between streaming and reloaded messages for older messages
                     if msg_dict.get('reasoning') and msg_dict.get('sent_from_user') == 0:
-                        # Extract the final thought from the last reasoning step if available
-                        final_thought = None
-                        for step in reversed(msg_dict['reasoning']):
-                            if step.get('thought'):
-                                final_thought = step['thought']
-                                break
+                        # Check if there's already a step-complete or complete step, or if there are substantive reasoning steps
+                        has_complete_step = any(
+                            step.get('type') in ['complete', 'step-complete'] 
+                            for step in msg_dict['reasoning']
+                        )
                         
-                        # If no thought found in reasoning steps, use part of the message text as thought
-                        if not final_thought and msg_dict.get('message_text'):
-                            # Use first 100 characters of the response as the thought
-                            final_thought = msg_dict['message_text'][:100] + "..." if len(msg_dict['message_text']) > 100 else msg_dict['message_text']
+                        has_substantive_steps = any(
+                            step.get('type') in ['tool_start', 'tools_start', 'agent_thinking', 'tool_end']
+                            for step in msg_dict['reasoning']
+                        )
                         
-                        complete_step = {
-                            'id': f'step-complete-{msg_dict["id"]}',
-                            'type': 'complete',
-                            'thought': final_thought,
-                            'message': 'Response complete',
-                            'timestamp': int(time.time() * 1000)
-                        }
-                        msg_dict['reasoning'].append(complete_step)
+                        # Only add a complete step if we don't have substantive steps (legacy messages)
+                        if not has_complete_step and not has_substantive_steps:
+                            # This is likely a legacy message without proper reasoning steps
+                            complete_step = {
+                                'id': f'step-complete-{msg_dict["id"]}',
+                                'type': 'complete',
+                                'thought': None,  # Don't use message text as fallback
+                                'message': 'Response complete',
+                                'timestamp': int(time.time() * 1000)
+                            }
+                            msg_dict['reasoning'].append(complete_step)
                 except (json.JSONDecodeError, TypeError) as e:
                     print(f"Error parsing reasoning JSON for message {msg_dict.get('id')}: {e}")
                     msg_dict['reasoning'] = []

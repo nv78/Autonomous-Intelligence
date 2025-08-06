@@ -440,13 +440,25 @@ const Chatbot = (props) => {
         break;
 
       case "agent_thinking":
-        // Add thinking step
+        // Add thinking step with more specific message and unique thought
+        const plannedAction = eventData.action;
+        const agentThought = eventData.thought;
+        
+        let message = "Planning next step...";
+        if (plannedAction) {
+          message = `Planning to use ${plannedAction}`;
+        } else if (agentThought && agentThought.length > 10) {
+          // Use first part of thought as the message
+          message = `Analyzing: ${agentThought.substring(0, 50)}${agentThought.length > 50 ? '...' : ''}`;
+        }
+        
         const thinkingStep = {
           id: `step-${Date.now()}`,
           type: eventData.type,
-          agent_thought: eventData.thought,
-          planned_action: eventData.action,
-          message: "Planning next step...",
+          agent_thought: agentThought,
+          thought: agentThought,  // Use the specific thought from this agent_thinking event
+          planned_action: plannedAction,
+          message: message,
           timestamp: Date.now(),
         };
         updatedMessage.reasoning = [
@@ -456,24 +468,46 @@ const Chatbot = (props) => {
         updatedMessage.currentStep = thinkingStep;
         break;
 
+      case "agent_finish":
+        // Add agent finish step with its own unique thought
+        const finishStep = {
+          id: `step-${Date.now()}`,
+          type: eventData.type,
+          thought: eventData.final_thought,  // Use the specific final thought from agent_finish
+          message: "Agent reached conclusion",
+          timestamp: Date.now(),
+        };
+        updatedMessage.reasoning = [
+          ...(updatedMessage.reasoning || []),
+          finishStep,
+        ];
+        updatedMessage.currentStep = finishStep;
+        break;
+
       case "complete":
         // Set final answer and sources
         updatedMessage.content = eventData.answer || "";
         updatedMessage.sources = eventData.sources || [];
         updatedMessage.isThinking = false;
 
-        // Add completion step to reasoning
-        const completeStep = {
-          id: `step-${Date.now()}`,
-          type: eventData.type,
-          thought: eventData.thought,
-          message: "Response complete",
-          timestamp: Date.now(),
-        };
-        updatedMessage.reasoning = [
-          ...(updatedMessage.reasoning || []),
-          completeStep,
-        ];
+        // Add completion step to reasoning only if we don't already have a step-complete
+        const hasStepComplete = (updatedMessage.reasoning || []).some(
+          step => step.type === 'step-complete'
+        );
+        
+        if (!hasStepComplete) {
+          const completeStep = {
+            id: `step-${Date.now()}`,
+            type: eventData.type,
+            thought: eventData.thought !== eventData.answer ? eventData.thought : null, // Avoid duplicate content
+            message: "Response complete",
+            timestamp: Date.now(),
+          };
+          updatedMessage.reasoning = [
+            ...(updatedMessage.reasoning || []),
+            completeStep,
+          ];
+        }
         updatedMessage.currentStep = null;
         break;
       case "step-complete":
@@ -486,7 +520,7 @@ const Chatbot = (props) => {
         const StepComplete = {
           id: `step-${Date.now()}`,
           type: eventData.type,
-          thought: eventData.thought,
+          thought: eventData.thought !== eventData.answer ? eventData.thought : null, // Avoid showing answer as thought
           message: "Query processing completed",
           timestamp: Date.now(),
         };
@@ -515,6 +549,8 @@ const Chatbot = (props) => {
           return <FontAwesomeIcon icon={faSearch} className="text-green-400" />;
         case "agent_thinking":
           return <FontAwesomeIcon icon={faCog} className="text-purple-400" />;
+        case "agent_finish":
+          return <FontAwesomeIcon icon={faBrain} className="text-orange-400" />;
         case "complete":
         case "step-complete":
           return (
@@ -535,7 +571,10 @@ const Chatbot = (props) => {
           return "border-l-green-400 bg-green-950/20";
         case "agent_thinking":
           return "border-l-purple-400 bg-purple-950/20";
+        case "agent_finish":
+          return "border-l-orange-400 bg-orange-950/20";
         case "complete":
+        case "step-complete":
           return "border-l-green-500 bg-green-950/30";
         default:
           return "border-l-gray-400 bg-gray-800/20";
