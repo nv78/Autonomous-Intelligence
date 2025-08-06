@@ -10,6 +10,7 @@ from unittest.mock import patch, MagicMock
 import jwt
 import time
 import pytest
+import fastapi
 from io import BytesIO
 
 # Add the parent directory to the path so we can import from backend
@@ -549,7 +550,7 @@ def test_ingest_pdfs(self):
             headers={"Authorization": "Bearer testtoken123"},  # <-- Add here
         )
         self.assertEqual(response.status_code, 200)
-        
+
 def test_ingest_pdf(client):  # assuming you have a test client fixture called `client`
     with patch("app.Chroma") as mock_chroma:
         # Create a MagicMock instance to replace the Chroma client
