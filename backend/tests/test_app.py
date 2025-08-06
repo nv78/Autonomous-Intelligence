@@ -8,7 +8,7 @@ mock_torch = MagicMock()
 mock_torch.uint64 = 8  
 
 sys.modules['torch'] = mock_torch
-
+mock_torch.__spec__ = "mocked_torch_spec"
 sys.modules['transformers'] = MagicMock()
 sys.modules['sentence_transformers'] = MagicMock()
 sys.modules['safetensors'] = MagicMock()
