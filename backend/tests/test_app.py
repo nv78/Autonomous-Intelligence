@@ -8,8 +8,7 @@ import sys
 import os
 from unittest.mock import patch, MagicMock
 import jwt
-import time
-import pytest
+
 # Add the parent directory to the path so we can import from backend
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app import app
@@ -520,7 +519,9 @@ class TestFlaskApp(unittest.TestCase):
             self.assertEqual(response.status_code, 401)
             self.assertIn("Invalid JWT", response.get_data(as_text=True))
 
-    def test_reset_chat(self):
+
+
+def test_reset_chat(self):
         # --- With delete_docs True ---
         with patch("app.extractUserEmailFromRequest") as mock_extract_email, patch(
             "app.reset_chat_db"
