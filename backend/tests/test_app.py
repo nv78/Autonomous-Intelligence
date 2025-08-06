@@ -520,33 +520,49 @@ class TestFlaskApp(unittest.TestCase):
             self.assertEqual(response.status_code, 401)
             self.assertIn("Invalid JWT", response.get_data(as_text=True))
 
-def test_ingest_pdfs(self):
-    with patch("app.add_document_to_db") as mock_add_doc, patch(
-        "app.p.from_buffer"
-    ) as mock_from_buffer, patch(
-        "app.ensure_ray_started"
-    ) as mock_ensure_ray, patch(
-        "app.chunk_document"
-    ) as mock_chunk_document:
+    @patch("app.chunk_document")
+    @patch("app.ensure_ray_started")
+    @patch("app.p.from_buffer")
+    @patch("app.add_document_to_db")
+    def test_ingest_pdfs(
+        self,
+        mock_add_doc,
+        mock_from_buffer,
+        mock_ensure_ray,
+        mock_chunk_document,
+    ):
+        """
+        Tests the /ingest-pdf endpoint integration.
+
+        Verifies that a successful PDF upload call triggers the correct
+        backend processing functions.
+        """
+        # 1. Setup Mocks
+        # The mocks are passed in as arguments by the @patch decorators
         mock_add_doc.return_value = ("docid", False)
         mock_from_buffer.return_value = {"content": "PDF text"}
         mock_ensure_ray.return_value = None
-        mock_chunk_document.remote.return_value = None
+        mock_chunk_document.remote.return_value = None # .remote is often used with Ray actors
 
-        from io import BytesIO
+        # 2. Prepare Request Data
+        # Using BytesIO is great - it simulates a file in memory
+        file_data = (BytesIO(b"dummy pdf content"), "test.pdf")
+        data = {"chat_id": ["chat1"], "files[]": file_data}
 
-        data = {
-            "chat_id": ["chat1"],
-            "files[]": (BytesIO(b"dummy pdf content"), "test.pdf"),
-        }
+        # 3. Make the Request
         response = self.app.post(
             "/ingest-pdf",
             data=data,
             content_type="multipart/form-data",
-            headers={"Authorization": "Bearer testtoken123"},  # <-- Add here
+            headers={"Authorization": "Bearer testtoken123"},
         )
-        self.assertEqual(response.status_code, 200)
 
+    # 4. Assert Outcomes
+        self.assertEqual(response.status_code, 200) # Check for a successful response
+        mock_ensure_ray.assert_called_once() # Verify Ray was initialized
+        mock_from_buffer.assert_called_once() # Verify PDF parsing was attempted
+        mock_add_doc.assert_called_once() # Verify the document was added to the DB
+        mock_chunk_document.remote.assert_called_once() # Verify chunking was called
 
     def test_reset_chat(self):
         # --- With delete_docs True ---
