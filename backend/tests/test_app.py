@@ -3,26 +3,6 @@ import os
 os.environ["OPENAI_API_KEY"] = "dummy"
 os.environ["SEC_API_KEY"] = "dummy"
 from unittest.mock import patch, MagicMock
-
-patch(
-    "api_endpoints.financeGPT.chatbot_endpoints.OpenAIEmbeddings", MagicMock()
-).start()
-import unittest
-import sys
-import os
-from unittest.mock import patch, MagicMock
-import jwt
-import time
-import pytest
-
-# Add the parent directory to the path so we can import from backend
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from app import app
-from io import BytesIO
-from fastapi.testclient import TestClient
-
-client = TestClient(app)
-
 mock_torch = MagicMock()
 
 mock_torch.uint64 = 8  
@@ -32,6 +12,26 @@ sys.modules['torch'] = mock_torch
 sys.modules['transformers'] = MagicMock()
 sys.modules['sentence_transformers'] = MagicMock()
 sys.modules['safetensors'] = MagicMock()
+
+patch(
+    "api_endpoints.financeGPT.chatbot_endpoints.OpenAIEmbeddings", MagicMock()
+).start()
+
+import unittest
+import sys
+import os
+from unittest.mock import patch, MagicMock
+import jwt
+
+
+# Add the parent directory to the path so we can import from backend
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from app import app
+from io import BytesIO
+from fastapi.testclient import TestClient
+
+client = TestClient(app)
+
 
 
 class TestFlaskApp(unittest.TestCase):
