@@ -55,3 +55,4 @@ flask-mysql-connector
 mysqlclient
 redis
 langchain_anthropic
+fastapi==0.103.1
