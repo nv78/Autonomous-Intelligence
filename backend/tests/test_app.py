@@ -1,28 +1,18 @@
 import os
-import sys 
 os.environ["OPENAI_API_KEY"] = "dummy"
 os.environ["SEC_API_KEY"] = "dummy"
 from unittest.mock import patch, MagicMock
-
-patch(
-    "api_endpoints.financeGPT.chatbot_endpoints.OpenAIEmbeddings", MagicMock()
-).start()
-
+patch("api_endpoints.financeGPT.chatbot_endpoints.OpenAIEmbeddings", MagicMock()).start()
 import unittest
 import sys
 import os
 from unittest.mock import patch, MagicMock
 import jwt
-
-
+import time
+import pytest
 # Add the parent directory to the path so we can import from backend
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app import app
-from io import BytesIO
-from fastapi.testclient import TestClient
-
-client = TestClient(app)
-
 
 
 class TestFlaskApp(unittest.TestCase):
@@ -118,11 +108,11 @@ class TestFlaskApp(unittest.TestCase):
         # --- The test will now pass because it doesn't try to connect to a real DB ---
         self.assertIn(response.status_code, [200, 201])
 
+
     @patch("api_endpoints.financeGPT.chatbot_endpoints.OpenAIEmbeddings")
     def test_app_startup(self, mock_embeddings):
         mock_embeddings.return_value = MagicMock()
         from app import app
-
         assert app is not None
 
     def test_refresh_credits(self):
@@ -308,9 +298,9 @@ class TestFlaskApp(unittest.TestCase):
 
     def test_retrieve_messages_from_chat(self):
         # --- Valid JWT ---
-        with patch("app.extractUserEmailFromRequest") as mock_extract_email, patch(
-            "app.retrieve_message_from_db"
-        ) as mock_retrieve_messages, patch("app.get_chat_info") as mock_get_chat_info:
+        with patch("app.extractUserEmailFromRequest") as mock_extract_email, \
+             patch("app.retrieve_message_from_db") as mock_retrieve_messages, \
+             patch("app.get_chat_info") as mock_get_chat_info:
             mock_extract_email.return_value = "test@example.com"
             mock_retrieve_messages.return_value = [
                 {"msg": "hello from chat"},
@@ -331,7 +321,6 @@ class TestFlaskApp(unittest.TestCase):
         # --- Invalid JWT ---
         with patch("app.extractUserEmailFromRequest") as mock_extract_email:
             from app import InvalidTokenError
-
             mock_extract_email.side_effect = InvalidTokenError()
             headers = {
                 "Content-Type": "application/json",
@@ -531,40 +520,39 @@ class TestFlaskApp(unittest.TestCase):
             self.assertEqual(response.status_code, 401)
             self.assertIn("Invalid JWT", response.get_data(as_text=True))
 
+    def test_reset_chat(self):
+        # --- With delete_docs True ---
+        with patch("app.extractUserEmailFromRequest") as mock_extract_email, patch(
+            "app.reset_chat_db"
+        ) as mock_reset_chat_db, patch(
+            "app.reset_uploaded_docs"
+        ) as mock_reset_uploaded_docs:
+            mock_extract_email.return_value = "test@example.com"
+            mock_reset_chat_db.return_value = None
+            mock_reset_uploaded_docs.return_value = None
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer testtoken",
+            }
+            data = {"chat_id": "chat123", "delete_docs": True}
+            response = self.app.post("/reset-chat", json=data, headers=headers)
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("Success", response.get_data(as_text=True))
 
-def test_reset_chat(self):
-    # --- With delete_docs True ---
-    with patch("app.extractUserEmailFromRequest") as mock_extract_email, patch(
-        "app.reset_chat_db"
-    ) as mock_reset_chat_db, patch(
-        "app.reset_uploaded_docs"
-    ) as mock_reset_uploaded_docs:
-        mock_extract_email.return_value = "test@example.com"
-        mock_reset_chat_db.return_value = None
-        mock_reset_uploaded_docs.return_value = None
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer testtoken",
-        }
-        data = {"chat_id": "chat123", "delete_docs": True}
-        response = self.app.post("/reset-chat", json=data, headers=headers)
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("Success", response.get_data(as_text=True))
-
-    # --- With delete_docs False ---
-    with patch("app.extractUserEmailFromRequest") as mock_extract_email, patch(
-        "app.reset_chat_db"
-    ) as mock_reset_chat_db:
-        mock_extract_email.return_value = "test@example.com"
-        mock_reset_chat_db.return_value = None
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer testtoken",
-        }
-        data = {"chat_id": "chat123", "delete_docs": False}
-        response = self.app.post("/reset-chat", json=data, headers=headers)
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("Success", response.get_data(as_text=True))
+        # --- With delete_docs False ---
+        with patch("app.extractUserEmailFromRequest") as mock_extract_email, patch(
+            "app.reset_chat_db"
+        ) as mock_reset_chat_db:
+            mock_extract_email.return_value = "test@example.com"
+            mock_reset_chat_db.return_value = None
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer testtoken",
+            }
+            data = {"chat_id": "chat123", "delete_docs": False}
+            response = self.app.post("/reset-chat", json=data, headers=headers)
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("Success", response.get_data(as_text=True))
 
 
 if __name__ == "__main__":
