@@ -3,7 +3,6 @@ import sys
 os.environ["OPENAI_API_KEY"] = "dummy"
 os.environ["SEC_API_KEY"] = "dummy"
 from unittest.mock import patch, MagicMock
-es['safetensors'] = MagicMock()
 
 patch(
     "api_endpoints.financeGPT.chatbot_endpoints.OpenAIEmbeddings", MagicMock()
