@@ -1,10 +1,10 @@
-from flask import Flask, request, jsonify, abort, redirect, send_file
+from flask import Flask, request, jsonify, Response, abort, redirect, stream_with_context, Blueprint
 from flask_cors import CORS, cross_origin
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 import pandas as pd
-from opensearchpy import OpenSearch, RequestsHttpConnection, AWSV4SignerAuth
+#from opensearchpy import OpenSearch, RequestsHttpConnection, AWSV4SignerAuth
 import boto3
 from api_endpoints.login.handler import LoginHandler, SignUpHandler, ForgotPasswordHandler, ResetPasswordHandler
 import os
@@ -13,12 +13,11 @@ from google_auth_oauthlib.flow import Flow
 from google.oauth2 import id_token
 from pip._vendor import cachecontrol
 import google.auth.transport.requests
-from flask.wrappers import Response
 import json
 import jwt
 import requests
 from database.db_auth import api_key_access_invalid
-from flask_jwt_extended import jwt_required, create_access_token, create_refresh_token, decode_token, JWTManager
+from flask_jwt_extended import jwt_required, create_access_token, create_refresh_token, decode_token, JWTManager, get_jwt_identity
 from flask_mail import Mail
 from jwt import InvalidTokenError
 from urllib.parse import urlparse
@@ -64,10 +63,12 @@ from ragas.metrics import (
     context_precision,
 )
 from bs4 import BeautifulSoup
+from flask_mysql_connector import MySQL
+import MySQLdb.cursors
 
 #WESLEY
-from api_endpoints.financeGPT.chatbot_endpoints import create_chat_shareable_url, access_sharable_chat
-
+from api_endpoints.financeGPT.chatbot_endpoints import create_chat_shareable_url, access_sharable_chat, _get_model
+_get_model()
 from database.db import get_db_connection
 
 from api_endpoints.financeGPT.chatbot_endpoints import add_prompt_to_workflow_db, add_workflow_to_db, \
@@ -81,6 +82,9 @@ from api_endpoints.financeGPT.chatbot_endpoints import add_prompt_to_workflow_db
     ensure_SDK_user_exists, get_chat_info, ensure_demo_user_exists, get_message_info, get_text_from_url, \
     add_organization_to_db, get_organization_from_db, update_workflow_name_db, retrieve_messages_from_share_uuid
 
+from agents.reactive_agent import ReactiveDocumentAgent, WorkflowReactiveAgent
+from agents.config import AgentConfig
+
 from datetime import datetime
 
 from database.db_auth import get_db_connection
@@ -91,6 +95,11 @@ from api_endpoints.languages.japanese import japanese_blueprint
 from api_endpoints.languages.korean import korean_blueprint
 from api_endpoints.languages.spanish import spanish_blueprint
 from api_endpoints.languages.arabic import arabic_blueprint
+from datetime import datetime
+from flask import current_app
+
+
+
 
 load_dotenv(override=True)
 
@@ -104,7 +113,7 @@ app.register_blueprint(arabic_blueprint)
 
 #if ray.is_initialized() == False:
    #ray.init(logging_level="INFO", log_to_driver=True)
-client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"), base_url="http://host.docker.internal:11434/v1")
 def ensure_ray_started():
     if not ray.is_initialized():
         try:
@@ -116,11 +125,14 @@ def ensure_ray_started():
         except Exception as e:
             print(f"Ray init failed: {e}")
 
+# ensure_ray_started()
 # TODO: Replace with your URLs.
 config = {
   'ORIGINS': [
     'http://localhost:3000',  # React
     'http://localhost:5000',
+    'http://localhost:8000',
+    'http://localhost:5050',
     'http://dashboard.localhost:3000',  # React
     'https://anote.ai', # Frontend prod URL,
     'https://privatechatbot.ai', # Frontend prod URL,
@@ -149,8 +161,28 @@ app.config['MAIL_PASSWORD'] = 'fhytlgpsjyzutlnm'
 app.config['MAIL_DEFAULT_SENDER'] = 'vidranatan@gmail.com'
 mail = Mail(app)
 
+
+#MySQL config -- could put these in a backend .env if there are different users
+app.config['MYSQL_HOST'] = 'db'
+app.config['MYSQL_USER'] = 'root'
+app.config['MYSQL_PASSWORD'] = ''
+app.config['MYSQL_DATABASE'] = 'agents'
+
+
+#debug
+#print("MySQL config:", {
+#    "host": app.config['MYSQL_HOST'],
+#    "user": app.config['MYSQL_USER'],
+#    "password": "***REDACTED***",
+#    "database": app.config['MYSQL_DATABASE']
+#})
+
+mysql = MySQL(app)
+
+
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
+ensure_ray_started()
 
 def valid_api_key_required(fn):
   @wraps(fn)
@@ -270,6 +302,7 @@ def login():
       )
       response.headers.add('Access-Control-Allow-Headers',
                           'Origin, Content-Type, Accept')
+      
       return response
 
 
@@ -298,8 +331,10 @@ def callback():
     )
 
     # TODO: COMMENT OUT WHEN DEPLOY TO PROD
-    default_referrer = "http://dashboard.localhost:3000"
+    default_referrer = os.getenv("DEFAULT_REFERRER")
     # default_referrer = "https://dashboard.privatechatbot.ai"
+    if not default_referrer:
+        default_referrer = "http://dashboard.localhost:3000"
     user_id = create_user_if_does_not_exist(id_info.get("email"), id_info.get("sub"), id_info.get("name"), id_info.get("picture"))
 
     access_token = create_access_token(identity=id_info.get("email"))
@@ -505,7 +540,6 @@ def create_organization():
                 # Ingest each sub-URL's text as a document
                 doc_id, doesExist = add_document_to_db(link_text, link, organization_id)
                 if not doesExist:
-                    ensure_ray_started()
                     chunk_document.remote(link_text, 1000, doc_id)
 
         return jsonify({"organization_id": organization_id}), 201
@@ -669,10 +703,14 @@ def retrieve_messages_from_chat():
 
     chat_type = request.json.get('chat_type')
     chat_id = request.json.get('chat_id')
-
+    
     messages = retrieve_message_from_db(user_email, chat_id, chat_type)
-
-    return jsonify(messages=messages)
+    chat_name = get_chat_info(chat_id)[2]
+    print("chat_name", chat_name[2])
+    return jsonify({
+        "messages": messages,
+        "chat_name": chat_name
+    })
 
 @app.route('/retrieve-shared-messages-from-chat', methods=['POST'])
 def get_playbook_messages():
@@ -713,7 +751,7 @@ def infer_chat_name():
 
     
     completion = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="llama2:latest",
         messages=[
             {"role": "user",
              "content": f"Based off these 2 messages between me and my chatbot, please infer a name for the chat. Keep it to a maximum of 4 words, 5 if you must. Do not use the word chat in it. Some good examples are, AI research paper, Apple financial report, Questions about earnings calls. Return only the chatname and nothing else. Here are the messages: {chat_messages}"}
@@ -772,6 +810,12 @@ def find_most_recent_chat():
 
 @app.route('/ingest-pdf', methods=['POST'])
 def ingest_pdfs():
+    try:
+        user_email = extractUserEmailFromRequest(request)
+    except InvalidTokenError:
+        # If the JWT is invalid, return an error
+        return jsonify({"error": "Invalid JWT"}), 401
+
     start_time = datetime.now()
     print("start time is", start_time)
 
@@ -793,11 +837,10 @@ def ingest_pdfs():
         doc_id, doesExist = add_document_to_db(text, filename, chat_id=chat_id)
 
         if not doesExist:
-            ensure_ray_started()
             chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
 
 
-    return jsonify({"error": "Invalid JWT"}), 200
+    return jsonify({"Success": "Document Uploaded"}), 200
 
 
     #return text, filename
@@ -822,7 +865,6 @@ def ingest_pdfs_wf():
         doc_id, doesExist = add_document_to_db(text, filename, workflow_id)
 
         if not doesExist:
-            ensure_ray_started()
             chunk_document.remote(text_pages, MAX_CHUNK_SIZE, doc_id)
     return text, filename
 
@@ -891,48 +933,110 @@ def reset_chat():
 
     return jsonify({"Success": "Success"}), 200
 
+class CustomJSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if hasattr(o, '__dict__'):
+            return o.__dict__
+        elif hasattr(o, 'dict') and callable(o.dict):
+            # For Pydantic models
+            return o.dict()
+        elif hasattr(o, '__dataclass_fields__'):
+            # For dataclasses
+            from dataclasses import asdict
+            return asdict(o)
+        return super().default(o)
+    
 @app.route('/process-message-pdf', methods=['POST'])
 def process_message_pdf():
     message = request.json.get('message')
     chat_id = request.json.get('chat_id')
-    model_type = request.json.get('model_type')
+    model_type = request.json.get('model_type', 0)
     model_key = request.json.get('model_key')
+
+    try:
+        user_email = extractUserEmailFromRequest(request)
+    except InvalidTokenError:
+        return jsonify({"error": "Invalid JWT"}), 401
 
 
     is_guest = request.json.get('is_guest', False)
 
     if not is_guest:
-        try:
-            user_email = extractUserEmailFromRequest(request)
-        except InvalidTokenError:
-        # If the JWT is invalid, return an error
-            return jsonify({"error": "Invalid JWT"}), 401
 
-        ##Include part where we verify if user actually owns the chat_id later
-    else:
-        user_email = "guest@gmail.com"
+      # Check if agents are enabled
+      if AgentConfig.is_agent_enabled():
+
+          try:
+              # Initialize the reactive agent
+              agent = ReactiveDocumentAgent(model_type=model_type, model_key=model_key)
+
+              # Process the query using the reactive agent
+              if not user_email or not isinstance(user_email, str):
+                  return jsonify({"error": "User email is missing or invalid"}), 401
+
+              result = agent.process_query_stream(message.strip(), chat_id, user_email)
+              def generate():
+                  for chunk in result:
+                      try:
+                          if isinstance(chunk, dict):
+                              chunk_data = chunk
+                          elif hasattr(chunk, 'dict') and callable(getattr(chunk, 'dict', None)):
+                              chunk_data = chunk.dict()
+                          elif hasattr(chunk, '__dict__'):
+                              chunk_data = chunk.__dict__
+                          else:
+                              chunk_data = chunk
+
+                          json_data = json.dumps(chunk_data, cls=CustomJSONEncoder)
+                          yield f"data: {json_data}\n\n"
+                          print(f"Streamed chunk: {chunk}")
+                      except (TypeError, ValueError) as e:
+                          print(f"Error serializing chunk {chunk}: {e}")
+
+              return Response(generate(), status=200)
+
+
+              # return jsonify({
+              #     "answer": 1, # result["answer"],
+              #     "message_id": 1,# result.get("message_id"),
+              #     "sources": 1, # result.get("sources", []),
+              #     "reasoning": 1 # result.get("agent_reasoning", []) if AgentConfig.LOG_AGENT_REASONING else []
+              # })
+
+          except Exception as e:
+              print(f"Error in reactive agent processing: {str(e)}")
+              # Fallback to original implementation if agent fails and fallback is enabled
+              if AgentConfig.should_use_fallback():
+                  return _process_message_pdf_fallback(message, chat_id, model_type, model_key, user_email)
+              else:
+                  return jsonify({"error": "Agent processing failed due to an internal error."}), 500
+      else:
+          # Agents disabled, use original implementation
+          return _process_message_pdf_fallback(message, chat_id, model_type, model_key, user_email)
+
+def _process_message_pdf_fallback(message, chat_id, model_type, model_key, user_email):
+    """Fallback implementation using the original direct LLM approach without the ReActive Agent"""
     query = message.strip()
 
-    #This adds user message to db
+
     if not is_guest:
         add_message_to_db(query, chat_id, 1, is_guest=is_guest)
 
+    else:
+      add_message_to_db(query, chat_id, 1)
+
+
     #Get most relevant section from the document
-    if not is_guest:
-        sources = get_relevant_chunks(2, query, chat_id, user_email)
-    else: 
-        sources = []
-    
+    sources = get_relevant_chunks(2, query, chat_id, user_email)
     sources_str = " ".join([", ".join(str(elem) for elem in source) for source in sources])
 
     if (model_type == 0):
         if model_key:
            model_use = model_key
         else:
-           model_use = "gpt-4o-mini"
+           model_use = "llama2:latest"
 
         print("using OpenAI and model is", model_use)
-        
         try:
             completion = client.chat.completions.create(
                 model=model_use,
@@ -946,7 +1050,7 @@ def process_message_pdf():
         except openai.NotFoundError:
             print(f"The model `{model_use}` does not exist. Falling back to 'gpt-4'.")
             completion = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="llama2:latest",
                 messages=[
                     {"role": "user",
                      "content": f"First, tell the user that their given model key does not exist, and that you have resorted to using GPT-4 before answering their question, then add a line break and answer their question. You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. These are the sources from the text:{sources[0]}{sources[1]} And this is the question:{query}."}
@@ -973,15 +1077,12 @@ def process_message_pdf():
         answer = completion.completion
 
     #This adds bot message
-    message_id = None
-    if not is_guest:
-        message_id = add_message_to_db(answer, chat_id, 0)
-        if message_id:
+    message_id = add_message_to_db(answer, chat_id, 0)
 
-            try:
-                add_sources_to_db(message_id, sources)
-            except:
-                print("no sources")
+    try:
+        add_sources_to_db(message_id, sources)
+    except:
+        print("no sources")
 
     return jsonify(answer=answer)
 
@@ -1011,7 +1112,7 @@ def process_message_pdf_demo():
 
     
     completion = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="llama2:latest",
         messages=[
             {"role": "user",
              "content": f"You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. These are the sources from the text:{sources_str} And this is the question:{query}."}
@@ -1047,7 +1148,6 @@ def ingest_pdfs_demo():
         # Assuming add_document_to_db and chunk_document.remote are implemented
         doc_id, doesExist = add_document_to_db(text, filename, chat_id=chat_id)
         if not doesExist:
-            ensure_ray_started()
             chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
 
     # This mapping is now redundant since we're using a static demo_chat_id, but you could maintain it if you plan to extend functionality
@@ -1187,7 +1287,6 @@ def process_ticker_info():
 
         if not doesExist:
             print("test")
-            ensure_ray_started()
             chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
             #remote_task = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
             #result = ray.get(remote_task)
@@ -1325,9 +1424,17 @@ def generate_financial_report():
 
             # Including Q&A in PDF
             for question in questions:
-                print(f"for loop")
-                answer = process_prompt_answer(question, workflowId, user_email)
-                print("Successfully processed answer: ", )
+                print(f"Processing question: {question}")
+                try:
+                    # Use workflow reactive agent for processing
+                    workflow_agent = WorkflowReactiveAgent()
+                    answer = workflow_agent.process_workflow_query(question, workflowId, user_email)
+                except Exception as e:
+                    print(f"Workflow agent failed, using fallback: {e}")
+                    # Fallback to original process_prompt_answer
+                    answer = process_prompt_answer(question, workflowId, user_email)
+                
+                print("Successfully processed answer")
                 answer_encoded = answer.encode('latin-1', 'replace').decode('latin-1')
                 question_encoded = question.encode('latin-1', 'replace').decode('latin-1')
 
@@ -1437,9 +1544,7 @@ def upload():
 
             if not doesExist:
                 #chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
-                ensure_ray_started()
                 result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
-                ensure_ray_started()
                 result = ray.get(result_id)
         for path in paths:
 
@@ -1449,9 +1554,7 @@ def upload():
 
             if not doesExist:
                 #chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
-                ensure_ray_started()
                 result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
-                ensure_ray_started()
                 result = ray.get(result_id)
     elif chat_type == "edgar": #edgar
         print("ticker")
@@ -1481,7 +1584,6 @@ def upload():
             if not doesExist:
                 #print("test")
                 #chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
-                ensure_ray_started()
                 result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
                 
                 result = ray.get(result_id)
@@ -1495,19 +1597,42 @@ def upload():
 @valid_api_key_required
 def public_ingest_pdf():
     user_email = USER_EMAIL_API
-    ensure_SDK_user_exists(user_email) #do this here in case the user hasn't uploaded a document yet
+    ensure_SDK_user_exists(user_email)
 
     message = request.json['message']
     chat_id = request.json['chat_id']
+    model_key = request.json.get('model_key')
 
     model_type, task_type = get_chat_info(chat_id)
 
-    model_key = request.json['model_key']
+    if AgentConfig.is_agent_enabled():
+        try:
+            # Use reactive agent for public API
+            agent = ReactiveDocumentAgent(model_type=model_type, model_key=model_key)
+            result = agent.process_query(message.strip(), chat_id, user_email)
+            
+            # Format sources for compatibility
+            sources_swapped = [[str(elem) for elem in source[::-1]] for source in result.get("sources", [])]
+            
+            return jsonify(
+                message_id=result.get("message_id"),
+                answer=result["answer"],
+                sources=sources_swapped
+            )
+            
+        except Exception as e:
+            print(f"Public chat agent error: {e}")
+            # Fallback to original implementation if enabled
+            if AgentConfig.should_use_fallback():
+                return _public_chat_fallback(message, chat_id, model_type, model_key, user_email)
+            else:
+                return jsonify({"error": f"Agent processing failed: {str(e)}"}), 500
+    else:
+        # Agents disabled, use original implementation
+        return _public_chat_fallback(message, chat_id, model_type, model_key, user_email)
 
-    #at the moment don't think we need to add it to the db?
-    #if model_key:
-    #    add_model_key_to_db(model_key, chat_id, user_email)
-
+def _public_chat_fallback(message, chat_id, model_type, model_key, user_email):
+    """Fallback implementation for public chat API"""
     query = message.strip()
 
     #This adds user message to db
@@ -1518,16 +1643,13 @@ def public_ingest_pdf():
     sources_str = " ".join([", ".join(str(elem) for elem in source) for source in sources])
 
     sources_swapped = [[str(elem) for elem in source[::-1]] for source in sources]
-    print('sources swapped', sources_swapped)
 
     if (model_type == 0):
         if model_key:
            model_use = model_key
         else:
-           model_use = "gpt-4o-mini"
+           model_use = "llama2:latest"
 
-        print("using OpenAI and model is", model_use)
-        
         try:
             completion = client.chat.completions.create(
                 model=model_use,
@@ -1536,12 +1658,10 @@ def public_ingest_pdf():
                      "content": f"You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. These are the sources from the text:{sources_str} And this is the question:{query}."}
                 ]
             )
-            print("using fine tuned model")
             answer = str(completion.choices[0].message.content)
         except openai.NotFoundError:
-            print(f"The model `{model_use}` does not exist. Falling back to 'gpt-4'.")
             completion = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="llama2:latest",
                 messages=[
                     {"role": "user",
                      "content": f"First, tell the user that their given model key does not exist, and that you have resorted to using GPT-4 before answering their question, then add a line break and answer their question. You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. These are the sources from the text:{sources[0]}{sources[1]} And this is the question:{query}."}
@@ -1549,15 +1669,10 @@ def public_ingest_pdf():
             )
             answer = str(completion.choices[0].message.content)
     else:
-        print("using Claude")
-
         if model_key:
            return jsonify({"Error": "You cannot enter a fine-tuned model key when using Claude"}), 400
 
-        anthropic = Anthropic(
-            api_key = os.getenv("ANTHROPIC_API_KEY")
-        )
-
+        anthropic = Anthropic(api_key = os.getenv("ANTHROPIC_API_KEY"))
         completion = anthropic.completions.create(
             model="claude-2",
             max_tokens_to_sample=700,
@@ -1578,7 +1693,7 @@ def public_ingest_pdf():
     except:
         print("no sources")
 
-    return jsonify(message_id=message_id, answer=answer, sources=sources_swapped) #can modify the sources here if we don't want to return the sources
+    return jsonify(message_id=message_id, answer=answer, sources=sources_swapped)
 
 @app.route('/public/evaluate', methods = ['POST'])
 @valid_api_key_required
@@ -1616,6 +1731,62 @@ def evaluate():
 
     return result
 
+@app.route('/api/companies', methods=['GET'])
+def get_companies():
+    cursor = mysql.connection.cursor(dictionary=True)
+    cursor.execute("SELECT id, name, path FROM companies")
+    companies = cursor.fetchall()
+    cursor.close()
+    return jsonify(companies)
+
+
+def get_user_from_token(token):
+    if not token:
+        return None
+
+    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    cursor.execute("""
+        SELECT * FROM users WHERE session_token = %s
+    """, (token,))
+    user = cursor.fetchone()
+
+    if user and user.get("session_token_expiration"):
+        # session_token_expiration is usually stored as a datetime string
+        expiration = user["session_token_expiration"]
+        # Convert expiration string to datetime object (assuming ISO format)
+        expiration_dt = datetime.strptime(expiration, "%Y-%m-%d %H:%M:%S")
+        if expiration_dt > datetime.utcnow():
+            return user
+    return None
+
+
+@app.route("/api/user/companies", methods=["GET"])
+@jwt_required()
+def get_user_companies():
+    user_email = get_jwt_identity()
+
+    cursor = mysql.connection.cursor(dictionary=True)
+
+    # Get user ID from email
+    cursor.execute("SELECT id FROM users WHERE email = %s", (user_email,))
+    user = cursor.fetchone()
+
+    if not user:
+        cursor.close()
+        return jsonify({"error": "Invalid user"}), 401
+
+    user_id = user["id"]
+
+    # Get companies for this user
+    cursor.execute("SELECT name, path FROM user_company_chatbots WHERE user_id = %s", (user_id,))
+    companies = cursor.fetchall()
+
+    cursor.close()
+    return jsonify(companies)
+
+
+api = Blueprint('api', __name__)
+app.register_blueprint(api)
 
 if __name__ == '__main__':
     debug_mode = os.getenv("FLASK_ENV") == "development"

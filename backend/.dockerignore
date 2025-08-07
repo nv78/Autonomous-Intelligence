@@ -1,0 +1,29 @@
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Hidden files
+*.env
+.env*
+*.DS_Store
+*.log
+
+# Git
+.git/
+.gitignore
+
+# Python virtualenvs
+venv/
+.env/
+.venv/
+
+# Docker artifacts
+Dockerfile
+docker-compose.yml
+
+# Jupyter
+.ipynb_checkpoints
+
+# System files
+*.swp

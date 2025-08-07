@@ -12,7 +12,12 @@ import {
   downloadPrivateGPTPath,
   homePath,
   gtmPath,
-  connectorOptions, // Import connector options from RouteConstants
+  chatbots,
+  connectorOptions,
+  languages, // Import connector options from RouteConstants
+  companies,
+  LANGUAGE_ROUTES,
+  createcompany,
 } from "./constants/RouteConstants";
 import PaymentsComponent from "./subcomponents/payments/PaymentsComponent";
 import PaymentsProduct from "./subcomponents/payments/PaymentsProduct";
@@ -25,6 +30,10 @@ import Home from "./financeGPT/components/Home";
 import { APISKeyDashboard } from "./subcomponents/api/APISKeyDashboard";
 import DownloadPrivateGPT from "./components/DownloadPrivateGPT.js";
 import GTMChatbot from "./landing_page/landing_page_screens/Chatbots/companies/GTMChatbot";
+import ChatbotLanding from "./landing_page/landing_page_screens/Chatbots/ChatbotLanding";
+import Languages from "./landing_page/landing_page_screens/Chatbots/languages/Languages";
+import Companies from "./landing_page/landing_page_screens/Chatbots/companies/Companies";
+import CreateCompany from "./landing_page/landing_page_screens/Chatbots/companies/CreateCompany";
 
 function Dashboard() {
   const [darkTheme, setDarkTheme] = useState(true);
@@ -90,10 +99,16 @@ function Dashboard() {
     <Route key={option.value} path={option.path} element={<Home />} />
   ));
 
-  var publicRoutes = [
+  var publicRoutes = [ //this system needs to be fixed, all routes should be accessible post log-in
     <Route key="root" index element={<CheckLogin darkTheme={darkTheme} setIsLoggedInParent={setIsLoggedIn} />} />,
     <Route path={homePath} element={<Home />} />,
     <Route path={gtmPath} element={<GTMChatbot />} />,
+    <Route path={chatbots} element ={<ChatbotLanding />} />,
+    <Route path={languages} element = {<Languages />} />,
+    <Route path="/languages/:lang" element={<Languages />} />,
+    <Route path={createcompany} element = {<CreateCompany />} />,
+    <Route path={companies} element = {<Companies />} />,
+
   ]
   var privateRoutes = [
     <Route

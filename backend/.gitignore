@@ -18,4 +18,5 @@ __pycache__
 */__pycache__/
 
 .env
+*.env
 venv

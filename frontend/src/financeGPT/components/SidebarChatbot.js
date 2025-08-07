@@ -9,6 +9,7 @@ import React, {
 import fetcher from "../../http/RequestConfig";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrashCan } from "@fortawesome/free-solid-svg-icons";
+import { faEye } from "@fortawesome/free-solid-svg-icons";
 
 import Sources from "./Sources";
 import Select from "react-select";
@@ -79,6 +80,36 @@ const SidebarChatbot = forwardRef((props, ref) => {
     }
   }, [props.triggerUpload]);
 
+  // Poll for chat readiness
+  const pollForChatReady = async (
+    chatId,
+    maxAttempts = 10,
+    interval = 1500
+  ) => {
+    let attempts = 0;
+    while (attempts < maxAttempts) {
+      attempts++;
+      try {
+        const res = await fetcher("retrieve-messages-from-chat", {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ chat_id: chatId, chat_type: 0 }),
+        });
+        const data = await res.json();
+        if (data && (data.messages?.length > 0 || data.chat_name)) {
+          return true;
+        }
+      } catch (err) {
+        // ignore errors, just retry
+      }
+      await new Promise((resolve) => setTimeout(resolve, interval));
+    }
+    return false;
+  };
+
   // File upload handlers
   const handleFileSelect = async (event) => {
     console.log("File selection event triggered");
@@ -89,10 +120,15 @@ const SidebarChatbot = forwardRef((props, ref) => {
       return;
     }
 
-    // Check if chat is selected before proceeding
-    if (!props.selectedChatId) {
-      alert("Please select or create a chat first before uploading files.");
-      return;
+    let chatId = props.selectedChatId;
+    // If no chat is selected, create a new chat first
+    if (!chatId && props.createNewChat) {
+      try {
+        chatId = await props.createNewChat();
+      } catch (err) {
+        alert("Failed to create a new chat. Please try again.");
+        return;
+      }
     }
 
     // Add new files to existing selection
@@ -105,8 +141,15 @@ const SidebarChatbot = forwardRef((props, ref) => {
 
     // Automatically upload the newly selected files
     try {
-      await handleFileUpload(files, props.selectedChatId);
+      await handleFileUpload(files, chatId);
       console.log("Files uploaded successfully");
+      // Poll for chat readiness and trigger redirect if ready
+      if (chatId && props.onChatReady) {
+        const ready = await pollForChatReady(chatId);
+        if (ready) {
+          props.onChatReady(chatId);
+        }
+      }
     } catch (error) {
       console.error("Auto-upload failed:", error);
       alert("Failed to upload files. Please try again.");
@@ -477,7 +520,7 @@ const SidebarChatbot = forwardRef((props, ref) => {
         console.error(e.error);
       });
 
-    //props.handleForceUpdate();
+    props.handleForceUpdate();
   };
 
   const retrieveDocs = async () => {
@@ -781,6 +824,20 @@ const SidebarChatbot = forwardRef((props, ref) => {
   const selectedTaskValue = taskoptions.find(
     (option) => option.value === props.currTask
   );
+
+  // Extract unique cited files from messages
+  const citedFiles = React.useMemo(() => {
+    const files = {};
+    (props.messages || []).forEach((msg) => {
+      if (Array.isArray(msg.relevant_chunks)) {
+        msg.relevant_chunks.forEach((chunk) => {
+          const key = chunk.document_name || chunk.filename;
+          if (key) files[key] = chunk;
+        });
+      }
+    });
+    return Object.values(files);
+  }, [props.messages]);
 
   return (
     <>

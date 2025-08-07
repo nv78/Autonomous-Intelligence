@@ -6,26 +6,31 @@ services:
     container_name: anote-backend
     restart: unless-stopped
     ports:
-      - "8000:5000"  # Map container's 5000 to host's 8000
+      - "5000:5000"  # Map container's 5000 to host's 8000
       - "6379:6379"  # Ray
-      - "9998:9998"  # Tika
     volumes:
       - ./:/app
       - ./db:/app/db
       - ./models:/app/models
-      - tika-data:/tmp # Persist Tika server data
       - ./database/schema.sql:/docker-entrypoint-initdb.d/init.sql
     env_file:
       - .env
     environment:
       - FLASK_APP=app.py
+      - TIKA_SERVER_ENDPOINT=http://tika:9998
       - FLASK_ENV=development
       - FLASK_DEBUG=1
       - PYTHONUNBUFFERED=1
       - PYTHONDONTWRITEBYTECODE=1
+      - REDIS_HOST=redis # Use Docker service name
+      - REDIS_PORT=6379 # Use internal Redis port
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+      # tika:
+      #   condition: service_healthy
     networks:
       - anote-network
     shm_size: "2.44gb"
@@ -53,11 +58,46 @@ services:
     networks:
       - anote-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "db", "-u", "root"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
+
+  tika:
+    image: apache/tika:latest
+    container_name: tika-server
+    restart: unless-stopped
+    environment:
+      - TIKA_SERVER_ENDPOINT=http://tika:9998
+    ports:
+      - "9998:9998"
+    volumes:
+      - tika-data:/data
+    networks:
+      - anote-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9998/tika"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+  redis:
+    image: redis:7-alpine
+    container_name: anote-redis
+    restart: unless-stopped
+    ports:
+      - "6370:6370"
+    volumes:
+      - redis-data:/data
+    networks:
+      - anote-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
 networks:
   anote-network:
@@ -65,4 +105,6 @@ networks:
 
 volumes:
   mysql-data:
+  redis-data:
   tika-data: # Volume for Tika server data
+

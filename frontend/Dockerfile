@@ -7,7 +7,7 @@ COPY package.json package-lock.json ./
 RUN npm install --force \
     && npm cache clean --force 
 
-COPY . ./app
+COPY . .
 
 EXPOSE 3000
 
