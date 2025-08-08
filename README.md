@@ -49,6 +49,67 @@ Autonomous Intelligence's architecture is built around a decentralized network o
 
 ![alt text](https://github.com/nv78/Autonomous-Intelligence/blob/main/materials/assets/ExampleNew.png?raw=true)
 
+## Quick Start
+
+### Prerequisites
+- Docker and Docker Compose
+- Node.js and npm
+- Git
+
+### Setup and Run
+
+1. **Clone and Start Backend**
+   ```bash
+   git clone <repository-url>
+   cd Autonomous-Intelligence-chatbots-leaderboard-api
+   cd backend
+   docker-compose up --build -d
+   ```
+
+2. **Start Frontend**
+   ```bash
+   cd ../frontend
+   npm install
+   PORT=3001 npm start
+   ```
+
+3. **Access Applications**
+   - Frontend: http://localhost:3001
+   - Backend API: http://localhost:8000
+   - Health Check: http://localhost:8000/health
+
+### Key Features
+
+#### Translation Evaluation API
+- **Endpoint**: `/spanish-gpt-evaluation`
+- **Purpose**: Evaluate Spanish translations and get BLEU scores
+- **Access**: http://localhost:3001/evaluations
+
+#### Model Submission API  
+- **Endpoint**: `/public/submit_model`
+- **Purpose**: Submit model results for leaderboard evaluation
+- **Flow**: Leaderboard → Submit → Results
+- **Access**: http://localhost:3001/leaderboard
+
+### Development Workflow
+
+1. **Make Changes**: Edit code in your preferred IDE
+2. **Test Locally**: Use the endpoints above to verify functionality
+3. **Commit Changes**: 
+   ```bash
+   git add .
+   git commit -m "Your change description"
+   ```
+4. **Push to Branch**: 
+   ```bash
+   git push origin chatbots-leaderboard-api
+   ```
+
+### Testing Files
+- `test_high_score.csv` - Perfect translations (BLEU: 1.0)
+- `test_medium_score.csv` - Good translations (BLEU: ~0.39)
+- `test_low_score.csv` - Poor translations (BLEU: ~0.05)
+
 ### Key Features
 
 | Feature                    | Description                                                                                     |

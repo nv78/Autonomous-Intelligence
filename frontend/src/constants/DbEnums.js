@@ -43,9 +43,9 @@ export const FlowTypeFileName = {
 
 // Missing PaidUserStatus that other components need
 export const PaidUserStatus = {
-  FREE_TIER: 0,
-  BASIC_TIER: 1,
-  STANDARD_TIER: 2,
-  PREMIUM_TIER: 3,
-  ENTERPRISE_TIER: 4
+    FREE_TIER: 0,
+    BASIC_TIER: 1,
+    STANDARD_TIER: 2,
+    PREMIUM_TIER: 3,
+    ENTERPRISE_TIER: 4
 };

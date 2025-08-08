@@ -88,10 +88,12 @@ const SubmitToLeaderboard = ({
         sentence_ids: Array.from({length: parsedModelResults.length}, (_, i) => i)
       };
 
+      const apiUrl = "http://localhost:8000/public/submit_model";
+      console.log("API URL:", apiUrl);
       console.log("Submitting to submit_model API:", submitData);
 
       // Call your submit_model API
-      const response = await axios.post("http://localhost:8000/public/submit_model", submitData, {
+      const response = await axios.post(apiUrl, submitData, {
         headers: { "Content-Type": "application/json" }
       });
 
@@ -248,7 +250,7 @@ const SubmitToLeaderboard = ({
     
     // Download source sentences for the selected dataset
     try {
-      const response = await axios.get(`http://localhost:8000/public/get_source_sentences?count=10`);
+              const response = await axios.get(`${process.env.REACT_APP_BACK_END_HOST || "http://localhost:8000"}/public/get_source_sentences?count=10`);
       console.log("Source sentences for", datasetName, ":", response.data.source_sentences?.slice(0, 3));
     } catch (error) {
       console.error("Error fetching source sentences:", error);
