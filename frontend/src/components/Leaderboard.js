@@ -518,7 +518,7 @@ const Leaderboard = () => {
       <h1 className="text-4xl font-bold text-white mb-4 mt-8">LLM Leaderboards</h1>
       <button
         className="btn-black px-6 py-2 mb-8 rounded-md text-lg font-semibold transition-colors"
-        onClick={() => window.open("https://docs.google.com/forms/d/e/1FAIpQLSdydF_8sfJQP0ub6VLs9uced32kfHxrvlQzyFRf0IhR1MlMRg/viewform?usp=dialog", "_blank")}
+        onClick={() => navigate(submittoleaderboardPath)}
       >
         Submit Model to Leaderboard
       </button>
