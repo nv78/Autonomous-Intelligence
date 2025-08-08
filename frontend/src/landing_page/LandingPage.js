@@ -30,6 +30,8 @@ import {
   languages,
   companies,
   evaluations,
+  leaderboard,
+  submittoleaderboardPath,
 } from "../constants/RouteConstants";
 import Home from "./landing_page_screens/Home/Home";
 import Footer from "./landing_page_components/Footer";
@@ -49,6 +51,8 @@ import Languages from "./landing_page_screens/Chatbots/languages/Languages";
 import { LANGUAGE_ROUTES } from "../constants/RouteConstants";
 import Companies from "./landing_page_screens/Chatbots/companies/Companies";
 import TranslateSentences from "./landing_page_screens/Chatbots/evaluations/Evaluations";
+import SubmitToLeaderboard from "../components/SubmitToLeaderboard";
+import Leaderboard from "../components/Leaderboard";
 
 function LandingPage() {
   const location = useLocation();
@@ -97,6 +101,8 @@ function LandingPage() {
           <Route path={languages} element = {<Languages />} />
           <Route path="/languages/:lang" element={<Languages />} />
           <Route path={evaluations} element={<TranslateSentences />} />
+          <Route path={leaderboard} element={<Leaderboard />} />
+          <Route path={submittoleaderboardPath} element={<SubmitToLeaderboard />} />
 
           <Route path={companies} element = {<Companies />} />
           <Route path="*" element={<Navigate replace to="/" />} />

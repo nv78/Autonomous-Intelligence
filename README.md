@@ -72,6 +72,71 @@ Within the Agent Registry, we will be adding many domain specific agents. Here a
 | **Job Applications**      | Automate resume customization and job application submissions                   | [Learn More](https://roboapply.ai/)                  |
 
 
+## API Endpoints
+
+### Submit Model API
+
+The platform includes a model evaluation API that allows users to submit their model results for benchmarking against standard datasets.
+
+#### Endpoint: `/public/submit_model`
+
+**Input:**
+- `benchmarkDatasetName`: Name of the benchmark dataset (e.g., "flores_spanish_translation")
+- `modelName`: Your model identifier
+- `modelResults`: Array of your model's outputs
+- `sentence_ids`: Array of sentence indices being evaluated
+
+**Output:**
+- `success`: Boolean indicating submission success
+- `score`: BLEU score (0.0 - 1.0) comparing your results to reference translations
+
+**Example Usage:**
+```bash
+curl -X POST http://localhost:8000/public/submit_model \
+  -H "Content-Type: application/json" \
+  -d '{
+    "benchmarkDatasetName": "flores_spanish_translation",
+    "modelName": "my-model-v1",
+    "modelResults": ["Translation 1", "Translation 2"],
+    "sentence_ids": [0, 1]
+  }'
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "score": 0.134
+}
+```
+
+### Get Source Sentences API
+
+Retrieve source sentences that need to be translated for evaluation.
+
+#### Endpoint: `/public/get_source_sentences`
+
+**Parameters:**
+- `count`: Number of sentences to retrieve (default: 10)
+
+**Example:**
+```bash
+curl -X GET "http://localhost:8000/public/get_source_sentences?count=3"
+```
+
+### Frontend Integration
+
+The platform includes a web interface for model submission:
+
+- **Leaderboard**: View model rankings at `/leaderboard`
+- **Submit Model**: Submit your model results at `/submit-to-leaderboard`
+
+The submission interface allows users to:
+1. Select benchmark datasets
+2. Upload model results (CSV/JSON format)
+3. View real-time evaluation scores
+4. Track submission history
+
 ## Getting Started
 
 ### Set Up
