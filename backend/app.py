@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify, abort, redirect, send_file, Blueprint
+from werkzeug.utils import secure_filename
 from flask_cors import CORS, cross_origin
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -1250,7 +1251,10 @@ def temp_test():
 
     query = "What are some of the risk factors from the company?"
 
-    sources = ["The Company’s business, reputation, results of operations, financial condition and stock price can be affected by a number of factors, whether currently known or unknown, including those described below. When any one or more of these risks materialize from time to time, the Company’s business, reputation, results of operations, financial condition and stock price can be materially and adversely affected. Because of the following factors, as well as other factors affecting the Company’s results of operations and financial condition, past financial performance should not be considered to be a reliable indicator of future performance, and investors should not use historical trends to anticipate results or trends in future periods. This discussion of risk factors contains forward-looking statements. This section should be read in conjunction with Part II, Item 7, “Management’s Discussion and Analysis of Financial Condition and Results of Operations” and the consolidated financial statements and accompanying notes in Part II, Item 8, “Financial Statements and Supplementary Data” of this Form 10-K.", "The Company’s operations and performance depend significantly on global and regional economic conditions and adverse economic conditions can materially adversely affect the Company’s business, results of operations and financial condition. The Company has international operations with sales outside the U.S. representing a majority of the Company’s total net sales. In addition, the Company’s global supply chain is large and complex and a majority of the Company’s supplier facilities, including manufacturing and assembly sites, are located outside the U.S. As a result, the Company’s operations and performance depend significantly on global and regional economic conditions."]
+    sources = [
+        "The Company's business, reputation, results of operations, financial condition and stock price can be affected by a number of factors, whether currently known or unknown, including those described below. When any one or more of these risks materialize from time to time, the Company's business, reputation, results of operations, financial condition and stock price can be materially and adversely affected. Because of the following factors, as well as other factors affecting the Company's results of operations and financial condition, past financial performance should not be considered to be a reliable indicator of future performance, and investors should not use historical trends to anticipate results or trends in future periods. This discussion of risk factors contains forward-looking statements. This section should be read in conjunction with Part II, Item 7, \"Management's Discussion and Analysis of Financial Condition and Results of Operations\" and the consolidated financial statements and accompanying notes in Part II, Item 8, \"Financial Statements and Supplementary Data\" of this Form 10-K.",
+        "The Company's operations and performance depend significantly on global and regional economic conditions and adverse economic conditions can materially adversely affect the Company's business, results of operations and financial condition. The Company has international operations with sales outside the U.S. representing a majority of the Company's total net sales. In addition, the Company's global supply chain is large and complex and a majority of the Company's supplier facilities, including manufacturing and assembly sites, are located outside the U.S. As a result, the Company's operations and performance depend significantly on global and regional economic conditions."
+    ]
 
     completion = anthropic.completions.create(
       model="claude-2",
@@ -1845,34 +1849,68 @@ def get_source_sentences():
         count = int(request.args.get('count', 5))
         start_idx = int(request.args.get('start_idx', 0))
         
-        if dataset_name == 'flores_spanish_translation':
-            # Set HF token for dataset access
-            import os
-            hf_token = os.getenv("HF_TOKEN")
-            if hf_token:
-                os.environ["HF_TOKEN"] = hf_token
-            
-            # Load FLORES+ English source sentences
-            source_lang = "eng_Latn"
-            source_dataset = load_dataset("openlanguagedata/flores_plus", source_lang, split="devtest")
-            
-            # Get requested range of sentences
-            end_idx = start_idx + count
-            source_sentences = [ex["text"] for ex in source_dataset.select(range(start_idx, end_idx))]
-            sentence_ids = list(range(start_idx, end_idx))
+        # Get database connection to check for custom datasets
+        conn, cursor = get_db_connection()
+        
+        try:
+            if dataset_name == 'flores_spanish_translation':
+                # Set HF token for dataset access
+                import os
+                hf_token = os.getenv("HF_TOKEN")
+                if hf_token:
+                    os.environ["HF_TOKEN"] = hf_token
+                
+                # Load FLORES+ English source sentences
+                source_lang = "eng_Latn"
+                source_dataset = load_dataset("openlanguagedata/flores_plus", source_lang, split="devtest")
+                
+                # Get requested range of sentences
+                end_idx = start_idx + count
+                source_sentences = [ex["text"] for ex in source_dataset.select(range(start_idx, end_idx))]
+                sentence_ids = list(range(start_idx, end_idx))
+                total_available = len(source_dataset)
+                
+            else:
+                # Check if it's a custom dataset
+                cursor.execute("""
+                    SELECT reference_data FROM benchmark_datasets 
+                    WHERE name = %s AND active = TRUE
+                """, (dataset_name,))
+                
+                dataset = cursor.fetchone()
+                if not dataset:
+                    return jsonify({
+                        "success": False,
+                        "error": f"Dataset '{dataset_name}' not found"
+                    }), 404
+                
+                reference_data = json.loads(dataset['reference_data'])
+                
+                if 'source_sentences' not in reference_data:
+                    return jsonify({
+                        "success": False,
+                        "error": f"Dataset '{dataset_name}' does not have source sentences"
+                    }), 400
+                
+                all_source_sentences = reference_data['source_sentences']
+                total_available = len(all_source_sentences)
+                
+                # Get requested range
+                end_idx = min(start_idx + count, total_available)
+                source_sentences = all_source_sentences[start_idx:end_idx]
+                sentence_ids = list(range(start_idx, end_idx))
             
             return jsonify({
                 "success": True,
                 "source_sentences": source_sentences,
                 "sentence_ids": sentence_ids,
                 "dataset": dataset_name,
-                "total_available": len(source_dataset)
+                "total_available": total_available
             })
-        else:
-            return jsonify({
-                "success": False,
-                "error": f"Dataset '{dataset_name}' not supported. Available: flores_spanish_translation"
-            }), 400
+            
+        finally:
+            cursor.close()
+            conn.close()
             
     except Exception as e:
         print(f"Error in get_source_sentences: {str(e)}")
@@ -1933,7 +1971,7 @@ def submit_model():
         try:
             # Check if benchmark dataset exists
             cursor.execute(
-                "SELECT id, task_type, evaluation_metric FROM benchmark_datasets WHERE name = %s AND active = TRUE",
+                "SELECT id, task_type, evaluation_metric, reference_data FROM benchmark_datasets WHERE name = %s AND active = TRUE",
                 (benchmark_dataset_name,)
             )
             dataset = cursor.fetchone()
@@ -1947,6 +1985,7 @@ def submit_model():
             dataset_id = dataset['id']
             task_type = dataset['task_type']
             evaluation_metric = dataset['evaluation_metric']
+            reference_data_str = dataset['reference_data']
             
             # Store model submission
             cursor.execute("""
@@ -1958,9 +1997,9 @@ def submit_model():
             
             # Run evaluation based on the dataset type
             if task_type == 'translation' and evaluation_metric == 'bleu':
-                # Real BLEU evaluation using Angela's functions
-                if benchmark_dataset_name == 'flores_spanish_translation':
-                    try:
+                try:
+                    if benchmark_dataset_name == 'flores_spanish_translation':
+                        # Original FLORES+ evaluation logic
                         # Set HF token for dataset access (environment variable approach)
                         import os
                         hf_token = os.getenv("HF_TOKEN")
@@ -1979,24 +2018,49 @@ def submit_model():
                             }), 400
                         reference_sentences = [target_dataset[idx]["text"] for idx in sentence_ids]
                         
-                        # Calculate real BLEU score using Angela's function
-                        bleu_score = get_bleu(model_results, reference_sentences)
+                    else:
+                        # Custom dataset evaluation logic
+                        # Parse the reference data from database
+                        reference_data = json.loads(reference_data_str)
                         
-                        # No evaluation details needed for spec compliance
-                        score = bleu_score
+                        if 'reference_translations' not in reference_data:
+                            return jsonify({
+                                "success": False,
+                                "error": "Dataset does not have reference translations"
+                            }), 400
                         
-                    except Exception as e:
-                        print(f"BLEU evaluation failed: {str(e)}")
-                        return jsonify({
-                            "success": False,
-                            "error": "BLEU evaluation failed"
-                        }), 500
+                        all_reference_sentences = reference_data['reference_translations']
                         
-                else:
+                        # Use sentence_ids to get specific reference sentences
+                        if len(sentence_ids) != len(model_results):
+                            return jsonify({
+                                "success": False,
+                                "error": "Length of sentence_ids must match length of modelResults"
+                            }), 400
+                        
+                        # Validate sentence_ids are within bounds
+                        max_id = len(all_reference_sentences) - 1
+                        for sid in sentence_ids:
+                            if sid < 0 or sid > max_id:
+                                return jsonify({
+                                    "success": False,
+                                    "error": f"sentence_id {sid} is out of range (0-{max_id})"
+                                }), 400
+                        
+                        reference_sentences = [all_reference_sentences[idx] for idx in sentence_ids]
+                    
+                    # Calculate real BLEU score using Angela's function
+                    bleu_score = get_bleu(model_results, reference_sentences)
+                    
+                    # No evaluation details needed for spec compliance
+                    score = bleu_score
+                    
+                except Exception as e:
+                    print(f"BLEU evaluation failed: {str(e)}")
                     return jsonify({
                         "success": False,
-                        "error": "Only flores_spanish_translation dataset supported"
-                    }), 400
+                        "error": "BLEU evaluation failed"
+                    }), 500
             else:
                 return jsonify({
                     "success": False,
@@ -2024,6 +2088,338 @@ def submit_model():
             
     except Exception as e:
         print(f"Error in submit_model: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": "Internal server error"
+        }), 500
+
+@app.route('/public/add_dataset_to_leaderboard', methods=['POST'])
+def add_dataset_to_leaderboard():
+    """
+    Add a new benchmark dataset to the leaderboard
+    
+    Expected form data:
+    - dataset_name: string - unique name for the dataset
+    - description: string - optional description  
+    - task_type: string - e.g., 'translation', 'classification', 'qa'
+    - evaluation_metric: string - e.g., 'bleu', 'accuracy', 'f1'
+    - dataset_file: file - CSV/JSON file with reference data
+    
+    Returns:
+    {
+        "success": true/false,
+        "dataset_id": integer,
+        "error": "error message if any"
+    }
+    """
+    try:
+        # Get form data
+        dataset_name = request.form.get('dataset_name')
+        description = request.form.get('description', '')
+        task_type = request.form.get('task_type')
+        evaluation_metric = request.form.get('evaluation_metric')
+        
+        # Validate required fields
+        if not dataset_name or not task_type or not evaluation_metric:
+            return jsonify({
+                "success": False,
+                "error": "Missing required fields: dataset_name, task_type, evaluation_metric"
+            }), 400
+        
+        # Validate task_type and evaluation_metric combinations
+        valid_combinations = {
+            'translation': ['bleu', 'meteor', 'rouge'],
+            'classification': ['accuracy', 'f1', 'precision', 'recall'],
+            'qa': ['exact_match', 'f1', 'bleu'],
+            'summarization': ['rouge', 'bleu']
+        }
+        
+        if task_type not in valid_combinations:
+            return jsonify({
+                "success": False,
+                "error": f"Unsupported task_type: {task_type}. Supported: {list(valid_combinations.keys())}"
+            }), 400
+            
+        if evaluation_metric not in valid_combinations[task_type]:
+            return jsonify({
+                "success": False,
+                "error": f"Invalid evaluation_metric '{evaluation_metric}' for task_type '{task_type}'. Valid options: {valid_combinations[task_type]}"
+            }), 400
+        
+        # Get uploaded file
+        if 'dataset_file' not in request.files:
+            return jsonify({
+                "success": False,
+                "error": "No dataset_file provided"
+            }), 400
+            
+        dataset_file = request.files['dataset_file']
+        if dataset_file.filename == '':
+            return jsonify({
+                "success": False,
+                "error": "No dataset_file selected"
+            }), 400
+        
+        # Process the dataset file
+        try:
+            reference_data = process_dataset_file(dataset_file, task_type)
+        except ValueError as e:
+            return jsonify({
+                "success": False,
+                "error": f"Invalid dataset file: {str(e)}"
+            }), 400
+        
+        # Save to database
+        conn, cursor = get_db_connection()
+        
+        try:
+            # Check if dataset name already exists
+            cursor.execute("""
+                SELECT id FROM benchmark_datasets WHERE name = %s
+            """, (dataset_name,))
+            
+            if cursor.fetchone():
+                return jsonify({
+                    "success": False,
+                    "error": f"Dataset with name '{dataset_name}' already exists"
+                }), 400
+            
+            # Insert new dataset
+            cursor.execute("""
+                INSERT INTO benchmark_datasets 
+                (name, description, task_type, evaluation_metric, reference_data)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (dataset_name, description, task_type, evaluation_metric, json.dumps(reference_data)))
+            
+            dataset_id = cursor.lastrowid
+            conn.commit()
+            
+            return jsonify({
+                "success": True,
+                "dataset_id": dataset_id
+            })
+            
+        finally:
+            cursor.close()
+            conn.close()
+            
+    except Exception as e:
+        print(f"Error in add_dataset_to_leaderboard: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": "Internal server error"
+        }), 500
+
+def process_dataset_file(file_storage, task_type):
+    """
+    Process uploaded dataset file and extract reference data
+    
+    Returns:
+    - For translation: {"source_sentences": [...], "reference_translations": [...]}
+    - For classification: {"texts": [...], "labels": [...]}  
+    - For qa: {"questions": [...], "answers": [...], "contexts": [...]}
+    """
+    filename = secure_filename(file_storage.filename)
+    ext = os.path.splitext(filename)[1].lower()
+    
+    file_storage.seek(0)
+    
+    if ext == ".csv":
+        import pandas as pd
+        df = pd.read_csv(file_storage)
+        
+        if task_type == 'translation':
+            # Expected columns: source, target (or source_text, target_text)
+            source_col = None
+            target_col = None
+            
+            for col in df.columns:
+                col_lower = col.lower()
+                if col_lower in ['source', 'source_text', 'source_sentence']:
+                    source_col = col
+                elif col_lower in ['target', 'target_text', 'reference', 'reference_translation']:
+                    target_col = col
+            
+            if not source_col or not target_col:
+                raise ValueError(f"Translation dataset must have source and target columns. Found columns: {list(df.columns)}")
+            
+            return {
+                "source_sentences": df[source_col].tolist(),
+                "reference_translations": df[target_col].tolist()
+            }
+            
+        elif task_type == 'classification':
+            # Expected columns: text, label
+            text_col = None
+            label_col = None
+            
+            for col in df.columns:
+                col_lower = col.lower()
+                if col_lower in ['text', 'sentence', 'document']:
+                    text_col = col
+                elif col_lower in ['label', 'class', 'category']:
+                    label_col = col
+            
+            if not text_col or not label_col:
+                raise ValueError(f"Classification dataset must have text and label columns. Found columns: {list(df.columns)}")
+            
+            return {
+                "texts": df[text_col].tolist(),
+                "labels": df[label_col].tolist()
+            }
+            
+        elif task_type == 'qa':
+            # Expected columns: question, answer, context (optional)
+            question_col = None
+            answer_col = None
+            context_col = None
+            
+            for col in df.columns:
+                col_lower = col.lower()
+                if col_lower in ['question', 'query']:
+                    question_col = col
+                elif col_lower in ['answer', 'response']:
+                    answer_col = col
+                elif col_lower in ['context', 'passage', 'document']:
+                    context_col = col
+            
+            if not question_col or not answer_col:
+                raise ValueError(f"QA dataset must have question and answer columns. Found columns: {list(df.columns)}")
+            
+            result = {
+                "questions": df[question_col].tolist(),
+                "answers": df[answer_col].tolist()
+            }
+            
+            if context_col:
+                result["contexts"] = df[context_col].tolist()
+            
+            return result
+            
+        else:
+            raise ValueError(f"Unsupported task_type for CSV: {task_type}")
+            
+    elif ext == ".json":
+        import json
+        data = json.load(file_storage)
+        
+        # Validate JSON structure based on task_type
+        if task_type == 'translation':
+            if not isinstance(data, dict) or 'source_sentences' not in data or 'reference_translations' not in data:
+                raise ValueError("Translation JSON must have 'source_sentences' and 'reference_translations' keys")
+            return data
+            
+        elif task_type == 'classification':
+            if not isinstance(data, dict) or 'texts' not in data or 'labels' not in data:
+                raise ValueError("Classification JSON must have 'texts' and 'labels' keys")
+            return data
+            
+        elif task_type == 'qa':
+            if not isinstance(data, dict) or 'questions' not in data or 'answers' not in data:
+                raise ValueError("QA JSON must have 'questions' and 'answers' keys")
+            return data
+            
+        else:
+            raise ValueError(f"Unsupported task_type for JSON: {task_type}")
+    
+    else:
+        raise ValueError(f"Unsupported file format: {ext}. Supported: .csv, .json")
+
+@app.route('/public/get_leaderboard', methods=['GET'])
+def get_leaderboard():
+    """
+    Get leaderboard showing model submissions and scores for a dataset
+    
+    Query parameters:
+    - dataset: benchmark dataset name (optional, shows all if not specified)
+    - limit: number of results to return (default: 10)
+    
+    Returns:
+    {
+        "success": true,
+        "leaderboard": [
+            {
+                "rank": 1,
+                "model_name": "model-v1",
+                "score": 0.95,
+                "dataset_name": "test_spanish_translation",
+                "task_type": "translation",
+                "evaluation_metric": "bleu",
+                "submitted_at": "2025-01-08T12:34:56Z"
+            }
+        ]
+    }
+    """
+    try:
+        dataset_name = request.args.get('dataset')
+        limit = int(request.args.get('limit', 10))
+        
+        conn, cursor = get_db_connection()
+        
+        try:
+            if dataset_name:
+                # Get leaderboard for specific dataset
+                query = """
+                    SELECT 
+                        ms.model_name,
+                        bd.name as dataset_name,
+                        bd.task_type,
+                        bd.evaluation_metric,
+                        er.score,
+                        ms.created as submitted_at
+                    FROM model_submissions ms
+                    JOIN benchmark_datasets bd ON ms.benchmark_dataset_id = bd.id
+                    JOIN evaluation_results er ON er.model_submission_id = ms.id
+                    WHERE bd.name = %s AND bd.active = TRUE
+                    ORDER BY er.score DESC
+                    LIMIT %s
+                """
+                cursor.execute(query, (dataset_name, limit))
+            else:
+                # Get leaderboard for all datasets
+                query = """
+                    SELECT 
+                        ms.model_name,
+                        bd.name as dataset_name,
+                        bd.task_type,
+                        bd.evaluation_metric,
+                        er.score,
+                        ms.created as submitted_at
+                    FROM model_submissions ms
+                    JOIN benchmark_datasets bd ON ms.benchmark_dataset_id = bd.id
+                    JOIN evaluation_results er ON er.model_submission_id = ms.id
+                    WHERE bd.active = TRUE
+                    ORDER BY bd.name, er.score DESC
+                    LIMIT %s
+                """
+                cursor.execute(query, (limit,))
+            
+            results = cursor.fetchall()
+            
+            # Add ranking
+            leaderboard = []
+            for i, row in enumerate(results):
+                leaderboard.append({
+                    "rank": i + 1,
+                    "model_name": row['model_name'],
+                    "dataset_name": row['dataset_name'],
+                    "task_type": row['task_type'],
+                    "evaluation_metric": row['evaluation_metric'],
+                    "score": float(row['score']),
+                    "submitted_at": row['submitted_at'].isoformat() if row['submitted_at'] else None
+                })
+            
+            return jsonify({
+                "success": True,
+                "leaderboard": leaderboard
+            })
+            
+        finally:
+            cursor.close()
+            conn.close()
+            
+    except Exception as e:
+        print(f"Error in get_leaderboard: {str(e)}")
         return jsonify({
             "success": False,
             "error": "Internal server error"

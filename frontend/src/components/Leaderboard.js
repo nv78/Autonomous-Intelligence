@@ -1,13 +1,39 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { submittoleaderboardPath } from "../constants/RouteConstants";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 const Leaderboard = () => {
   const [openIndex, setOpenIndex] = useState(null);
+  const [liveLeaderboard, setLiveLeaderboard] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const handleClick = (index) => {
     setOpenIndex(openIndex === index ? null : index);
   };
+
+  // Fetch live leaderboard data
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get("http://localhost:8000/public/get_leaderboard");
+        if (response.data.success) {
+          setLiveLeaderboard(response.data.leaderboard);
+        } else {
+          setError("Failed to load leaderboard data");
+        }
+      } catch (err) {
+        setError("Error connecting to leaderboard API");
+        console.error("Leaderboard fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLeaderboard();
+  }, []);
 
   const faqs = [
     {
@@ -523,6 +549,65 @@ const Leaderboard = () => {
         Submit Model to Leaderboard
       </button>
 
+      {/* Live Model Submissions */}
+      <div className="w-full max-w-4xl p-6 bg-gradient-to-r from-green-900 to-blue-900 rounded-lg shadow-lg mb-12">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold text-white">🔥 Live Model Submissions</h2>
+          <span className="text-green-300 text-sm">Real-time data from your API</span>
+        </div>
+        
+        {loading && (
+          <div className="text-center py-8">
+            <div className="text-white">Loading live submissions...</div>
+          </div>
+        )}
+        
+        {error && (
+          <div className="text-center py-8">
+            <div className="text-red-300">⚠️ {error}</div>
+          </div>
+        )}
+        
+        {!loading && !error && liveLeaderboard.length > 0 && (
+          <>
+            <div className="grid grid-cols-5 text-white font-bold text-center bg-gray-900 p-4 rounded-t-lg">
+              <div>Rank</div>
+              <div>Model</div>
+              <div>Score</div>
+              <div>Dataset</div>
+              <div>Submitted</div>
+            </div>
+            <div>
+              {liveLeaderboard.slice(0, 10).map((submission, index) => (
+                <div
+                  key={index}
+                  className={`grid grid-cols-5 text-center p-4 ${
+                    index % 2 === 0
+                      ? "bg-gray-700 text-white"
+                      : "bg-gray-800 text-white"
+                  }`}
+                >
+                  <div className="font-bold text-yellow-400">#{submission.rank}</div>
+                  <div className="font-semibold">{submission.model_name}</div>
+                  <div className="text-green-300">{submission.score.toFixed(3)}</div>
+                  <div className="text-blue-300 text-sm">{submission.dataset_name}</div>
+                  <div className="text-gray-300 text-sm">
+                    {new Date(submission.submitted_at).toLocaleDateString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+        
+        {!loading && !error && liveLeaderboard.length === 0 && (
+          <div className="text-center py-8">
+            <div className="text-gray-300">No submissions yet. Be the first to submit!</div>
+          </div>
+        )}
+      </div>
+
+      <h2 className="text-3xl font-bold text-white mb-8 mt-12">📊 Benchmark Datasets</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {datasets.map((dataset, index) => (
           <div
