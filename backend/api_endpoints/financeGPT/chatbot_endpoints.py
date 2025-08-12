@@ -764,6 +764,7 @@ def _get_model():
             with _model_lock:
                 if _embedding_model is None:
                     print(f"Loading {EMBEDDING_MODEL} model with optimizations...")
+                    import numpy as np  
                     from sentence_transformers import SentenceTransformer
                     import torch
                         
@@ -773,6 +774,7 @@ def _get_model():
                     print(f"Model loaded on device: {device}")
         else:
             print(f"Loading {EMBEDDING_MODEL} model...")
+            import numpy as np
             from sentence_transformers import SentenceTransformer
             _embedding_model = SentenceTransformer(EMBEDDING_MODEL)
     except Exception as e:
@@ -787,7 +789,7 @@ _text_splitters = {}
 def _get_text_splitter(chunk_size=None):
     """
     Get a text splitter instance with thread-safe initialization.
-    Caches splitters by chunk size to avoid recreating them.
+    Caches splitters by chunk size to avoid recreating them and improve performance.
     
     Args:
         chunk_size (int, optional): Chunk size. Defaults to MAX_CHUNK_SIZE.
@@ -906,6 +908,7 @@ def get_embeddings_batch(texts, batch_size=32):
         list: List of embedding vectors
     """
     try:
+        import numpy as np
         model = _get_model()
         embeddings = []
         
@@ -959,10 +962,10 @@ def prepare_chunks_for_embedding(text_pages, maxChunkSize):
         page_chunks = text_splitter.split_text(page_text)
         
         # Track position within this page for accurate indexing
-        page_pos = 0
+        page_position = 0
         for chunk in page_chunks:
             # Find chunk position within the page
-            chunk_start_in_page = page_text.find(chunk, page_pos)
+            chunk_start_in_page = page_text.find(chunk, page_position)
             if chunk_start_in_page == -1:
                 chunk_start_in_page = page_text.find(chunk)
             
@@ -980,7 +983,7 @@ def prepare_chunks_for_embedding(text_pages, maxChunkSize):
             })
             
             # Update page position for next chunk search
-            page_pos = chunk_start_in_page + 1
+            page_position = chunk_start_in_page + 1
 
         globalStartIndex += len(page_text)
         page_number += 1
