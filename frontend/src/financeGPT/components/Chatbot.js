@@ -1050,35 +1050,6 @@ const Chatbot = (props) => {
                         <p className="whitespace-pre-wrap leading-relaxed text-sm">
                           {msg.content}
                         </p>
-
-                        {/* Sources Section */}
-                        {msg.sources?.length > 0 && (
-                          <div className="mt-4 pt-4 border-t border-[#2e3a4c]">
-                            <div className="flex items-center gap-2 mb-2 text-gray-400 text-xs font-semibold">
-                              <FontAwesomeIcon icon={faFile} />
-                              <span>Sources</span>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              {msg.sources.map((source, idx) => (
-                                <span
-                                  key={idx}
-                                  className="text-xs bg-[#2e3a4c] text-gray-300 px-2 py-1 rounded"
-                                >
-                                  {typeof source === "string"
-                                    ? source
-                                    : source.name || "Document"}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Assistant Agent Info */}
-                        {msg.role === "assistant" && msg.agent && (
-                          <div className="mt-2 text-[11px] text-gray-500 italic">
-                            🤖 {msg.agent.name}
-                          </div>
-                        )}
                       </div>
                     )}
                   </div>
