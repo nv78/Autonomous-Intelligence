@@ -192,7 +192,7 @@ class DocumentRetrievalAgent(BaseSpecializedAgent):
                 3. Source attribution
                 4. Confidence in the answer
                 
-                Format your response as JSON with keys: relevance_score, key_info, sources, confidence
+                Please format your response as JSON with keys: relevance_score, key_info, sources, confidence
                 """
                 
                 response = self.llm.invoke(
@@ -561,7 +561,7 @@ class GeneralKnowledgeAgent(BaseSpecializedAgent):
 
 
 class OrchestratorAgent(BaseSpecializedAgent):
-    """Orchestrator agent that coordinates the workflow and makes final decisions"""
+    """Orchestrator agent that coordinates the overall workflow and the other agents to provide a final answer"""
     
     def __init__(self, model_type: int = 0, model_key: Optional[str] = None):
         super().__init__("Orchestrator", model_type, model_key)
@@ -697,10 +697,8 @@ class MultiAgentDocumentSystem:
         self.model_type = model_type
         self.model_key = model_key
         
-        # Initialize specialized agents
-        self.agents = {
-            "DocumentListAgent": DocumentListAgent(model_type, model_key),
-            "ChatHistoryAgent": ChatHistoryAgent(model_type, model_key),
+        #initialize agents
+        self.agents = {"DocumentListAgent": DocumentListAgent(model_type, model_key), "ChatHistoryAgent": ChatHistoryAgent(model_type, model_key),
             "DocumentRetrievalAgent": DocumentRetrievalAgent(model_type, model_key),
             "GeneralKnowledgeAgent": GeneralKnowledgeAgent(model_type, model_key),
             "OrchestratorAgent": OrchestratorAgent(model_type, model_key)
@@ -886,7 +884,7 @@ class MultiAgentDocumentSystem:
                     "timestamp": self._get_timestamp()
                 }
                 
-                # Yield step-complete event for frontend compatibility
+                # Yield step-complete event for frontend
                 yield {
                     "type": "step-complete",
                     "answer": final_answer,
