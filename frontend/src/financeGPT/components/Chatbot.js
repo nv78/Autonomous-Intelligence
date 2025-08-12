@@ -661,27 +661,20 @@ const Chatbot = (props) => {
 
   return (
     <div
-      className={`py-2 h-full bg-anoteblack-800 w-full flex flex-col ${
+      className={`h-full bg-anoteblack-800 w-full flex flex-col ${
         props.menu ? "md:blur-none blur" : ""
       }`}
     >
-      {/* Chat title for mobile */}
-      <div className="w-full bg-transparent md:py-0 py-4 md:shadow-none shadow-lg md:mb-0 mb-2 items-center flex justify-center flex-shrink-0">
-        <span className="md:hidden rounded py-2 truncate px-4">
-          {props.currChatName}
-        </span>
-      </div>
-
       <div
         ref={(ref) =>
           ref && ref.scrollTo({ top: ref.scrollHeight, behavior: "smooth" })
         }
-        className={`h-full rounded md:mt-8 overflow-auto ${
+        className={`h-full rounded overflow-auto ${
           messages.length > 0 ? "block" : "hidden"
         } flex justify-center`}
       >
-        <div className="py-3 flex-col mt-0 md:mt-4 px-4 flex gap-3 w-full">
-          <div className="bg-anoteblack-800 flex items-center sticky top-0 lg:top-4 z-10 w-full border-b border-gray-400/30 px-2">
+        <div className="py-3 flex-col mt-0 px-4 flex gap-3 w-full">
+          <div className="bg-anoteblack-800 flex items-center sticky top-0 lg:top-0 z-10 w-full border-b border-gray-400/30 px-2">
             {/* Left: Reload button */}
             <div className="flex items-center flex-shrink-0 z-10">
               <button
