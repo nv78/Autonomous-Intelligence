@@ -1,14 +1,3 @@
-"""
-Multi-Agent Document Processing System using LangGraph
-
-This module implements a network of specialized agents:
-- OrchestratorAgent: Coordinates workflow and makes final decisions
-- DocumentRetrievalAgent: Specializes in finding relevant documents
-- ChatHistoryAgent: Manages conversation context and history
-- DocumentListAgent: Handles document listing and management
-- GeneralKnowledgeAgent: Provides fallback knowledge when needed
-"""
-
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 from typing import Dict, List, Any, Optional, Generator, TypedDict, Annotated
@@ -22,14 +11,12 @@ from langchain_core.callbacks import BaseCallbackHandler
 from pydantic import BaseModel, Field
 import os
 
-# Import database functions
 from database.db import get_db_connection
 from api_endpoints.financeGPT.chatbot_endpoints import (
     get_relevant_chunks, add_message_to_db, add_sources_to_db,
     retrieve_message_from_db, retrieve_docs_from_db
 )
 from .config import AgentConfig
-
 
 class AgentState(TypedDict):
     """Shared state between all agents in the network"""
@@ -265,7 +252,7 @@ class ChatHistoryAgent(BaseSpecializedAgent):
             user_email = state["user_email"]
             
             # Check if query needs historical context
-            context_keywords = ["it", "that", "the one", "shorter", "longer", "what I said", "previous", "before", "earlier", "last"]
+            context_keywords = ["it", "that", "the one", "shorter", "longer", "what I said", "previous", "before", "earlier", "last", "prior", "context", "history", "refer to", "mentioned"]
             needs_context = any(keyword in query.lower() for keyword in context_keywords)
             
             if not needs_context:

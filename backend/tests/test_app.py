@@ -520,30 +520,30 @@ class TestFlaskApp(unittest.TestCase):
             self.assertEqual(response.status_code, 401)
             self.assertIn("Invalid JWT", response.get_data(as_text=True))
 
-def test_ingest_pdfs(self):
-    with patch("app.add_document_to_db") as mock_add_doc, patch(
-        "app.p.from_buffer"
-    ) as mock_from_buffer, patch(
-        "app.ensure_ray_started"
-    ) as mock_ensure_ray, patch(
-        "app.chunk_document"
-    ) as mock_chunk_document:
-        mock_add_doc.return_value = ("docid", False)
-        mock_from_buffer.return_value = {"content": "PDF text"}
-        mock_ensure_ray.return_value = None
-        mock_chunk_document.remote.return_value = None
+    def test_ingest_pdfs(self):
+        with patch("app.add_document_to_db") as mock_add_doc, patch(
+            "app.p.from_buffer"
+        ) as mock_from_buffer, patch(
+            "app.ensure_ray_started"
+        ) as mock_ensure_ray, patch(
+            "app.chunk_document"
+        ) as mock_chunk_document:
+            mock_add_doc.return_value = ("docid", False)
+            mock_from_buffer.return_value = {"content": "PDF text"}
+            mock_ensure_ray.return_value = None
+            mock_chunk_document.remote.return_value = None
 
-        from io import BytesIO
+            from io import BytesIO
 
-        data = {
-            "chat_id": ["chat1"],
-            "files[]": (BytesIO(b"dummy pdf content"), "test.pdf"),
-        }
-        response = self.app.post(
-            "/ingest-pdf",
-            data=data,
-            content_type="multipart/form-data",
-            headers={"Authorization": "Bearer testtoken123"},  # <-- Add here
+            data = {
+                "chat_id": ["chat1"],
+                "files[]": (BytesIO(b"dummy pdf content"), "test.pdf"),
+            }
+            response = self.app.post(
+                "/ingest-pdf",
+                data=data,
+                content_type="multipart/form-data",
+                headers={"Authorization": "Bearer testtoken123"},  # <-- Add here
         )
         self.assertEqual(response.status_code, 200)
 
