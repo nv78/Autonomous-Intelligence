@@ -13,7 +13,7 @@ import secrets
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-db_connect = None 
+db_connect = None
 
 def get_db_connection():
     global db_connect 
