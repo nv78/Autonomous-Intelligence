@@ -13,8 +13,6 @@ import secrets
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-
-
 db_connect = None 
 
 def get_db_connection():
@@ -44,7 +42,7 @@ def get_db_connection():
                 password=dbPassword,
                 database=dbName,
             )
-        return db_connect, db_connect.cursor(dictionary=True) 
+    return db_connect, db_connect.cursor(dictionary=True) 
 
 
 def create_7_day_free_trial(user_id):
