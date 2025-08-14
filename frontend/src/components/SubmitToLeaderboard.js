@@ -152,10 +152,16 @@ const SubmitToLeaderboard = ({
         Papa.parse(file, {
           header: true,
           complete: function (results) {
-            // Assume the first column contains the model results
-            const firstColumnKey = Object.keys(results.data[0])[0];
+            // Look for model_output column, or fall back to second column
+            const columnKeys = Object.keys(results.data[0]);
+            const modelOutputKey = columnKeys.find(key => 
+              key.toLowerCase().includes('model_output') || 
+              key.toLowerCase().includes('output') ||
+              key.toLowerCase().includes('translation')
+            ) || columnKeys[1]; // Default to second column if no specific column found
+            
             const modelResults = results.data
-              .map(row => row[firstColumnKey])
+              .map(row => row[modelOutputKey])
               .filter(result => result && result.trim() !== '');
             setParsedModelResults(modelResults);
             console.log("Parsed model results:", modelResults.slice(0, 3));
