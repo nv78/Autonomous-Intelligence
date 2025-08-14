@@ -7,6 +7,7 @@ import Select from "react-select";
 import { useDispatch } from "react-redux";
 import { FaDatabase } from "react-icons/fa";
 import axios from "axios";
+import { useLocation } from "react-router-dom";
 
 import { loadDatasets, useDatasets } from "../redux/DatasetSlice";
 import { SelectStyles } from "../styles/SelectStyles";
@@ -45,6 +46,7 @@ const SubmitToLeaderboard = ({
   setSelectedDatasetId,
 }) => {
   // ---------- Additional State for User/Organization Form ----------
+  const location = useLocation();
 
   const [formData, setFormData] = useState({
     benchmarkDataset: "",
@@ -212,23 +214,25 @@ const SubmitToLeaderboard = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Handle preselected dataset from evaluations page
+  useEffect(() => {
+    if (location.state?.preselectedDataset) {
+      setFormData(prev => ({
+        ...prev,
+        benchmarkDataset: location.state.preselectedDataset
+      }));
+    }
+  }, [location.state]);
+
   const datasets = useDatasets();
 
   // ---------- Benchmark Dataset Modal & Options ----------
   const connectorOptions = [
-    { value: "flores_spanish_translation", label: "FLORES+ Spanish Translation", taskType: "Translation" },
-    { value: "Bizbench", label: "Bizbench", taskType: "Chatbot" },
-    { value: "Financebench", label: "Financebench", taskType: "Chatbot" },
-    { value: "Emotion", label: "Emotion", taskType: "Classification" },
-    { value: "Finance", label: "Finance", taskType: "Classification" },
-    { value: "MedQuAD", label: "MedQuAD", taskType: "Chatbot" },
-    { value: "PubMed", label: "PubMed", taskType: "Classification" },
-    { value: "QuoraQuAD", label: "QuoraQuAD", taskType: "Chatbot" },
-    { value: "RagInstruct", label: "RagInstruct", taskType: "Chatbot" },
-    { value: "ArcChallenge", label: "ArcChallenge", taskType: "Miscellaneous" },
-    { value: "MMLU", label: "MMLU", taskType: "Miscellaneous" },
-    { value: "Commonsense", label: "Commonsense", taskType: "Miscellaneous" },
-    { value: "Geolocation", label: "Geolocation", taskType: "Miscellaneous" },
+    { value: "flores_spanish_translation", label: "Spanish Translation (FLORES+)", taskType: "Translation" },
+    { value: "flores_japanese_translation", label: "Japanese Translation (FLORES+)", taskType: "Translation" },
+    { value: "flores_arabic_translation", label: "Arabic Translation (FLORES+)", taskType: "Translation" },
+    { value: "flores_chinese_translation", label: "Chinese Translation (FLORES+)", taskType: "Translation" },
+    { value: "flores_korean_translation", label: "Korean Translation (FLORES+)", taskType: "Translation" },
   ];
 
   const filteredOptions = connectorOptions.filter(

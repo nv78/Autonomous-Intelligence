@@ -1853,14 +1853,22 @@ def get_source_sentences():
         conn, cursor = get_db_connection()
         
         try:
-            if dataset_name == 'flores_spanish_translation':
+            # Handle FLORES+ datasets (Spanish, Japanese, Arabic, Chinese)
+            flores_datasets = {
+                'flores_spanish_translation': 'spa_Latn',
+                'flores_japanese_translation': 'jpn_Jpan', 
+                'flores_arabic_translation': 'arb_Arab',
+                'flores_chinese_translation': 'zho_Hans'
+            }
+            
+            if dataset_name in flores_datasets:
                 # Set HF token for dataset access
                 import os
                 hf_token = os.getenv("HF_TOKEN")
                 if hf_token:
                     os.environ["HF_TOKEN"] = hf_token
                 
-                # Load FLORES+ English source sentences
+                # Load FLORES+ English source sentences (same for all languages)
                 source_lang = "eng_Latn"
                 source_dataset = load_dataset("openlanguagedata/flores_plus", source_lang, split="devtest")
                 
@@ -1998,16 +2006,25 @@ def submit_model():
             # Run evaluation based on the dataset type
             if task_type == 'translation' and evaluation_metric == 'bleu':
                 try:
-                    if benchmark_dataset_name == 'flores_spanish_translation':
-                        # Original FLORES+ evaluation logic
+                    # Handle FLORES+ datasets (Spanish, Japanese, Arabic, Chinese, Korean)
+                    flores_datasets = {
+                        'flores_spanish_translation': 'spa_Latn',
+                        'flores_japanese_translation': 'jpn_Jpan', 
+                        'flores_arabic_translation': 'arb_Arab',
+                        'flores_chinese_translation': 'cmn_Hans',
+                        'flores_korean_translation': 'kor_Hang'
+                    }
+                    
+                    if benchmark_dataset_name in flores_datasets:
+                        # FLORES+ evaluation logic for all supported languages
                         # Set HF token for dataset access (environment variable approach)
                         import os
                         hf_token = os.getenv("HF_TOKEN")
                         if hf_token:
                             os.environ["HF_TOKEN"] = hf_token
                         
-                        # Load FLORES+ reference sentences
-                        target_lang = "spa_Latn"
+                        # Load FLORES+ reference sentences for the target language
+                        target_lang = flores_datasets[benchmark_dataset_name]
                         target_dataset = load_dataset("openlanguagedata/flores_plus", target_lang, split="devtest")
                         
                         # Use specific sentence positions (Option C - now required)
@@ -2352,7 +2369,7 @@ def get_leaderboard():
     """
     try:
         dataset_name = request.args.get('dataset')
-        limit = int(request.args.get('limit', 10))
+        limit = int(request.args.get('limit', 100))  # Increased from 10 to 100 to show more results per dataset
         
         conn, cursor = get_db_connection()
         
@@ -2501,6 +2518,117 @@ def get_bleu(translations, references, weights=(0.5, 0.5, 0, 0)):
         for ref, trans in zip(references, translations)
     ]
     return sum(bleu_scores) / len(bleu_scores)
+
+@app.route('/multi-language-gpt-evaluation', methods=['POST'])
+@cross_origin(supports_credentials=True)
+def multi_language_gpt_evaluation():
+    """
+    Multi-language GPT evaluation endpoint
+    Supports Spanish, Japanese, Arabic, Chinese, and Korean translations
+    
+    Expected JSON payload:
+    {
+        "language": "spanish|japanese|arabic|chinese|korean",
+        "count": 5
+    }
+    
+    Returns:
+    {
+        "success": true,
+        "bleu_score": 0.65,
+        "translations": [...],
+        "references": [...],
+        "source_sentences": [...],
+        "language": "spanish",
+        "dataset_name": "flores_spanish_translation"
+    }
+    """
+    try:
+        # get request data
+        data = request.get_json()
+        language = data.get('language', 'spanish').lower()
+        count = data.get('count', 5)
+
+        # Language mapping
+        language_configs = {
+            'spanish': {
+                'target_lang': 'spa_Latn',
+                'prompt_lang': 'Spanish',
+                'dataset_name': 'flores_spanish_translation'
+            },
+            'japanese': {
+                'target_lang': 'jpn_Jpan',
+                'prompt_lang': 'Japanese',
+                'dataset_name': 'flores_japanese_translation'
+            },
+            'arabic': {
+                'target_lang': 'arb_Arab',
+                'prompt_lang': 'Arabic',
+                'dataset_name': 'flores_arabic_translation'
+            },
+            'chinese': {
+                'target_lang': 'cmn_Hans',
+                'prompt_lang': 'Chinese',
+                'dataset_name': 'flores_chinese_translation'
+            },
+            'korean': {
+                'target_lang': 'kor_Hang',
+                'prompt_lang': 'Korean',
+                'dataset_name': 'flores_korean_translation'
+            }
+        }
+        
+        if language not in language_configs:
+            return jsonify({
+                "success": False,
+                "error": f"Unsupported language: {language}. Supported: {list(language_configs.keys())}"
+            }), 400
+
+        config = language_configs[language]
+        
+        # Set HF token for dataset access
+        import os
+        hf_token = os.getenv("HF_TOKEN")
+        if hf_token:
+            os.environ["HF_TOKEN"] = hf_token
+
+        # load datasets
+        source_lang = "eng_Latn"
+        target_lang = config['target_lang']
+        source_dataset = load_dataset("openlanguagedata/flores_plus", source_lang, split="devtest")
+        target_dataset = load_dataset("openlanguagedata/flores_plus", target_lang, split="devtest")
+
+        # compile sentences into lists
+        source_sentences = [ex["text"] for ex in source_dataset.select(range(count))]
+        reference_sentences = [ex["text"] for ex in target_dataset.select(range(count))]
+
+        # generate gpt translations from benchmark source sentences
+        gpt_translations = []
+        for sentence in source_sentences:
+            prompt = f"Translate this sentence to {config['prompt_lang']}:\n\n{sentence}"
+            translation = translate_gpt(prompt)
+            gpt_translations.append(translation)
+            time.sleep(1)
+
+        bleu_score = get_bleu(gpt_translations, reference_sentences)
+
+        # return results as json
+        return jsonify({
+            "success": True,
+            "bleu_score": bleu_score,
+            "translations": gpt_translations,
+            "references": reference_sentences,
+            "source_sentences": source_sentences,
+            "language": language,
+            "dataset_name": config['dataset_name']
+        })
+
+    except Exception as e:
+        print("Error:", str(e))
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 @app.route('/spanish-gpt-evaluation', methods=['POST'])
 @cross_origin(supports_credentials=True)

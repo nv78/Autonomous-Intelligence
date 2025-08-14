@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { submittoleaderboardPath } from "../constants/RouteConstants";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 
 const Leaderboard = () => {
@@ -8,6 +8,8 @@ const Leaderboard = () => {
   const [liveLeaderboard, setLiveLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const handleClick = (index) => {
     setOpenIndex(openIndex === index ? null : index);
@@ -538,7 +540,80 @@ const Leaderboard = () => {
       ]
   }
   ];
-  const navigate = useNavigate();
+  
+  // Check if we should show full leaderboard for a specific dataset
+  const showFullLeaderboard = location.state?.showFullLeaderboard;
+  const selectedDataset = location.state?.selectedDataset;
+  
+  // If showing full leaderboard for a specific dataset
+  if (showFullLeaderboard && selectedDataset) {
+    // Find the matching dataset from live leaderboard
+    const datasetSubmissions = liveLeaderboard.filter(submission => {
+      const datasetDisplayName = `${submission.dataset_name.replace('flores_', '').replace('_translation', '')} – BLEU`.replace(/^\w/, c => c.toUpperCase());
+      return datasetDisplayName === selectedDataset;
+    });
+
+    // Sort by score (descending) and assign proper ranks starting from 1
+    const rankedSubmissions = datasetSubmissions
+      .sort((a, b) => b.score - a.score)
+      .map((submission, index) => ({
+        ...submission,
+        rank: index + 1
+      }));
+
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 pb-20 mx-3">
+        <div className="w-full max-w-6xl">
+          <div className="mb-8 flex items-center justify-between">
+            <button
+              onClick={() => navigate('/evaluations')}
+              className="text-blue-400 hover:text-blue-300 underline text-sm"
+            >
+              ← Back to Evaluations
+            </button>
+            <h1 className="text-3xl font-bold text-white">{selectedDataset} - Full Leaderboard</h1>
+            <div></div>
+          </div>
+          
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="text-white text-lg">Loading leaderboard...</div>
+            </div>
+          ) : rankedSubmissions.length > 0 ? (
+            <div className="bg-gray-800 rounded-lg overflow-hidden">
+              <div className="grid grid-cols-4 bg-gray-700 p-4 font-bold text-white">
+                <div>Rank</div>
+                <div>Model Name</div>
+                <div>BLEU Score</div>
+                <div>Submitted</div>
+              </div>
+              {rankedSubmissions.map((submission, index) => (
+                <div
+                  key={submission.id || index}
+                  className={`grid grid-cols-4 p-4 ${
+                    index % 2 === 0 ? "bg-gray-800" : "bg-gray-750"
+                  } text-white`}
+                >
+                  <div className="font-bold text-yellow-400">#{submission.rank}</div>
+                  <div className="font-semibold">{submission.model_name}</div>
+                  <div className="text-green-300">{submission.score.toFixed(4)}</div>
+                  <div className="text-gray-400 text-sm">
+                    {new Date(submission.submitted_at).toLocaleDateString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="text-gray-400">No submissions found for {selectedDataset}</div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Default leaderboard view
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 pb-20 mx-3">
       <h1 className="text-4xl font-bold text-white mb-4 mt-8">LLM Leaderboards</h1>
