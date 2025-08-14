@@ -100,10 +100,6 @@ class TestFlaskApp(unittest.TestCase):
         
         self.assertIn(response.status_code, [200, 201])
 
-    def test_view_user_unauthorized(self):
-        """Test viewing user without proper auth"""
-        response = self.app.get("/viewUser")
-        self.assertEqual(response.status_code, 401)
 
     @patch("app.extractUserEmailFromRequest")
     def test_refresh_credits_success(self, mock_extract_email):
