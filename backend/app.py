@@ -1093,23 +1093,7 @@ def ingest_pdfs_demo():
 
     return jsonify({"message": "Document processed successfully"}), 200
 
-# @app.route('/reset-chat-demo', methods=['POST'])
-# def reset_chat_demo():
-#     global chat_id
-#     user_email = DEMO_USER_EMAIL
 
-#     ensure_demo_user_exists(user_email)
-
-#     delete_chat_from_db(chat_id, user_email)
-
-#     #create_new_demo_chat(chat_id, user_email)
-#     chat_id = add_chat_to_db(user_email, 0, 0)
-
-#     #reset_uploaded_docs(chat_id, user_email)
-
-#     #reset_chat_db(chat_id, user_email)
-
-#     return jsonify({"Success": "Success"}), 200
 
 @app.route('/download-chat-history-demo', methods=['POST'])
 def download_chat_history_demo():
