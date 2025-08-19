@@ -36,7 +36,6 @@ const Chatbot = (props) => {
 
   // State for tracking expanded reasoning sections
   const [expandedReasoning, setExpandedReasoning] = useState({});
-
   const inferChatName = async (text, answer, chatId) => {
     const combinedText = `${text} ${answer}`;
     try {
@@ -61,6 +60,7 @@ const Chatbot = (props) => {
 
     const poll = async () => {
       attempts++;
+      console.log("attempts", attempts, chatId)
       try {
         const res = await fetcher("retrieve-messages-from-chat", {
           method: "POST",
@@ -220,7 +220,7 @@ const Chatbot = (props) => {
     if (isNewChat) {
       try {
         targetChatId = await props.createNewChat();
-        navigate(`/chat/${props.isGuestMode ? "guest" : targetChatId}`, {
+        navigate(`/chat/${targetChatId}`, {
           state: { message: currentMessage },
         });
 
@@ -925,7 +925,7 @@ const Chatbot = (props) => {
         >
           <div
             className={`bg-anoteblack-800 flex items-center sticky top-0 lg:top-0  z-10 w-full border-b border-gray-400/30 px-2 ${
-              props.isGuestMode ? "hidden" : "block"
+              props.isGuestMode ? "hidden" : "block pt-16"
             }`}
           >
             {/* Left: Reload button */}
@@ -1120,7 +1120,7 @@ const Chatbot = (props) => {
                   setTimeout(() => setUploadButtonClicked(false), 1000);
                 }
               }}
-              disabled={props.isUploading || props.isGuestMode}
+              disabled={props.isUploading}
               className={`flex items-center disabled:bg-gray-800 disabled:cursor-not-allowed justify-center w-12 h-12 rounded-xl transition-colors flex-shrink-0 ${
                 uploadButtonClicked
                   ? "bg-blue-600 text-white"
