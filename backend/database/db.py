@@ -11,31 +11,48 @@ import socket
 import secrets
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+db_connection = None
 
 def get_db_connection():
-    if ('.local' in socket.gethostname() or '.lan' in socket.gethostname() or 'Shadow' in socket.gethostname()) or ('APP_ENV' in os.environ and os.environ['APP_ENV'] == 'local'):
-        if ('BL' in os.environ and os.environ['BL'] == 'bl'):
-            conn = mysql.connector.connect(
-                user='root',
-                password='1165205407',
-                host='localhost',
-                port=3306,
-                database=dbName
-            )
-        else:
-            conn = mysql.connector.connect(
-                user='root',
-                unix_socket='/tmp/mysql.sock',
-                database=dbName,
-            )
-    else:
-        conn = mysql.connector.connect(
+    global db_connection
+    # if ('.local' in socket.gethostname() or '.lan' in socket.gethostname() or 'Shadow' in socket.gethostname()) or ('APP_ENV' in os.environ and os.environ['APP_ENV'] == 'local'):
+    #     if ('BL' in os.environ and os.environ['BL'] == 'bl'):
+    #         conn = mysql.connector.connect(
+    #             user='root',
+    #             password='1165205407',
+    #             host='localhost',
+    #             port=3306,
+    #             database=dbName
+    #         )
+    #     else:
+    #         conn = mysql.connector.connect(
+    #             user='root',
+    #             unix_socket='/tmp/mysql.sock',
+    #             database=dbName,
+    #         )
+    # else:
+    #     conn = mysql.connector.connect(
+    #         host=dbHost,
+    #         user=dbUser,
+    #         password=dbPassword,
+    #         database=dbName,
+    #     )
+    # return conn, conn.cursor(dictionary=True)
+
+    if db_connection and db_connection.is_connected():
+        return db_connection, db_connection.cursor(dictionary=True)
+    
+    try:
+        db_connection = mysql.connector.connect( 
             host=dbHost,
             user=dbUser,
             password=dbPassword,
             database=dbName,
         )
-    return conn, conn.cursor(dictionary=True)
+        return db_connection, db_connection.cursor(dictionary=True)
+    except Exception as e:
+        print(f"Database connection error")
+        raise e
 
 def create_7_day_free_trial(user_id):
     conn, cursor = get_db_connection()

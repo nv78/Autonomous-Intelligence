@@ -9,6 +9,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Popout from "./Popout";
 import ChatHistory from "./ChatHistory";
 import BackendStatusIndicator from "../../components/BackendStatusIndicator";
+import MainNav from "../../components/MainNav";
 
 function HomeChatbot({ isGuestMode = false, onRequestLogin, setIsLoggedInParent }) {
   const [selectedChatId, setSelectedChatId] = useState(isGuestMode ? 0 : null);
@@ -208,9 +209,9 @@ function HomeChatbot({ isGuestMode = false, onRequestLogin, setIsLoggedInParent 
     <div className="h-screen flex flex-col bg-gray-900">
       {/* Backend Status Indicator */}
       <BackendStatusIndicator />
-      
+
       {/* ChatGPT-style top navigation */}
-      <Navbarchatbot
+      <MainNav
         selectedChatId={selectedChatId}
         onChatSelect={handleChatSelect}
         handleForceUpdate={handleForceUpdate}
@@ -237,11 +238,15 @@ function HomeChatbot({ isGuestMode = false, onRequestLogin, setIsLoggedInParent 
       />
 
       {/* Main content area with proper top spacing */}
-      <div className="flex-1 w-full pt-16 h-full overflow-hidden flex">
+      <div className="flex-1 w-full h-full overflow-hidden flex">
         {/* Sidebar for chat history - show when menu is true and not in guest mode */}
         {menu && !isGuestMode && (
-          <div className="w-80 border-r border-gray-700 bg-gray-800 flex-shrink-0">
+          <div className="w-72 border-r z-50 fixed md:relative h-full border-gray-700 bg-gray-800 flex-shrink-0">
             <div className="border-t border-gray-700 pt-4">
+              <div className="px-4 mb-3 flex justify-between items-center">
+                <img src="/logoold.png" width={35} height={35} alt="panacea logo" />
+                <div onClick={handleMenu} className="text-white text-2xl">x</div>
+              </div>
               <div className="px-2">
                 <ChatHistory
                   chats={chats}

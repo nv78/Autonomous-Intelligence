@@ -18,6 +18,7 @@ import {
   companies,
   LANGUAGE_ROUTES,
   createcompany,
+  chatPath,
 } from "./constants/RouteConstants";
 import PaymentsComponent from "./subcomponents/payments/PaymentsComponent";
 import PaymentsProduct from "./subcomponents/payments/PaymentsProduct";
@@ -111,6 +112,7 @@ function Dashboard() {
     <Route path={homePath} element={<Home />} />,
     <Route path={gtmPath} element={<GTMChatbot />} />,
     <Route path={languages} element={<Languages />} />,
+    <Route path={chatbotPath} element={<Home isGuestMode={true} />} />,
     <Route path="/languages/:lang" element={<Languages />} />,
     <Route path={createcompany} element={<CreateCompany />} />,
     <Route path={companies} element={<Companies />} />,
@@ -135,7 +137,7 @@ function Dashboard() {
       <Route path={pricingRedirectPath} element={<PaymentsProduct />} />
     ) : null,
     showRestrictedRouteRequiringUserSession ? (
-      <Route path={chatbotPath} element={<Home />} />
+      <Route path={chatPath} element={<Home />} />
     ) : null,
     showRestrictedRouteRequiringUserSession ? (
       <Route path={downloadPrivateGPTPath} element={<DownloadPrivateGPT />} />

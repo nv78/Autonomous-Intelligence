@@ -3,7 +3,7 @@ import fetcher from "../http/RequestConfig";
 import { useSelector } from 'react-redux';
 
 export const login = createAsyncThunk("user/login", async (payload, thunk) => {
-  var requestPath = "login";
+  let requestPath = "login";
   if ("email" in payload && "password" in payload){
     requestPath += "?email=" + payload["email"] + "&password=" + payload["password"];
   }

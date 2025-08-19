@@ -974,7 +974,7 @@ const SidebarChatbot = forwardRef((props, ref) => {
       </div>
       
       {/* Chat History Section */}
-      <div className="border-t border-gray-700 pt-4">
+      <div className="border-t border-gray-700">
         <div className="px-2">
           <ChatHistory 
             chats={props.chats}

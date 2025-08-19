@@ -1243,7 +1243,7 @@ def get_relevant_chunks(k: int, question: str, chat_id: int, user_email: str):
         chunk_text = meta["document_text"][meta["start"]:meta["end"]]
         document_name = meta["document_name"]
         source_chunks.append((chunk_text, document_name))
-
+    conn.close()
     return source_chunks
 
 

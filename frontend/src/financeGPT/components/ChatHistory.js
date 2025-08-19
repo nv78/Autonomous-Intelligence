@@ -4,7 +4,7 @@ import fetcher from "../../http/RequestConfig";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { Dropdown } from "flowbite-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faPenAlt } from "@fortawesome/free-solid-svg-icons";
 
 function ChatHistory(props) {
   const [chats, setChats] = useState([]);
@@ -192,8 +192,9 @@ function ChatHistory(props) {
           document.body
         )}
 
-      <div className="px-3 mt-16">
+      <div className="px-3">
         <div className="flex justify-between items-center mb-2">
+        
           <h2
             className={`text-xl text-anoteblack-100 ${
               chats.length === 0 ? "hidden" : ""
@@ -206,7 +207,7 @@ function ChatHistory(props) {
             className="bg-anoteblack-700  cursor-pointer hover:bg-anoteblack-600 text-white rounded-lg transition-colors"
             title="Create new chat"
           >
-            <FontAwesomeIcon icon={faPlus} className="text-base font-bold" />
+            <FontAwesomeIcon icon={faPenAlt} className="text-base font-bold" />
           </button>
         </div>
         <ul className="flex-col py-2 justify-around w-full h-full flex overflow-y-auto">

@@ -21,7 +21,7 @@ function LoginComponent(props) {
         props.addToast("Signing in...", "info", 3000);
       }
       dispatch(login({ email: email, password: password })).then((response) => {
-        if (response.payload["status"] == "OK") {
+        if (response.payload["status"] === "OK") {
           if ("token" in response.payload) {
             localStorage.setItem("sessionToken", response.payload["token"]);
             if (props.addToast) {

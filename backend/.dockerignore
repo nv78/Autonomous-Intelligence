@@ -27,3 +27,5 @@ docker-compose.yml
 
 # System files
 *.swp
+
+tests/*

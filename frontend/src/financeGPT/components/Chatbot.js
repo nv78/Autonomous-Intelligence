@@ -220,7 +220,7 @@ const Chatbot = (props) => {
     if (isNewChat) {
       try {
         targetChatId = await props.createNewChat();
-        navigate(`/chat/${targetChatId}`, {
+        navigate(`/chat/${props.isGuestMode ? "guest" : targetChatId}`, {
           state: { message: currentMessage },
         });
 
@@ -293,6 +293,7 @@ const Chatbot = (props) => {
           chat_id: Number(chatId),
           model_type: props.isPrivate,
           model_key: props.confirmedModelKey,
+          is_guest_mode: props.isGuestMode,
         }),
       });
 
@@ -349,12 +350,12 @@ const Chatbot = (props) => {
               // Mark streaming as complete and ensure final state
               setMessages((prev) =>
                 prev.map((msg) =>
-                  msg.id === thinkingId 
-                    ? { 
-                        ...msg, 
-                        isThinking: false, 
-                        currentStep: null 
-                      } 
+                  msg.id === thinkingId
+                    ? {
+                        ...msg,
+                        isThinking: false,
+                        currentStep: null,
+                      }
                     : msg
                 )
               );
@@ -368,7 +369,10 @@ const Chatbot = (props) => {
               setMessages((prev) => {
                 const updated = prev.map((msg) => {
                   if (msg.id === thinkingId) {
-                    const updatedMsg = updateMessageWithStreamData(msg, eventData);
+                    const updatedMsg = updateMessageWithStreamData(
+                      msg,
+                      eventData
+                    );
                     // Force re-render by ensuring object reference changes
                     return { ...updatedMsg };
                   }
@@ -379,7 +383,8 @@ const Chatbot = (props) => {
 
               // Generate chat name when we get the final answer
               if (
-                (eventData.type === "complete" || eventData.type === "step-complete") &&
+                (eventData.type === "complete" ||
+                  eventData.type === "step-complete") &&
                 eventData.answer &&
                 !chatNameGenerated
               ) {
@@ -389,7 +394,10 @@ const Chatbot = (props) => {
               }
 
               // Force final state update for completion events
-              if (eventData.type === "complete" || eventData.type === "step-complete") {
+              if (
+                eventData.type === "complete" ||
+                eventData.type === "step-complete"
+              ) {
                 setTimeout(() => {
                   setMessages((prev) =>
                     prev.map((msg) =>
@@ -582,7 +590,9 @@ const Chatbot = (props) => {
           agent_name: eventData.agent_name,
           tool_name: eventData.tool_name,
           input: eventData.input,
-          message: eventData.message || `${eventData.agent_name} using ${eventData.tool_name}`,
+          message:
+            eventData.message ||
+            `${eventData.agent_name} using ${eventData.tool_name}`,
           timestamp: Date.now(),
         };
         updatedMessage.reasoning = [
@@ -645,25 +655,33 @@ const Chatbot = (props) => {
         case "agent_start":
           return <FontAwesomeIcon icon={faCog} className="text-yellow-400" />;
         case "agent_progress":
-          return <FontAwesomeIcon icon={faArrowRight} className="text-orange-400" />;
+          return (
+            <FontAwesomeIcon icon={faArrowRight} className="text-orange-400" />
+          );
         case "agent_reasoning":
           return <FontAwesomeIcon icon={faBrain} className="text-cyan-400" />;
         case "agent_tool_use":
         case "agent_tool_complete":
-          return <FontAwesomeIcon icon={faSearch} className="text-emerald-400" />;
+          return (
+            <FontAwesomeIcon icon={faSearch} className="text-emerald-400" />
+          );
         case "agent_completion":
         case "agent_error":
-          return <FontAwesomeIcon icon={faInfoCircle} className="text-indigo-400" />;
+          return (
+            <FontAwesomeIcon icon={faInfoCircle} className="text-indigo-400" />
+          );
         case "orchestrator_decision":
         case "orchestrator_synthesis":
           return <FontAwesomeIcon icon={faSitemap} className="text-pink-400" />;
         case "reasoning_step":
-          return <FontAwesomeIcon icon={faLightbulb} className="text-amber-400" />;
+          return (
+            <FontAwesomeIcon icon={faLightbulb} className="text-amber-400" />
+          );
         default:
           return <FontAwesomeIcon icon={faCog} className="text-gray-400" />;
       }
     };
-    console.log("stepsss", step)
+    console.log("stepsss", step);
     const getStepColor = (type) => {
       switch (type) {
         case "llm_reasoning":
@@ -751,7 +769,10 @@ const Chatbot = (props) => {
 
         {step.reasoning && (
           <div className="text-gray-400 text-xs mb-1">
-            <strong>Reasoning:</strong> {step.reasoning.length > 150 ? step.reasoning.substring(0, 150) + "..." : step.reasoning}
+            <strong>Reasoning:</strong>{" "}
+            {step.reasoning.length > 150
+              ? step.reasoning.substring(0, 150) + "..."
+              : step.reasoning}
           </div>
         )}
 
@@ -805,7 +826,11 @@ const Chatbot = (props) => {
   // Auto-expand reasoning for new thinking messages
   useEffect(() => {
     messages.forEach((msg) => {
-      if (msg.role === "assistant" && msg.isThinking && expandedReasoning[msg.id] === undefined) {
+      if (
+        msg.role === "assistant" &&
+        msg.isThinking &&
+        expandedReasoning[msg.id] === undefined
+      ) {
         setExpandedReasoning((prev) => ({
           ...prev,
           [msg.id]: true, // Auto-expand reasoning for thinking messages
@@ -893,8 +918,16 @@ const Chatbot = (props) => {
           messages.length > 0 ? "block" : "hidden"
         } flex justify-center`}
       >
-        <div className="py-3 flex-col mt-0 px-4 flex gap-3 w-full">
-          <div className="bg-anoteblack-800 flex items-center sticky top-0 lg:top-0 z-10 w-full border-b border-gray-400/30 px-2">
+        <div
+          className={`py-3 flex-col px-4 flex gap-3 w-full ${
+            props.isGuestMode ? "mt-20" : ""
+          }`}
+        >
+          <div
+            className={`bg-anoteblack-800 flex items-center sticky top-0 lg:top-0  z-10 w-full border-b border-gray-400/30 px-2 ${
+              props.isGuestMode ? "hidden" : "block"
+            }`}
+          >
             {/* Left: Reload button */}
             <div className="flex items-center flex-shrink-0 z-10">
               <button
@@ -954,51 +987,53 @@ const Chatbot = (props) => {
                   }`}
                 >
                   {/* Reasoning Box - Shows during streaming and after completion */}
-                  {msg.role === "assistant" && (msg.reasoning?.length > 0 || msg.isThinking) && (
-                    <div className="bg-[#0f1419] border border-[#2e3a4c] rounded-xl p-4 mb-3">
-                      <button
-                        onClick={() => toggleReasoningExpansion(msg.id)}
-                        className="flex items-center justify-between w-full text-left text-xs text-gray-400 hover:text-gray-200 transition-colors"
-                      >
-                        <div className="flex items-center gap-2">
-                          <FontAwesomeIcon icon={faBrain} />
-                          <span>
-                            {msg.isThinking 
-                              ? "AI Reasoning (Live)" 
-                              : `AI Reasoning Steps (${msg.reasoning?.length || 0})`
+                  {msg.role === "assistant" &&
+                    (msg.reasoning?.length > 0 || msg.isThinking) && (
+                      <div className="bg-[#0f1419] border border-[#2e3a4c] rounded-xl p-4 mb-3">
+                        <button
+                          onClick={() => toggleReasoningExpansion(msg.id)}
+                          className="flex items-center justify-between w-full text-left text-xs text-gray-400 hover:text-gray-200 transition-colors"
+                        >
+                          <div className="flex items-center gap-2">
+                            <FontAwesomeIcon icon={faBrain} />
+                            <span>
+                              {msg.isThinking
+                                ? "AI Reasoning (Live)"
+                                : `AI Reasoning Steps (${
+                                    msg.reasoning?.length || 0
+                                  })`}
+                            </span>
+                          </div>
+                          <FontAwesomeIcon
+                            icon={
+                              expandedReasoning[msg.id]
+                                ? faChevronUp
+                                : faChevronDown
                             }
-                          </span>
-                        </div>
-                        <FontAwesomeIcon
-                          icon={
-                            expandedReasoning[msg.id]
-                              ? faChevronUp
-                              : faChevronDown
-                          }
-                          className="text-xs"
-                        />
-                      </button>
+                            className="text-xs"
+                          />
+                        </button>
 
-                      {expandedReasoning[msg.id] && (
-                        <div className="mt-3 space-y-2 animate-fade-in">
-                          {/* Show current step during thinking */}
-                          {msg.isThinking && msg.currentStep && (
-                            <div className="border-l-2 border-yellow-400 bg-yellow-950/20 pl-3 py-2 mb-2">
-                              <ThinkingIndicator step={msg.currentStep} />
-                            </div>
-                          )}
-                          
-                          {/* Show completed reasoning steps */}
-                          {msg.reasoning?.map((step, idx) => (
-                            <ThinkingIndicator
-                              key={step.id || idx}
-                              step={step}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                        {expandedReasoning[msg.id] && (
+                          <div className="mt-3 space-y-2 animate-fade-in">
+                            {/* Show current step during thinking */}
+                            {msg.isThinking && msg.currentStep && (
+                              <div className="border-l-2 border-yellow-400 bg-yellow-950/20 pl-3 py-2 mb-2">
+                                <ThinkingIndicator step={msg.currentStep} />
+                              </div>
+                            )}
+
+                            {/* Show completed reasoning steps */}
+                            {msg.reasoning?.map((step, idx) => (
+                              <ThinkingIndicator
+                                key={step.id || idx}
+                                step={step}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                   {/* Main message content */}
                   <div
@@ -1074,15 +1109,19 @@ const Chatbot = (props) => {
             <button
               type="button"
               onClick={() => {
-                console.log("Upload button clicked in Chatbot", "selectedChatId:", props.selectedChatId);
+                console.log(
+                  "Upload button clicked in Chatbot",
+                  "selectedChatId:",
+                  props.selectedChatId
+                );
                 if (props.onUploadClick) {
                   setUploadButtonClicked(true);
                   props.onUploadClick(props.selectedChatId);
                   setTimeout(() => setUploadButtonClicked(false), 1000);
                 }
               }}
-              disabled={props.isUploading}
-              className={`flex items-center justify-center w-12 h-12 rounded-xl transition-colors flex-shrink-0 ${
+              disabled={props.isUploading || props.isGuestMode}
+              className={`flex items-center disabled:bg-gray-800 disabled:cursor-not-allowed justify-center w-12 h-12 rounded-xl transition-colors flex-shrink-0 ${
                 uploadButtonClicked
                   ? "bg-blue-600 text-white"
                   : props.isUploading

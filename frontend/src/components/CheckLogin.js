@@ -18,7 +18,7 @@ function CheckLogin(props) {
 
   const accessToken = localStorage.getItem("accessToken");
   const sessionToken = localStorage.getItem("sessionToken");
-  console.log("get access token");
+  console.log("get access token", process.env.REACT_APP_BACK_END_HOST);
   console.log(accessToken);
   
   // Update login state based on tokens
@@ -56,7 +56,6 @@ function CheckLogin(props) {
       window.removeEventListener('showLogin', handleShowLogin);
     };
   }, []);
-
   var mainView = [];
   if (!isLoggedIn) {
     // Always show guest mode for non-logged-in users, with modal for login
