@@ -1,6 +1,6 @@
-# 🧪 **Testing Guide: Model Evaluation & Submission**
+# Testing Guide: Model Evaluation & Submission
 
-## 🚀 **Quick Start**
+## Quick Start
 
 ### **1. Start the Application**
 ```bash
@@ -16,7 +16,7 @@ cd frontend && npm install && PORT=3001 npm start
 - **Submit Models**: Click "Submit Your Model" button
 - **Backend API**: http://localhost:8000
 
-## 📁 **Available Test Files**
+## Available Test Files
 
 ### **BLEU Score Testing:**
 | Language | Test File | Expected Score | Performance Level |
@@ -47,7 +47,7 @@ cd frontend && npm install && PORT=3001 npm start
 | `test_files/test_medium_score.csv` | ~0.3-0.6 | Decent translations |
 | `test_files/test_low_score.csv` | ~0.0-0.2 | Poor translations |
 
-## 🎯 **How to Test Each Metric**
+## How to Test Each Metric
 
 ### **BLEU Score Testing:**
 1. Go to: http://localhost:3001/evaluations
@@ -63,7 +63,7 @@ cd frontend && npm install && PORT=3001 npm start
 4. Upload: `test_files/demo_test_spanish_bertscore.csv`
 5. Expected: ~0.65 BERTScore (higher than BLEU)
 
-## ⏱️ **Performance Expectations**
+## Performance Expectations
 
 ### **BLEU Evaluation:**
 - **Time**: ~1-2 seconds
@@ -74,7 +74,7 @@ cd frontend && npm install && PORT=3001 npm start
 - **Subsequent Calls**: ~3-5 seconds (model cached)
 - **Process**: BERT embedding + cosine similarity
 
-## 🔧 **Verification Checklist**
+## Verification Checklist
 
 ### **✅ BERTScore Working Correctly If:**
 1. **Scores in 0.6-0.8 range** for good translations
@@ -88,7 +88,7 @@ cd frontend && npm install && PORT=3001 npm start
 3. Crashes with tensor errors
 4. Returns identical scores for different inputs
 
-## 🚀 **Quick Test Commands**
+## Quick Test Commands
 
 ```bash
 # Test BLEU (fast)
@@ -106,7 +106,7 @@ curl -X POST "http://localhost:8000/public/submit_model" \
 - BLEU: ~0.3-0.5
 - BERTScore: ~0.6-0.7 (higher semantic similarity)
 
-## 🎯 **Quick Demo (5 minutes)**
+## Quick Demo (5 minutes)
 
 ### **For Live Presentations:**
 

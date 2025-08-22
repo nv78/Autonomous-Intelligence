@@ -1,8 +1,8 @@
-# 🏆 Multi-Language Translation Leaderboard
+# Multi-Language Translation Leaderboard
 
 A research platform for evaluating and ranking AI translation models across 5 languages using both BLEU and BERTScore metrics. Features real-time submissions, dynamic leaderboards, and comprehensive multi-language evaluation.
 
-## 🌟 **Key Features**
+## Key Features
 
 - **5 Languages**: Spanish, Japanese, Arabic, Chinese, Korean
 - **2 Evaluation Metrics**: BLEU (exact matching) + BERTScore (semantic similarity)  
@@ -11,7 +11,7 @@ A research platform for evaluating and ranking AI translation models across 5 la
 - **FLORES+ Integration**: Industry-standard benchmark datasets
 - **Research-Grade Evaluation**: Comprehensive metric comparison
 
-## 🚀 **Quick Start**
+## Quick Start
 
 ### Prerequisites
 - Docker and Docker Compose
@@ -40,7 +40,7 @@ A research platform for evaluating and ranking AI translation models across 5 la
    - **Backend API**: http://localhost:8000
    - **Health Check**: http://localhost:8000/health
 
-## 📊 **Evaluation Metrics Comparison**
+## Evaluation Metrics Comparison
 
 | Metric | Spanish | Arabic | Korean | Japanese | Chinese | Advantage |
 |--------|---------|--------|--------|----------|---------|-----------|
@@ -49,14 +49,14 @@ A research platform for evaluating and ranking AI translation models across 5 la
 
 **Key Insight**: BERTScore provides meaningful evaluation for all languages, while BLEU struggles with Asian languages due to structural differences.
 
-## 🎯 **How It Works**
+## How It Works
 
 1. **Browse Leaderboards**: View current model rankings by language and metric
 2. **Submit Your Model**: Upload CSV with translation results
 3. **Get Evaluated**: System calculates BLEU/BERTScore against FLORES+ references  
 4. **See Results**: Your model appears in real-time leaderboard rankings
 
-## 🧪 **Testing & Demo**
+## Testing & Demo
 
 **Quick Demo**: See `TESTING_GUIDE.md` for complete instructions
 
@@ -64,7 +64,7 @@ A research platform for evaluating and ranking AI translation models across 5 la
 - Language-specific demos for each supported language
 - Score range examples (high/medium/low performance)
 
-## 🔧 **API Endpoints**
+## API Endpoints
 
 ### Submit Model
 ```bash
@@ -87,7 +87,7 @@ GET /public/get_source_sentences?dataset_name=flores_spanish_translation&count=5
 GET /public/get_leaderboard
 ```
 
-## 🏗️ **Development**
+## Development
 
 ### Workflow
 1. **Make Changes**: Edit code in your preferred IDE
@@ -105,15 +105,15 @@ GET /public/get_leaderboard
 - **Evaluation**: BLEU (nltk) + BERTScore (bert-base-multilingual-cased)
 - **Data**: FLORES+ benchmark datasets via Hugging Face
 
-## 📚 **Documentation**
+## Documentation
 
 - **`TESTING_GUIDE.md`**: Comprehensive testing instructions + demo guide
 - **`CODEBASE_SETUP.md`**: Development environment setup
 
-## 🤝 **Contributing**
+## Contributing
 
 See `CONTRIBUTING.md` for contribution guidelines.
 
-## 📄 **License**
+## License
 
 See `LICENSE.md` for details.
