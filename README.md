@@ -1,55 +1,17 @@
-# Autonomous Intelligence
+# 🏆 Multi-Language Translation Leaderboard
 
-[Autonomous Intelligence](https://privatechatbot.ai/) is an open source research project aimed at building collaborative multi-agent AI systems. The agentic framework provides a robust infrastructure for creating and managing multiple AI agents, and enables developers and organizations to build, deploy, and optimize AI agents that work well in dynamic, complex environments.
+A research platform for evaluating and ranking AI translation models across 5 languages using both BLEU and BERTScore metrics. Features real-time submissions, dynamic leaderboards, and comprehensive multi-language evaluation.
 
-## Product Overview
+## 🌟 **Key Features**
 
-### General Purpose Multi-Agent Framework
-The framework provides a robust infrastructure for creating and managing multiple AI agents. It enables seamless collaboration between agents to tackle complex tasks, dynamically adapting to user inputs and changing conditions. Task execution is automated through dynamic selection of the best agents, tools, and workflows for the job. The system handles dependencies, monitors progress, and troubleshoots issues in real time.
+- **5 Languages**: Spanish, Japanese, Arabic, Chinese, Korean
+- **2 Evaluation Metrics**: BLEU (exact matching) + BERTScore (semantic similarity)  
+- **Real-time Leaderboards**: Dynamic rankings with live updates
+- **Model Submission**: Easy CSV upload interface for translation results
+- **FLORES+ Integration**: Industry-standard benchmark datasets
+- **Research-Grade Evaluation**: Comprehensive metric comparison
 
-![alt text](https://github.com/nv78/Autonomous-Intelligence/blob/main/materials/assets/AgentTemplates.png?raw=true)
-
-### User Interaction
-Users can design and visualize workflows using an intuitive drag-and-drop interface or directly interact with agents through conversational natural language queries.
-
-![alt text](https://github.com/nv78/Autonomous-Intelligence/blob/main/materials/assets/AutoGPT.png?raw=true)
-
-### SDK and API Access
-Developers can leverage tools for integrating AI agent functionality into their applications. The platform supports customization and modular development for scalability and efficiency.
-
-![alt text](https://github.com/nv78/Autonomous-Intelligence/blob/main/materials/assets/SDK.png?raw=true)
-
-## How It Works
-
-Autonomous Intelligence's architecture is built around a decentralized network of specialized agents that work both independently and collaboratively. These agents communicate through defined pathways, managed by an orchestrator that ensures tasks are distributed and executed efficiently.
-
-### Core Components
-
-| Component                    | Description                                                                                       |
-|------------------------------|---------------------------------------------------------------------------------------------------|
-| **Orchestrator**             | Central hub for task assignment, execution, and monitoring. Manages agent interactions and refines workflows dynamically. |
-| **Agent**                    | An autonomous unit programmed to perform tasks, make decisions, and communicate with other agents. |
-| **Task**                     | A specific assignment completed by an agent, providing all necessary details like description, tools, and responsibilities. |
-| **Crew**                     | A collaborative group of agents working together to achieve a set of tasks. Crews define strategies for task execution and agent collaboration. |
-| **Process Implementations**  | Frameworks for agent collaboration. This includes sequential tasks that are executed in an orderly progression, or hierarchical tasks are managed via a structured chain of command|
-| **Large Language Models (LLMs)** | Backbone of intelligent agents, enabling capabilities like natural language understanding and reasoning. Includes models like GPT, Claude, Mistral, Gemini, and Llama that are Optimized for complex workflows. |
-| **Tool**                     | A skill or function agents use to perform actions, that includes capabilities like search, computer use, data extraction, file uploading and advanced interactions. |
-| **Agent Registry**           | A structured catalog organizing agents by domain, task type, and functionality, allowing users to deploy agents seamlessly. |
-| **Frontend Interface**       | Drag-and-drop visual workflow builder and real-time dashboards for monitoring, debugging, and optimizing agent performance. |
-
-## Workflow Example
-
-1. **Input Query**: The user provides a task, e.g., “Reach out to a list of 10,000 New York-based heads of AI who work in mid-sized finance companies.”
-2. **Data Collection**: The orchestrator leverages an AI-powered data foundation and the web to source the most reliable leads. The agent processes the input criteria to generate a list, such as Job Title: Data Scientist, Industry: Technology, Company Size: >1,000, Location: United States
-3. **Agent Workflow**: The AI workflow processes the input by applying specific rules and guidelines to filter the data. Agents collaborate to refine the lead list and create tailored email drafts for each contact.
-4. **Email and List Generation**: The system outputs a curated list of leads, including contact information, along with tailored email content ready for automated delivery.
-5. **Automation**: Emails are automatically sent to the generated list of leads. The system tracks progress, showing the number of emails sent and responses received daily.
-6. **Feedback Loop**: User feedback is incorporated to improve the lead generation process, refine email drafts, or adjust selection criteria for future tasks.
-
-
-![alt text](https://github.com/nv78/Autonomous-Intelligence/blob/main/materials/assets/ExampleNew.png?raw=true)
-
-## Quick Start
+## 🚀 **Quick Start**
 
 ### Prerequisites
 - Docker and Docker Compose
@@ -74,142 +36,84 @@ Autonomous Intelligence's architecture is built around a decentralized network o
    ```
 
 3. **Access Applications**
-   - Frontend: http://localhost:3001
-   - Backend API: http://localhost:8000
-   - Health Check: http://localhost:8000/health
+   - **Evaluations**: http://localhost:3001/evaluations
+   - **Backend API**: http://localhost:8000
+   - **Health Check**: http://localhost:8000/health
 
-### Key Features
+## 📊 **Evaluation Metrics Comparison**
 
-#### Model Submission & Evaluation API  
-- **Endpoint**: `/public/submit_model`
-- **Purpose**: Submit model results for BLEU and BERTScore evaluation
-- **Metrics**: BLEU (exact matching) and BERTScore (semantic similarity)
-- **Languages**: Spanish, Japanese, Arabic, Chinese, Korean
-- **Access**: http://localhost:3001/evaluations → "Submit Your Model"
+| Metric | Spanish | Arabic | Korean | Japanese | Chinese | Advantage |
+|--------|---------|--------|--------|----------|---------|-----------|
+| **BLEU** | ~0.40 | ~0.10 | ~0.13 | ~0.00 | ~0.00 | Fast, established standard |
+| **BERTScore** | ~0.65 | ~0.65 | ~0.60 | ~0.62 | ~0.62 | Semantic similarity, works for all languages |
+
+**Key Insight**: BERTScore provides meaningful evaluation for all languages, while BLEU struggles with Asian languages due to structural differences.
+
+## 🎯 **How It Works**
+
+1. **Browse Leaderboards**: View current model rankings by language and metric
+2. **Submit Your Model**: Upload CSV with translation results
+3. **Get Evaluated**: System calculates BLEU/BERTScore against FLORES+ references  
+4. **See Results**: Your model appears in real-time leaderboard rankings
 
 ## 🧪 **Testing & Demo**
 
-**Detailed testing instructions**: See `TESTING_GUIDE.md`
+**Quick Demo**: See `TESTING_GUIDE.md` for complete instructions
 
-**Key Points:**
-- **BLEU**: Spanish ~0.40, Arabic ~0.10, Korean ~0.13, Japanese/Chinese ~0.00
-- **BERTScore**: Meaningful scores (0.6-0.8) for all languages (semantic similarity)
-- **Performance**: BERTScore takes 10-15 seconds on first use, then 3-5 seconds
+**Test Files Available**: All testing files are in `test_files/` directory
+- Language-specific demos for each supported language
+- Score range examples (high/medium/low performance)
 
-### Development Workflow
+## 🔧 **API Endpoints**
 
-1. **Make Changes**: Edit code in your preferred IDE
-2. **Test Locally**: Use the endpoints above to verify functionality
-3. **Commit Changes**: 
-   ```bash
-   git add .
-   git commit -m "Your change description"
-   ```
-4. **Push to Branch**: 
-   ```bash
-   git push origin chatbots-leaderboard-api
-   ```
-
-### Testing Files
-- `test_files/test_high_score.csv` - Perfect translations (BLEU: 1.0)
-- `test_files/test_medium_score.csv` - Good translations (BLEU: ~0.39)
-- `test_files/test_low_score.csv` - Poor translations (BLEU: ~0.05)
-
-### Key Features
-
-| Feature                    | Description                                                                                     |
-|----------------------------|-------------------------------------------------------------------------------------------------|
-| **Dynamic Workflow Creation** | Build complex workflows with drag-and-drop tools.                                             |
-| **Agent Collaboration**    | Enable sequential, parallel, or hierarchical execution of tasks.                               |
-| **Customizable Framework** | Integrate third-party apps and tools, such as Slack, AWS, or Google Workspace.                 |
-| **Real-Time Debugging**    | Visualize and troubleshoot workflows using interactive flowcharts.                             |
-| **Model-Agnostic Design**  | Supports various models, including OpenAI, Claude, Llama, and Mistral.                        |
-| **Private Deployments**    | Operate securely in local environments with privacy-preserving configurations.                 |
-
-## Use Cases
-
-Within the Agent Registry, we will be adding many domain specific agents. Here are a few example use cases, with corresponding demos:
-
-| **Use Case**              | **Description**                                                                  | **Link**                                              |
-|---------------------------|----------------------------------------------------------------------------------|------------------------------------------------------|
-| **AI Assisted Coding**    | Automate feature implementations and pull requests                              | [Watch Video](https://www.youtube.com/watch?v=K2KUVdZjZnc) |
-| **AI Assisted RFPs**      | Draft, refine, and submit grant proposals efficiently                           | [Watch Video](https://www.youtube.com/watch?v=fE4_Yjjfl0M) |
-| **AI Assisted Outreach**  | Automate email campaigns, sequences, and follow-ups                             | [Learn More](https://upreach.ai/)                    |
-| **Job Applications**      | Automate resume customization and job application submissions                   | [Learn More](https://roboapply.ai/)                  |
-
-
-## API Endpoints
-
-### Submit Model API
-
-The platform includes a model evaluation API that allows users to submit their model results for benchmarking against standard datasets.
-
-#### Endpoint: `/public/submit_model`
-
-**Input:**
-- `benchmarkDatasetName`: Name of the benchmark dataset (e.g., "flores_spanish_translation")
-- `modelName`: Your model identifier
-- `modelResults`: Array of your model's outputs
-- `sentence_ids`: Array of sentence indices being evaluated
-
-**Output:**
-- `success`: Boolean indicating submission success
-- `score`: BLEU score (0.0 - 1.0) comparing your results to reference translations
-
-**Example Usage:**
+### Submit Model
 ```bash
-curl -X POST http://localhost:8000/public/submit_model \
-  -H "Content-Type: application/json" \
-  -d '{
-    "benchmarkDatasetName": "flores_spanish_translation",
-    "modelName": "my-model-v1",
-    "modelResults": ["Translation 1", "Translation 2"],
-    "sentence_ids": [0, 1]
-  }'
-```
-
-**Response:**
-```json
+POST /public/submit_model
 {
-  "success": true,
-  "score": 0.134
+  "benchmarkDatasetName": "flores_spanish_translation",
+  "modelName": "my-model-v1", 
+  "modelResults": ["Translation 1", "Translation 2"],
+  "sentence_ids": [0, 1]
 }
 ```
 
-### Get Source Sentences API
-
-Retrieve source sentences that need to be translated for evaluation.
-
-#### Endpoint: `/public/get_source_sentences`
-
-**Parameters:**
-- `count`: Number of sentences to retrieve (default: 10)
-
-**Example:**
+### Get Source Sentences
 ```bash
-curl -X GET "http://localhost:8000/public/get_source_sentences?count=3"
+GET /public/get_source_sentences?dataset_name=flores_spanish_translation&count=5
 ```
 
-### Frontend Integration
+### Get Leaderboard
+```bash
+GET /public/get_leaderboard
+```
 
-The platform includes a web interface for model submission:
+## 🏗️ **Development**
 
-- **Leaderboard**: View model rankings at `/leaderboard`
-- **Submit Model**: Submit your model results at `/submit-to-leaderboard`
+### Workflow
+1. **Make Changes**: Edit code in your preferred IDE
+2. **Test Locally**: Use endpoints above to verify functionality  
+3. **Commit & Push**: 
+   ```bash
+   git add .
+   git commit -m "Your change description"
+   git push origin chatbots-leaderboard-api
+   ```
 
-The submission interface allows users to:
-1. Select benchmark datasets
-2. Upload model results (CSV/JSON format)
-3. View real-time evaluation scores
-4. Track submission history
+### Architecture
+- **Backend**: Flask API with MySQL database
+- **Frontend**: React with dynamic leaderboard components
+- **Evaluation**: BLEU (nltk) + BERTScore (bert-base-multilingual-cased)
+- **Data**: FLORES+ benchmark datasets via Hugging Face
 
-## Getting Started
+## 📚 **Documentation**
 
-### Set Up
+- **`TESTING_GUIDE.md`**: Comprehensive testing instructions + demo guide
+- **`CODEBASE_SETUP.md`**: Development environment setup
 
-We provide the setup instructions in ```CODEBASE_SETUP.md``` 
+## 🤝 **Contributing**
 
-### Stay Connected
-- **Slack**: [Join the community](https://join.slack.com/t/anote-ai/shared_invite/zt-2vdh1p5xt-KWvtBZEprhrCzU6wrRPwNA)
-- **GitHub**: [Explore the code](https://github.com/nv78/Autonomous-Intelligence/)
-- **Documentation**: [See the docs](https://docs.privatechatbot.ai/)
+See `CONTRIBUTING.md` for contribution guidelines.
+
+## 📄 **License**
+
+See `LICENSE.md` for details.
