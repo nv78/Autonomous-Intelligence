@@ -3,48 +3,11 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
 const TranslateSentences = () => {
-  const [translatedText, setTranslatedText] = useState([]);
-  const [bleuScore, setBleuScore] = useState(null);
-  const [count, setCount] = useState(5);
   const [error, setError] = useState(null);
   const [datasets, setDatasets] = useState([]); // Made dynamic
-  const [selectedLanguage, setSelectedLanguage] = useState('spanish');
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Available languages for evaluation
-  const languageOptions = [
-    { value: 'spanish', label: 'Spanish', dataset: 'flores_spanish_translation' },
-    { value: 'japanese', label: 'Japanese', dataset: 'flores_japanese_translation' },
-    { value: 'arabic', label: 'Arabic', dataset: 'flores_arabic_translation' },
-    { value: 'chinese', label: 'Chinese', dataset: 'flores_chinese_translation' },
-    { value: 'korean', label: 'Korean', dataset: 'flores_korean_translation' }
-  ];
 
-  const handleTranslationRequest = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await axios.post(
-        "http://localhost:8000/multi-language-gpt-evaluation",
-        { 
-          language: selectedLanguage,
-          count 
-        },
-        { headers: { "Content-Type": "application/json" } }
-      );
-
-      const { translations, bleu_score } = response.data;
-      setTranslatedText(translations);
-      setBleuScore(bleu_score);
-    } catch (err) {
-      console.error("Translation error:", err);
-      setError("An error occurred while translating.");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSubmitToLeaderboard = () => {
     navigate("/submit-to-leaderboard");
@@ -56,13 +19,28 @@ const TranslateSentences = () => {
       try {
         const response = await axios.get("http://localhost:8000/public/get_leaderboard");
         if (response.data.success) {
-          // Group submissions by dataset and create the same structure as before
+          // Group submissions by dataset and metric, create the same structure as before
           const groupedData = {};
           response.data.leaderboard.forEach(submission => {
-            const key = `${submission.dataset_name}_bleu`; // Create key like "flores_spanish_translation_bleu"
+            // Create appropriate key based on dataset name and evaluation metric
+            let key;
+            let displayName;
+            
+            if (submission.dataset_name.includes('_bertscore')) {
+              // BERTScore datasets
+              const language = submission.dataset_name.replace('flores_', '').replace('_translation_bertscore', '');
+              key = `${submission.dataset_name}`;  // Don't add extra _bertscore suffix
+              displayName = `${language.charAt(0).toUpperCase() + language.slice(1)} – BERTScore`;
+            } else {
+              // BLEU datasets (existing logic)
+              const language = submission.dataset_name.replace('flores_', '').replace('_translation', '');
+              key = `${submission.dataset_name}_bleu`;
+              displayName = `${language.charAt(0).toUpperCase() + language.slice(1)} – BLEU`;
+            }
+            
             if (!groupedData[key]) {
               groupedData[key] = {
-                name: `${submission.dataset_name.replace('flores_', '').replace('_translation', '')} – BLEU`.replace(/^\w/, c => c.toUpperCase()),
+                name: displayName,
                 url: "https://huggingface.co/datasets/openlanguagedata/flores_plus",
                 models: []
               };
@@ -95,15 +73,15 @@ const TranslateSentences = () => {
                 { rank: 3, model: "Gemini 2.5 Flash Zero-Shot", score: 0.511, updated: "Aug 2025" },
               ]
             },
-            // Spanish BERTScore - static
-            {
+            // Spanish BERTScore - dynamic data
+            groupedData['flores_spanish_translation_bertscore'] || {
               name: "Spanish – BERTScore",
               url: "https://huggingface.co/datasets/openlanguagedata/flores_plus",
               models: [
                 { rank: 1, model: "GPT-4o Zero-Shot", score: 0.886, updated: "Aug 2025" },
                 { rank: 2, model: "Claude 3.5 Sonnet Zero-Shot", score: 0.886, updated: "Aug 2025" },
                 { rank: 3, model: "Gemini 2.5 Flash Zero-Shot", score: 0.883, updated: "Aug 2025" },
-              ],
+              ]
             },
             // Japanese BLEU - dynamic data
             groupedData['flores_japanese_translation_bleu'] || {
@@ -115,15 +93,15 @@ const TranslateSentences = () => {
                 { rank: 3, model: "Gemini 2.5 Flash-Lite Zero-Shot", score: 0.639, updated: "Aug 2025" },
               ]
             },
-            // Japanese BERTScore - static
-            {
+            // Japanese BERTScore - dynamic data
+            groupedData['flores_japanese_translation_bertscore'] || {
               name: "Japanese – BERTScore",
               url: "https://huggingface.co/datasets/openlanguagedata/flores_plus",
               models: [
                 { rank: 1, model: "GPT-4o Zero-Shot", score: 0.883, updated: "Aug 2025" },
                 { rank: 2, model: "Claude 3.5 Sonnet Zero-Shot", score: 0.878, updated: "Aug 2025" },
                 { rank: 3, model: "Gemini 2.5 Flash-Lite Zero-Shot", score: 0.874, updated: "Aug 2025" },
-              ],
+              ]
             },
             // Arabic BLEU - dynamic data
             groupedData['flores_arabic_translation_bleu'] || {
@@ -135,15 +113,15 @@ const TranslateSentences = () => {
                 { rank: 3, model: "Gemini 2.5 Flash-Lite Zero-Shot", score: 0.518, updated: "Aug 2025" },
               ]
             },
-            // Arabic BERTScore - static
-            {
+            // Arabic BERTScore - dynamic data
+            groupedData['flores_arabic_translation_bertscore'] || {
               name: "Arabic – BERTScore",
               url: "https://huggingface.co/datasets/openlanguagedata/flores_plus",
               models: [
                 { rank: 1, model: "GPT-4o Zero-Shot", score: 0.887, updated: "Aug 2025" },
                 { rank: 2, model: "Claude 3.5 Sonnet Zero-Shot", score: 0.887, updated: "Aug 2025" },
                 { rank: 3, model: "Gemini 2.5 Flash-Lite Zero-Shot", score: 0.884, updated: "Aug 2025" },
-              ],
+              ]
             },
             // Chinese BLEU - dynamic data  
             groupedData['flores_chinese_translation_bleu'] || {
@@ -155,15 +133,15 @@ const TranslateSentences = () => {
                 { rank: 3, model: "Gemini 2.5 Flash-Lite Zero-Shot", score: 0.257, updated: "Aug 2025" },
               ]
             },
-            // Chinese BERTScore - static
-            {
+            // Chinese BERTScore - dynamic data
+            groupedData['flores_chinese_translation_bertscore'] || {
               name: "Chinese – BERTScore",
               url: "https://huggingface.co/datasets/openlanguagedata/flores_plus",
               models: [
                 { rank: 1, model: "GPT-4o Zero-Shot", score: 0.898, updated: "Aug 2025" },
                 { rank: 2, model: "Claude 3.5 Sonnet Zero-Shot", score: 0.897, updated: "Aug 2025" },
                 { rank: 3, model: "Gemini 2.5 Flash-Lite Zero-Shot", score: 0.892, updated: "Aug 2025" },
-              ],
+              ]
             },
             // Korean BLEU - dynamic data
             groupedData['flores_korean_translation_bleu'] || {
@@ -175,15 +153,15 @@ const TranslateSentences = () => {
                 { rank: 3, model: "Gemini 2.5 Flash-Lite Zero-Shot", score: 0.559, updated: "Aug 2025" },
               ]
             },
-            // Korean BERTScore - static
-            {
+            // Korean BERTScore - dynamic data
+            groupedData['flores_korean_translation_bertscore'] || {
               name: "Korean – BERTScore",
               url: "https://huggingface.co/datasets/openlanguagedata/flores_plus",
               models: [
                 { rank: 1, model: "Claude 3.5 Sonnet Zero-Shot", score: 0.874, updated: "Aug 2025" },
                 { rank: 2, model: "GPT-4o Zero-Shot", score: 0.872, updated: "Aug 2025" },
                 { rank: 3, model: "Gemini 2.5 Flash-Lite Zero-Shot", score: 0.868, updated: "Aug 2025" },
-              ],
+              ]
             },
           ];
 
@@ -275,48 +253,6 @@ const TranslateSentences = () => {
       </div>
       
       <div className="max-w-4xl mx-auto mt-16 flex flex-col items-center">
-        <div className="mb-6 flex flex-col items-center space-y-4">
-          <div className="flex items-center space-x-4">
-            <label className="text-white font-medium">Select Language:</label>
-            <select
-              value={selectedLanguage}
-              onChange={(e) => setSelectedLanguage(e.target.value)}
-              className="bg-gray-800 text-white px-4 py-2 rounded border border-gray-600 focus:border-blue-500 focus:outline-none"
-            >
-              {languageOptions.map((lang) => (
-                <option key={lang.value} value={lang.value}>
-                  {lang.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <button
-            onClick={handleTranslationRequest}
-            disabled={loading}
-            className="btn-black px-6 py-2 border border-white rounded hover:bg-white hover:text-black transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? 'Generating...' : `Generate GPT ${languageOptions.find(l => l.value === selectedLanguage)?.label} Score`}
-          </button>
-        </div>
-
-        {translatedText.length > 0 && (
-          <div className="bg-gray-950 p-6 rounded-lg w-full shadow-lg">
-            <h3 className="text-xl font-bold mb-4 text-white">GPT Translations</h3>
-            <ul className="list-decimal pl-5 space-y-1 text-gray-300">
-            {translatedText.map((sentence, idx) => (
-                <li key={idx}>{sentence}</li>
-            ))}
-            </ul>
-          </div>
-        )}
-
-        {bleuScore !== null && (
-          <div className="bg-gray-950 mt-6 p-6 rounded-lg w-full shadow-lg">
-            <h3 className="text-xl font-bold text-white mb-2">BLEU Score</h3>
-            <p className="text-gray-300 text-lg">{bleuScore.toFixed(4)}</p>
-          </div>
-        )}
-
         {error && (
           <div className="mt-6 text-red-500 bg-red-900 p-4 rounded-md w-full text-center">
             {error}

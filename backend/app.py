@@ -1829,7 +1829,7 @@ def get_source_sentences():
     }
     """
     try:
-        dataset_name = request.args.get('dataset', 'flores_spanish_translation')
+        dataset_name = request.args.get('dataset_name', request.args.get('dataset', 'flores_spanish_translation'))
         count = int(request.args.get('count', 5))
         start_idx = int(request.args.get('start_idx', 0))
         
@@ -1837,12 +1837,13 @@ def get_source_sentences():
         conn, cursor = get_db_connection()
         
         try:
-            # Handle FLORES+ datasets (Spanish, Japanese, Arabic, Chinese)
+            # Handle FLORES+ datasets (Spanish, Japanese, Arabic, Chinese, Korean)
             flores_datasets = {
                 'flores_spanish_translation': 'spa_Latn',
                 'flores_japanese_translation': 'jpn_Jpan', 
                 'flores_arabic_translation': 'arb_Arab',
-                'flores_chinese_translation': 'zho_Hans'
+                'flores_chinese_translation': 'cmn_Hans',
+                'flores_korean_translation': 'kor_Hang'
             }
             
             if dataset_name in flores_datasets:
@@ -1987,8 +1988,8 @@ def submit_model():
             
             submission_id = cursor.lastrowid
             
-            # Run evaluation based on the dataset type
-            if task_type == 'translation' and evaluation_metric == 'bleu':
+            # Run evaluation based on the dataset type and metric
+            if task_type == 'translation' and evaluation_metric in ['bleu', 'bertscore']:
                 try:
                     # Handle FLORES+ datasets (Spanish, Japanese, Arabic, Chinese, Korean)
                     flores_datasets = {
@@ -1999,7 +2000,18 @@ def submit_model():
                         'flores_korean_translation': 'kor_Hang'
                     }
                     
-                    if benchmark_dataset_name in flores_datasets:
+                    # BERTScore datasets (same language mappings)
+                    flores_bertscore_datasets = {
+                        'flores_spanish_translation_bertscore': 'spa_Latn',
+                        'flores_japanese_translation_bertscore': 'jpn_Jpan',
+                        'flores_arabic_translation_bertscore': 'arb_Arab', 
+                        'flores_chinese_translation_bertscore': 'cmn_Hans',
+                        'flores_korean_translation_bertscore': 'kor_Hang'
+                    }
+                    
+                    all_flores_datasets = {**flores_datasets, **flores_bertscore_datasets}
+                    
+                    if benchmark_dataset_name in all_flores_datasets:
                         # FLORES+ evaluation logic for all supported languages
                         # Set HF token for dataset access (environment variable approach)
                         import os
@@ -2008,7 +2020,7 @@ def submit_model():
                             os.environ["HF_TOKEN"] = hf_token
                         
                         # Load FLORES+ reference sentences for the target language
-                        target_lang = flores_datasets[benchmark_dataset_name]
+                        target_lang = all_flores_datasets[benchmark_dataset_name]
                         target_dataset = load_dataset("openlanguagedata/flores_plus", target_lang, split="devtest")
                         
                         # Use specific sentence positions (Option C - now required)
@@ -2050,29 +2062,29 @@ def submit_model():
                         
                         reference_sentences = [all_reference_sentences[idx] for idx in sentence_ids]
                     
-                    # Calculate real BLEU score using Angela's function
-                    bleu_score = get_bleu(model_results, reference_sentences)
-                    
-                    # No evaluation details needed for spec compliance
-                    score = bleu_score
+                    # Calculate score based on evaluation metric
+                    if evaluation_metric == 'bleu':
+                        score = get_bleu(model_results, reference_sentences)
+                    elif evaluation_metric == 'bertscore':
+                        score = get_bertscore(model_results, reference_sentences)
                     
                 except Exception as e:
-                    print(f"BLEU evaluation failed: {str(e)}")
+                    print(f"{evaluation_metric.upper()} evaluation failed: {str(e)}")
                     return jsonify({
                         "success": False,
-                        "error": "BLEU evaluation failed"
+                        "error": f"{evaluation_metric.upper()} evaluation failed"
                     }), 500
             else:
                 return jsonify({
                     "success": False,
-                    "error": "Only translation tasks with BLEU metric supported"
+                    "error": "Only translation tasks with BLEU or BERTScore metrics supported"
                 }), 400
             
             # Store evaluation result (simplified)
             cursor.execute("""
                 INSERT INTO evaluation_results (model_submission_id, score, evaluation_details)
                 VALUES (%s, %s, %s)
-            """, (submission_id, score, json.dumps({"metric": "bleu"})))
+            """, (submission_id, score, json.dumps({"metric": evaluation_metric})))
             
             # Commit the transaction
             conn.commit()
@@ -2502,6 +2514,31 @@ def get_bleu(translations, references, weights=(0.5, 0.5, 0, 0)):
         for ref, trans in zip(references, translations)
     ]
     return sum(bleu_scores) / len(bleu_scores)
+
+# calculate BERTScore
+def get_bertscore(predictions, references):
+    """
+    Calculate BERTScore F1 for translation evaluation
+    Based on implementation from anote_evals.ipynb
+    """
+    try:
+        from bert_score import BERTScorer
+        
+        # Initialize BERTScorer with multilingual BERT model
+        scorer = BERTScorer(model_type='bert-base-multilingual-cased')
+        
+        # Calculate BERTScore - returns Precision, Recall, F1 tensors
+        P, R, F1 = scorer.score(predictions, references)
+        
+        # Return mean F1 score as the primary metric
+        return F1.mean().item()
+        
+    except ImportError:
+        print("Warning: bert_score not installed. Install with: pip install bert_score")
+        return 0.0
+    except Exception as e:
+        print(f"Error calculating BERTScore: {str(e)}")
+        return 0.0
 
 @app.route('/multi-language-gpt-evaluation', methods=['POST'])
 @cross_origin(supports_credentials=True)

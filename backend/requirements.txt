@@ -20,6 +20,8 @@ ragas==0.1.0
 pydantic==1.10.13
 transformers==4.40.1
 python-docx
+bert_score
+datasets
 
 # Document Processing
 tika==1.24

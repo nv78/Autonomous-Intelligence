@@ -234,11 +234,19 @@ const SubmitToLeaderboard = ({
 
   // ---------- Benchmark Dataset Modal & Options ----------
   const connectorOptions = [
-    { value: "flores_spanish_translation", label: "Spanish Translation (FLORES+)", taskType: "Translation" },
-    { value: "flores_japanese_translation", label: "Japanese Translation (FLORES+)", taskType: "Translation" },
-    { value: "flores_arabic_translation", label: "Arabic Translation (FLORES+)", taskType: "Translation" },
-    { value: "flores_chinese_translation", label: "Chinese Translation (FLORES+)", taskType: "Translation" },
-    { value: "flores_korean_translation", label: "Korean Translation (FLORES+)", taskType: "Translation" },
+    // BLEU Evaluation Datasets
+    { value: "flores_spanish_translation", label: "Spanish Translation (FLORES+ BLEU)", taskType: "Translation" },
+    { value: "flores_japanese_translation", label: "Japanese Translation (FLORES+ BLEU)", taskType: "Translation" },
+    { value: "flores_arabic_translation", label: "Arabic Translation (FLORES+ BLEU)", taskType: "Translation" },
+    { value: "flores_chinese_translation", label: "Chinese Translation (FLORES+ BLEU)", taskType: "Translation" },
+    { value: "flores_korean_translation", label: "Korean Translation (FLORES+ BLEU)", taskType: "Translation" },
+    
+    // BERTScore Evaluation Datasets
+    { value: "flores_spanish_translation_bertscore", label: "Spanish Translation (FLORES+ BERTScore)", taskType: "Translation" },
+    { value: "flores_japanese_translation_bertscore", label: "Japanese Translation (FLORES+ BERTScore)", taskType: "Translation" },
+    { value: "flores_arabic_translation_bertscore", label: "Arabic Translation (FLORES+ BERTScore)", taskType: "Translation" },
+    { value: "flores_chinese_translation_bertscore", label: "Chinese Translation (FLORES+ BERTScore)", taskType: "Translation" },
+    { value: "flores_korean_translation_bertscore", label: "Korean Translation (FLORES+ BERTScore)", taskType: "Translation" },
   ];
 
   const filteredOptions = connectorOptions.filter(

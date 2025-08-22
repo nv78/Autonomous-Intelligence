@@ -80,16 +80,21 @@ Autonomous Intelligence's architecture is built around a decentralized network o
 
 ### Key Features
 
-#### Translation Evaluation API
-- **Endpoint**: `/spanish-gpt-evaluation`
-- **Purpose**: Evaluate Spanish translations and get BLEU scores
-- **Access**: http://localhost:3001/evaluations
-
-#### Model Submission API  
+#### Model Submission & Evaluation API  
 - **Endpoint**: `/public/submit_model`
-- **Purpose**: Submit model results for leaderboard evaluation
-- **Flow**: Leaderboard → Submit → Results
-- **Access**: http://localhost:3001/leaderboard
+- **Purpose**: Submit model results for BLEU and BERTScore evaluation
+- **Metrics**: BLEU (exact matching) and BERTScore (semantic similarity)
+- **Languages**: Spanish, Japanese, Arabic, Chinese, Korean
+- **Access**: http://localhost:3001/evaluations → "Submit Your Model"
+
+## 🧪 **Testing & Demo**
+
+**Detailed testing instructions**: See `TESTING_GUIDE.md`
+
+**Key Points:**
+- **BLEU**: Spanish ~0.40, Arabic ~0.10, Korean ~0.13, Japanese/Chinese ~0.00
+- **BERTScore**: Meaningful scores (0.6-0.8) for all languages (semantic similarity)
+- **Performance**: BERTScore takes 10-15 seconds on first use, then 3-5 seconds
 
 ### Development Workflow
 
