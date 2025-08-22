@@ -6,7 +6,7 @@ import PyPDF2
 import pandas as pd
 from docx import Document
 import json
-import logging
+
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -46,7 +46,7 @@ def extract_text_from_file(file_storage):
 
 @spanish_blueprint.route("/api/chat/spanish", methods=["POST"])
 def chat_spanish():
-    # print("Received request:", request.json)  # or use logging
+    print("Received request:", request.json)  # or use logging
     try:
         file = request.files.get("file")
         messages_json = request.form.get("messages")
@@ -73,16 +73,15 @@ def chat_spanish():
         if file:
             try:
                 file_content = extract_text_from_file(file)
-                # print(f"🟢 Length of extracted content: {len(file_content)}")
-                # print(f"🟢 Content starts with: {repr(file_content[:50])}")
-                # print(f"🟢 Extracted file content: {file_content[:200]}...")
+                print(f"🟢 Length of extracted content: {len(file_content)}")
+                print(f"🟢 Content starts with: {repr(file_content[:50])}")
+                print(f"🟢 Extracted file content: {file_content[:200]}...")
             except Exception as e:
-                logging.exception("Failed to parse file")
-                return jsonify({"error": "Failed to parse file."}), 400
+                return jsonify({"error": f"Failed to parse file: {str(e)}"}), 400
             
             if not file_content.strip():
                 return jsonify({"response": "Lo siento, no puedo leer el documento adjunto."})
-        # print("MESSAGE: ", messages)
+        print("MESSAGE: ", messages)
         if file_content:
             messages[-1]["content"] = f"""{messages[-1]["content"]}
 
@@ -124,5 +123,5 @@ Uploaded document:
 
     except Exception as e:
         import logging
-        logging.error(f"[ERROR]", exc_info=True)
+        logging.error(f"[ERROR] {str(e)}", exc_info=True)
         return jsonify({"error": "An internal error has occurred"}), 500

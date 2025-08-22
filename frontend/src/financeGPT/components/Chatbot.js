@@ -5,14 +5,6 @@ import {
   faFile,
   faDownload,
   faShareAlt,
-  faSyncAlt,
-  faBrain,
-  faSearch,
-  faCog,
-  faCheckCircle,
-  faExclamationTriangle,
-  faChevronDown,
-  faChevronUp,
 } from "@fortawesome/free-solid-svg-icons";
 import "../styles/Chatbot.css";
 import fetcher from "../../http/RequestConfig";
@@ -22,19 +14,194 @@ const Chatbot = (props) => {
   const [message, setMessage] = useState("");
   const inputRef = useRef(null);
   const navigate = useNavigate();
-  const pollingStartedRef = useRef(false);
   const { id } = useParams();
   const location = useLocation();
   const [chatNameGenerated, setChatNameGenerated] = useState(false);
   const [messages, setMessages] = useState([]);
+  const [uploadedDocs, setUploadedDocs] = useState([]);
+  const [docsViewerOpen, setDocsViewerOpen] = useState(false);
+  const [loadingDocs, setLoadingDocs] = useState(false);
   const [uploadButtonClicked, setUploadButtonClicked] = useState(false);
   const pollingTimeoutRef = useRef(null);
 
-  // State for tracking expanded reasoning sections
-  const [expandedReasoning, setExpandedReasoning] = useState({});
+  // Load existing chat messages
+  const handleLoadChat = useCallback(async () => {
+    if (!id) return;
+    if (!props.selectedChatId) {
+      props.handleChatSelect(id);
+    }
+    try {
+      const response = await fetcher("retrieve-messages-from-chat", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          chat_id: id,
+          chat_type: 0,
+        }),
+      });
 
+      const response_data = await response.json();
+      if (!props.currChatName && !chatNameGenerated) {
+        props.setCurrChatName(response.chat_name);
+        setChatNameGenerated(true);
+      }
+      // If no messages, this could be a new chat or a chat still processing
+      if (!response_data.messages?.length) {
+        // Check for pending message from navigation state or localStorage
+        const pendingMessage =
+          location.state?.message ||
+          localStorage.getItem(`pending-message-${id}`);
+
+        if (pendingMessage) {
+          const userMessage = {
+            id: "user-content",
+            chat_id: id,
+            role: "user",
+            content: pendingMessage,
+          };
+          const thinkingMessage = {
+            id: `temp-thinking-${Date.now()}`,
+            chat_id: id,
+            role: "assistant",
+            content: "Thinking...",
+          };
+          setMessages([userMessage, thinkingMessage]);
+
+          // Store in localStorage for refresh persistence
+          if (location.state?.message) {
+            localStorage.setItem(
+              `pending-message-${id}`,
+              location.state.message
+            );
+          }
+
+          // Set up polling to check for the response
+          let pollAttempts = 0;
+          const maxPollAttempts = 30; // 60 seconds maximum (30 * 2 seconds)
+
+          // Clear any existing polling timeout
+          if (pollingTimeoutRef.current) {
+            clearTimeout(pollingTimeoutRef.current);
+          }
+
+          const pollForResponse = async () => {
+            pollAttempts++;
+            console.log(
+              `Polling attempt ${pollAttempts}/${maxPollAttempts} for chat ${id}`
+            );
+
+            try {
+              const pollResponse = await fetcher(
+                "retrieve-messages-from-chat",
+                {
+                  method: "POST",
+                  headers: {
+                    Accept: "application/json",
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    chat_id: id,
+                    chat_type: 0,
+                  }),
+                }
+              );
+
+              const pollData = await pollResponse.json();
+              console.log("Poll response for chat %s:", id, pollData);
+
+              if (pollData.messages?.length > 0) {
+                // We got the response! Update messages
+                console.log(
+                  `Messages received for chat ${id}, stopping polling`
+                );
+                localStorage.removeItem(`pending-message-${id}`);
+                const transformedMessages = pollData.messages.map((item) => ({
+                  id: item.id,
+                  chat_id: id,
+                  content: item.message_text,
+                  role: item.sent_from_user === 1 ? "user" : "assistant",
+                  relevant_chunks: item.relevant_chunks,
+                }));
+                setMessages(transformedMessages);
+                pollingTimeoutRef.current = null; // Clear the ref
+                return; // Stop polling
+              } else if (pollAttempts < maxPollAttempts) {
+                // Still no response, poll again in 2 seconds if we haven't exceeded max attempts
+                console.log(
+                  `No messages yet for chat ${id}, continuing polling...`
+                );
+                pollingTimeoutRef.current = setTimeout(pollForResponse, 2000);
+              } else {
+                // Max attempts reached, show error message
+                console.warn(
+                  "Polling timeout: No response received after maximum attempts"
+                );
+                setMessages((prevMessages) => {
+                  return prevMessages.map((msg) => {
+                    if (msg.content === "Thinking...") {
+                      return {
+                        ...msg,
+                        content:
+                          "Sorry, the request is taking longer than expected. Please try again.",
+                      };
+                    }
+                    return msg;
+                  });
+                });
+                localStorage.removeItem(`pending-message-${id}`);
+                pollingTimeoutRef.current = null; // Clear the ref
+              }
+            } catch (error) {
+              console.error("Error polling for response:", error);
+              // Show error message and stop polling
+              setMessages((prevMessages) => {
+                return prevMessages.map((msg) => {
+                  if (msg.content === "Thinking...") {
+                    return {
+                      ...msg,
+                      content:
+                        "Sorry, I couldn't connect to the server. Please check your connection and try again.",
+                    };
+                  }
+                  return msg;
+                });
+              });
+              localStorage.removeItem(`pending-message-${id}`);
+              pollingTimeoutRef.current = null; // Clear the ref
+            }
+          };
+
+          // Start polling after a short delay
+          pollingTimeoutRef.current = setTimeout(pollForResponse, 2000);
+        } else {
+          // No messages and no pending message - empty chat
+          setMessages([]);
+        }
+        return;
+      }
+
+      // We have messages, so clear any pending message
+      localStorage.removeItem(`pending-message-${id}`);
+
+      const transformedMessages = response_data.messages.map((item) => ({
+        id: item.id,
+        chat_id: id,
+        content: item.message_text,
+        role: item.sent_from_user === 1 ? "user" : "assistant",
+        relevant_chunks: item.relevant_chunks,
+      }));
+      console.log(transformedMessages);
+      setMessages(transformedMessages);
+    } catch (error) {
+      console.error("Error loading chat:", error);
+    }
+  }, [id, location.state?.message]);
   const inferChatName = async (text, answer, chatId) => {
-    const combinedText = `${text} ${answer}`;
+    const combined_text = text + " " + answer;
+    console.log("infer chat with chatId:", chatId);
     try {
       const response = await fetcher("infer-chat-name", {
         method: "POST",
@@ -42,224 +209,118 @@ const Chatbot = (props) => {
           Accept: "application/json",
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ messages: combinedText, chat_id: chatId }),
+        body: JSON.stringify({
+          messages: combined_text,
+          chat_id: chatId,
+        }),
       });
-      const data = await response.json();
-      props.setCurrChatName(data.chat_name);
+      const response_data = await response.json();
+      console.log("response data 123", response_data.chat_name);
+      props.setCurrChatName(response_data.chat_name);
+
       props.handleForceUpdate();
-    } catch (err) {
-      console.error("Chat name inference failed", err);
+    } catch (error) {
+      console.error("Error inferring chat name:", error);
     }
   };
-
-  const pollForMessages = useCallback((chatId, maxAttempts = 3) => {
-    let attempts = 0;
-
-    const poll = async () => {
-      attempts++;
-      try {
-        const res = await fetcher("retrieve-messages-from-chat", {
-          method: "POST",
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ chat_id: chatId, chat_type: 0 }),
-        });
-
-        const data = await res.json();
-        if (data.messages && data.messages.length > 0) {
-          const formatted = data.messages.map((m) => ({
-            id: m.id,
-            chat_id: chatId,
-            content: m.message_text,
-            role: m.sent_from_user === 1 ? "user" : "assistant",
-            relevant_chunks: m.relevant_chunks,
-            reasoning: m.reasoning || [], // Include reasoning data from database
-            sources: m.sources || [], // Include sources if available
-          }));
-          setMessages(formatted);
-          localStorage.removeItem(`pending-message-${chatId}`);
-          pollingTimeoutRef.current = null;
-          return;
-        }
-
-        if (attempts < maxAttempts) {
-          pollingTimeoutRef.current = setTimeout(poll, 2000);
-        } else {
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.isThinking
-                ? {
-                    ...msg,
-                    content:
-                      "Sorry, the request is taking too long. Please try again.",
-                    isThinking: false,
-                  }
-                : msg
-            )
-          );
-        }
-      } catch (err) {
-        console.error("Polling error:", err);
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.isThinking
-              ? {
-                  ...msg,
-                  content:
-                    "Sorry, I couldn't connect to the server. Please check your connection.",
-                  isThinking: false,
-                }
-              : msg
-          )
-        );
-        localStorage.removeItem(`pending-message-${chatId}`);
-      }
-    };
-
-    pollingTimeoutRef.current = setTimeout(poll, 2000);
-  }, []);
-
-  const handleLoadChat = useCallback(async () => {
+  // Load uploaded documents for the current chat
+  const handleLoadDocs = useCallback(async () => {
     if (!id) return;
 
-    if (!props.selectedChatId) {
-      props.handleChatSelect(id);
-    }
-
+    setLoadingDocs(true);
     try {
-      const res = await fetcher("retrieve-messages-from-chat", {
+      const response = await fetcher("retrieve-current-docs", {
         method: "POST",
         headers: {
           Accept: "application/json",
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ chat_id: id, chat_type: 0 }),
+        body: JSON.stringify({
+          chat_id: id,
+        }),
       });
 
-      const data = await res.json();
-
-      console.log("res", data);
-      props.setCurrChatName(data.chat_name);
-      setChatNameGenerated(true);
-
-      if (!data.messages?.length) {
-        const pending =
-          location.state?.message ||
-          localStorage.getItem(`pending-message-${id}`);
-        if (pending) {
-          console.log(
-            "[handleLoadChat] Loading pending message after new chat creation:",
-            pending
-          );
-          const userMsg = {
-            id: "user-content",
-            chat_id: id,
-            role: "user",
-            content: pending,
-          };
-          const thinkingMsg = {
-            id: `thinking-${Date.now()}`,
-            chat_id: id,
-            role: "assistant",
-            content: "",
-            isThinking: true,
-            reasoning: [],
-            sources: [],
-          };
-          setMessages([userMsg, thinkingMsg]);
-          if (location.state?.message) {
-            localStorage.setItem(
-              `pending-message-${id}`,
-              location.state.message
-            );
+      const response_data = await response.json();
+      if (response_data.doc_info) {
+        setUploadedDocs((prevDocs) => {
+          const previousCount = prevDocs.length;
+          // Auto-open documents viewer when first document is uploaded
+          if (previousCount === 0 && response_data.doc_info.length > 0) {
+            setDocsViewerOpen(true);
           }
-          await sendToAPI(pending, id, thinkingMsg.id);
-          return;
-        } else {
-          setMessages([]);
-        }
-        return;
+          return response_data.doc_info;
+        });
+        console.log(response_data.doc_info);
       }
-
-      localStorage.removeItem(`pending-message-${id}`);
-      const formatted = data.messages.map((m) => ({
-        id: m.id,
-        chat_id: id,
-        content: m.message_text,
-        role: m.sent_from_user === 1 ? "user" : "assistant",
-        relevant_chunks: m.relevant_chunks,
-        reasoning: m.reasoning || [], // Include reasoning data from database
-        sources: m.sources || [], // Include sources if available
-      }));
-      setMessages(formatted);
-    } catch (err) {
-      console.error("Failed to load chat:", err);
+    } catch (error) {
+      console.error("Error loading documents:", error);
+      setUploadedDocs([]);
     }
-  }, [id, location.state?.message, pollForMessages]);
+    setLoadingDocs(false);
+  }, [id]);
 
+  // Load chat when component mounts or ID changes
+  useEffect(() => {
+    // Clear any existing polling when chat changes
+    if (pollingTimeoutRef.current) {
+      clearTimeout(pollingTimeoutRef.current);
+      pollingTimeoutRef.current = null;
+    }
+
+    if (id) {
+      handleLoadChat();
+      handleLoadDocs();
+    } else {
+      setMessages([]);
+      setChatNameGenerated(false);
+      setUploadedDocs([]);
+    }
+
+    // Cleanup function to clear polling on unmount or chat change
+    return () => {
+      if (pollingTimeoutRef.current) {
+        clearTimeout(pollingTimeoutRef.current);
+        pollingTimeoutRef.current = null;
+      }
+    };
+  }, [id, handleLoadChat, handleLoadDocs]);
+
+  // Main message sending function
   const handleSendMessage = async (event) => {
     event.preventDefault();
-    if (!message.trim()) return;
 
-    const currentMessage = message.trim();
+    // Only prevent submission if there's no message text
+    if (!message || message.trim() === "") return;
+
+    const currentPath = window.location.pathname;
+    const currentMessage = message;
+
+    // Clear input immediately
     setMessage("");
 
+    // If we're on root path or base chat path, create new chat first
     let targetChatId = id;
-
-    const isNewChat =
-      !id ||
-      window.location.pathname === "/" ||
-      window.location.pathname === "/chat";
-
-    if (isNewChat) {
+    if (currentPath === "/" || currentPath === "/chat" || !id) {
       try {
+        // Create new chat first
         targetChatId = await props.createNewChat();
+        // Navigate to new chat URL
         navigate(`/chat/${targetChatId}`, {
           state: { message: currentMessage },
         });
-
-        localStorage.setItem(`pending-message-${targetChatId}`, currentMessage);
-
-        const userMsg = {
-          id: `user-${Date.now()}`,
-          chat_id: targetChatId,
-          role: "user",
-          relevant_chunks: [],
-          content: currentMessage,
-        };
-        const thinkingMsg = {
-          id: `thinking-${Date.now()}`,
-          chat_id: targetChatId,
-          role: "assistant",
-          content: "",
-          isThinking: true,
-          reasoning: [],
-          sources: [],
-        };
-
-        setMessages([userMsg, thinkingMsg]);
-
-        if (!pollingStartedRef.current) {
-          pollForMessages(targetChatId);
-          pollingStartedRef.current = true;
-        }
-
-        return;
-      } catch (err) {
-        console.error("Failed to create chat:", err);
+      } catch (error) {
+        console.error("Error creating new chat:", error);
+        // Restore message on failure
         setMessage(currentMessage);
         return;
       }
     }
 
-    // For existing chat
-    const thinkingId = `thinking-${Date.now()}`;
-    setMessages((prev) => [
-      ...prev,
+    // Add user message and thinking placeholder immediately
+    const thinkingId = `temp-thinking-${Date.now()}`;
+    const newMessages = [
       {
-        id: `user-${Date.now()}`,
+        id: `temp-user-${Date.now()}`,
         chat_id: targetChatId,
         role: "user",
         content: currentMessage,
@@ -268,330 +329,23 @@ const Chatbot = (props) => {
         id: thinkingId,
         chat_id: targetChatId,
         role: "assistant",
-        content: "",
-        isThinking: true,
-        reasoning: [],
-        sources: [],
+        content: "Thinking...",
       },
-    ]);
+    ];
 
+    // Store the message in localStorage for refresh persistence
     localStorage.setItem(`pending-message-${targetChatId}`, currentMessage);
+
+    if (currentPath === "/" || currentPath === "/chat" || !id) {
+      // New chat - set messages directly
+      setMessages(newMessages);
+    } else {
+      // Existing chat - append to existing messages
+      setMessages((prev) => [...prev, ...newMessages]);
+    }
+
+    // Send to API
     await sendToAPI(currentMessage, targetChatId, thinkingId);
-  };
-
-  const sendToAPI = async (text, chatId, thinkingId) => {
-    try {
-      const res = await fetcher("process-message-pdf", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: text,
-          chat_id: Number(chatId),
-          model_type: props.isPrivate,
-          model_key: props.confirmedModelKey,
-        }),
-      });
-
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
-
-      await handleSSEStreamingResponse(res, thinkingId, text, chatId);
-      localStorage.removeItem(`pending-message-${chatId}`);
-    } catch (err) {
-      console.error("Message send error:", err);
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === thinkingId
-            ? {
-                ...msg,
-                content:
-                  "Sorry, I couldn't connect to the server. Please try again.",
-                isThinking: false,
-              }
-            : msg
-        )
-      );
-    }
-  };
-
-  const handleSSEStreamingResponse = async (
-    response,
-    thinkingId,
-    originalText,
-    chatId
-  ) => {
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (line.trim() === "") continue;
-
-          if (line.startsWith("data: ")) {
-            const dataContent = line.slice(6);
-
-            if (dataContent === "[DONE]") {
-              console.log("✅ Stream completed");
-              // Mark streaming as complete
-              setMessages((prev) =>
-                prev.map((msg) =>
-                  msg.id === thinkingId ? { ...msg, isThinking: false } : msg
-                )
-              );
-              break;
-            }
-
-            try {
-              const eventData = JSON.parse(dataContent);
-
-              // Update the message directly in the messages array
-              setMessages((prev) =>
-                prev.map((msg) => {
-                  if (msg.id === thinkingId) {
-                    return updateMessageWithStreamData(msg, eventData);
-                  }
-                  return msg;
-                })
-              );
-
-              // Generate chat name when we get the final answer
-              if (
-                eventData.type === "complete" &&
-                eventData.answer &&
-                !chatNameGenerated
-              ) {
-                await inferChatName(originalText, eventData.answer, chatId);
-                setChatNameGenerated(true);
-                props.handleForceUpdate?.();
-              }
-            } catch (e) {
-              console.error("Error parsing streaming data:", e);
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Streaming error:", error);
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === thinkingId
-            ? {
-                ...msg,
-                content: "Sorry, there was an error processing your request.",
-                isThinking: false,
-              }
-            : msg
-        )
-      );
-    }
-  };
-
-  const updateMessageWithStreamData = (message, eventData) => {
-    const updatedMessage = { ...message };
-
-    console.log("Processing event:", eventData);
-
-    switch (eventData.type) {
-      case "tool_start":
-      case "tools_start":
-        // Add reasoning step for tool start
-        const toolStartStep = {
-          id: `step-${Date.now()}`,
-          type: eventData.type,
-          tool_name: eventData.tool_name,
-          message: `Using ${eventData.tool_name}...`,
-          timestamp: Date.now(),
-        };
-        updatedMessage.reasoning = [
-          ...(updatedMessage.reasoning || []),
-          toolStartStep,
-        ];
-        updatedMessage.currentStep = toolStartStep;
-        break;
-
-      case "tool_end":
-        // Update the last tool step with output
-        const reasoningWithOutput = [...(updatedMessage.reasoning || [])];
-        const lastToolIndex = reasoningWithOutput.findLastIndex(
-          (step) => step.type === "tool_start" || step.type === "tools_start"
-        );
-        if (lastToolIndex !== -1) {
-          reasoningWithOutput[lastToolIndex] = {
-            ...reasoningWithOutput[lastToolIndex],
-            tool_output: eventData.output,
-            message: "Tool execution completed",
-          };
-        }
-        updatedMessage.reasoning = reasoningWithOutput;
-        updatedMessage.currentStep = {
-          type: "tool_end",
-          message: "Tool execution completed",
-        };
-        break;
-
-      case "agent_thinking":
-        // Add thinking step
-        const thinkingStep = {
-          id: `step-${Date.now()}`,
-          type: eventData.type,
-          agent_thought: eventData.thought,
-          planned_action: eventData.action,
-          message: "Planning next step...",
-          timestamp: Date.now(),
-        };
-        updatedMessage.reasoning = [
-          ...(updatedMessage.reasoning || []),
-          thinkingStep,
-        ];
-        updatedMessage.currentStep = thinkingStep;
-        break;
-
-      case "complete":
-        // Set final answer and sources
-        updatedMessage.content = eventData.answer || "";
-        updatedMessage.sources = eventData.sources || [];
-        updatedMessage.isThinking = false;
-
-        // Add completion step to reasoning
-        const completeStep = {
-          id: `step-${Date.now()}`,
-          type: eventData.type,
-          thought: eventData.thought,
-          message: "Response complete",
-          timestamp: Date.now(),
-        };
-        updatedMessage.reasoning = [
-          ...(updatedMessage.reasoning || []),
-          completeStep,
-        ];
-        updatedMessage.currentStep = null;
-        break;
-      case "step-complete":
-        // Set final answer and sources
-        updatedMessage.content = eventData.answer || "";
-        updatedMessage.sources = eventData.sources || [];
-        updatedMessage.isThinking = false;
-
-        // Add completion step to reasoning
-        const StepComplete = {
-          id: `step-${Date.now()}`,
-          type: eventData.type,
-          thought: eventData.thought,
-          message: "Query processing completed",
-          timestamp: Date.now(),
-        };
-        updatedMessage.reasoning = [
-          ...(updatedMessage.reasoning || []),
-          StepComplete,
-        ];
-        updatedMessage.currentStep = null;
-        break;
-      default:
-        console.warn("Unhandled event type:", eventData.type);
-    }
-
-    return updatedMessage;
-  };
-
-  // Component for displaying thinking steps
-  const ThinkingIndicator = ({ step }) => {
-    const getStepIcon = (type) => {
-      switch (type) {
-        case "llm_reasoning":
-          return <FontAwesomeIcon icon={faBrain} className="text-blue-400" />;
-        case "tool_start":
-        case "tools_start":
-        case "tool_end":
-          return <FontAwesomeIcon icon={faSearch} className="text-green-400" />;
-        case "agent_thinking":
-          return <FontAwesomeIcon icon={faCog} className="text-purple-400" />;
-        case "complete":
-        case "step-complete":
-          return (
-            <FontAwesomeIcon icon={faCheckCircle} className="text-green-500" />
-          );
-        default:
-          return <FontAwesomeIcon icon={faCog} className="text-gray-400" />;
-      }
-    };
-    console.log("stepsss", step)
-    const getStepColor = (type) => {
-      switch (type) {
-        case "llm_reasoning":
-          return "border-l-blue-400 bg-blue-950/20";
-        case "tool_start":
-        case "tools_start":
-        case "tool_end":
-          return "border-l-green-400 bg-green-950/20";
-        case "agent_thinking":
-          return "border-l-purple-400 bg-purple-950/20";
-        case "complete":
-          return "border-l-green-500 bg-green-950/30";
-        default:
-          return "border-l-gray-400 bg-gray-800/20";
-      }
-    };
-    console.log(`${step.message || "Processing"}: `, step);
-    if (!step) return null;
-    return (
-      <div
-        className={`border-l-2 ${getStepColor(
-          step.type
-        )} pl-3 py-2 mb-2 text-sm`}
-      >
-        <div className="flex items-center gap-2 mb-1">
-          {getStepIcon(step.type)}
-          <span className="text-gray-300 font-medium">
-            {step.message || "Processing..."}
-          </span>
-        </div>
-
-        {step.thought && (
-          <div className="text-gray-400 text-xs mb-1">
-            <strong>Thought:</strong> {step.thought}
-          </div>
-        )}
-
-        {step.agent_thought && (
-          <div className="text-gray-400 text-xs mb-1">
-            <strong>Planning:</strong> {step.agent_thought}
-          </div>
-        )}
-
-        {step.tool_name && (
-          <div className="text-gray-500 text-xs">
-            <strong>Tool:</strong> {step.tool_name}
-          </div>
-        )}
-
-        {step.tool_output && (
-          <div className="text-gray-500 text-xs mt-1">
-            <strong>Result:</strong>{" "}
-            {step.tool_output.length > 100
-              ? step.tool_output.substring(0, 100) + "..."
-              : step.tool_output}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // Function to toggle reasoning expansion
-  const toggleReasoningExpansion = (messageId) => {
-    setExpandedReasoning((prev) => ({
-      ...prev,
-      [messageId]: !prev[messageId],
-    }));
   };
 
   const handleGenerateShareableUrl = async () => {
@@ -619,59 +373,186 @@ const Chatbot = (props) => {
     }
   };
 
-  useEffect(() => {
-    if (pollingTimeoutRef.current) {
-      clearTimeout(pollingTimeoutRef.current);
-      pollingTimeoutRef.current = null;
-    }
+  // Send message to API and handle response
+  const sendToAPI = async (messageText, chatId, thinkingId = null) => {
+    try {
+      const response = await fetcher("process-message-pdf", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: messageText,
+          chat_id: Number(chatId),
+          model_type: props.isPrivate,
+          model_key: props.confirmedModelKey,
+        }),
+      });
 
-    pollingStartedRef.current = false;
+      const response_data = await response.json();
+      const answer = response_data.answer;
 
-    if (id) {
-      handleLoadChat();
-    } else {
-      setMessages([]);
-      setChatNameGenerated(false);
-    }
+      // Replace the specific "Thinking..." message with actual response
+      setMessages((messages) => {
+        // Find the specific thinking message by its ID
+        const thinkingIndex = messages.findIndex(
+          (msg) => msg.id === thinkingId
+        );
 
-    return () => {
-      if (pollingTimeoutRef.current) {
-        clearTimeout(pollingTimeoutRef.current);
-        pollingTimeoutRef.current = null;
+        if (thinkingIndex !== -1) {
+          // Replace the found "Thinking..." message
+          const updatedMessages = [...messages];
+          updatedMessages[thinkingIndex] = {
+            ...updatedMessages[thinkingIndex],
+            id: response_data.id,
+            content: answer,
+          };
+          return updatedMessages;
+        }
+
+        // Fallback: find first "Thinking..." message for this chat if thinkingId doesn't match
+        const fallbackIndex = messages.findIndex(
+          (msg) =>
+            msg.content === "Thinking..." && msg.chat_id === Number(chatId)
+        );
+
+        if (fallbackIndex !== -1) {
+          const updatedMessages = [...messages];
+          updatedMessages[fallbackIndex] = {
+            ...updatedMessages[fallbackIndex],
+            id: response_data.id,
+            content: answer,
+          };
+          return updatedMessages;
+        }
+
+        // If no "Thinking..." message found, just add the new response
+        return [
+          ...messages,
+          {
+            id: response_data.id,
+            chat_id: Number(chatId),
+            role: "assistant",
+            content: answer,
+          },
+        ];
+      });
+
+      // Update chat name for first message (only if chat name hasn't been generated yet)
+      if (!chatNameGenerated) {
+        console.log("Generating chat name for chat:", chatId);
+        await inferChatName(messageText, answer, chatId);
+        setChatNameGenerated(true);
+        props.handleForceUpdate?.();
       }
-    };
-  }, [id, handleLoadChat]);
 
-  const handleInputKeyDown = (e) => {
+      // Clear any pending message from localStorage since we got a response
+      localStorage.removeItem(`pending-message-${chatId}`);
+
+      // Refresh documents list to pick up any newly uploaded files from sidebar
+      setTimeout(() => {
+        handleLoadDocs();
+      }, 1000);
+    } catch (error) {
+      console.error("Error sending message:", error);
+
+      // Replace the specific "Thinking..." message with error message
+      setMessages((messages) => {
+        // Find the specific thinking message by its ID
+        const thinkingIndex = messages.findIndex(
+          (msg) => msg.id === thinkingId
+        );
+
+        if (thinkingIndex !== -1) {
+          // Replace the found "Thinking..." message
+          const updatedMessages = [...messages];
+          updatedMessages[thinkingIndex] = {
+            ...updatedMessages[thinkingIndex],
+            content:
+              "Sorry, I couldn't connect to the server. Please check your connection and try again.",
+          };
+          return updatedMessages;
+        }
+
+        // Fallback: find first "Thinking..." message for this chat if thinkingId doesn't match
+        const fallbackIndex = messages.findIndex(
+          (msg) =>
+            msg.content === "Thinking..." && msg.chat_id === Number(chatId)
+        );
+
+        if (fallbackIndex !== -1) {
+          const updatedMessages = [...messages];
+          updatedMessages[fallbackIndex] = {
+            ...updatedMessages[fallbackIndex],
+            content:
+              "Sorry, I couldn't connect to the server. Please check your connection and try again.",
+          };
+          return updatedMessages;
+        }
+
+        // If no "Thinking..." message found, add a new error message
+        return [
+          ...messages,
+          {
+            id: `error-${Date.now()}`,
+            chat_id: Number(chatId),
+            role: "assistant",
+            content:
+              "Sorry, I couldn't connect to the server. Please check your connection and try again.",
+          },
+        ];
+      });
+
+      // Don't clear localStorage on error - keep the pending message for potential retry
+    }
+  };
+
+  // Handle Enter key press
+  const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if (message.trim() !== "") {
-        handleSendMessage(e);
-      }
+      handleSendMessage(e);
     }
   };
 
-  const handleRefreshChatName = async () => {
-    if (typeof handleLoadChat === "function") {
-      await handleLoadChat();
+  // Handle deleting an uploaded document
+  const handleDeleteDoc = async (docId) => {
+    console.log("here");
+    try {
+      await fetcher("delete-doc", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          doc_id: docId,
+        }),
+      });
+
+      setUploadedDocs((prev) => prev.filter((doc) => doc.doc_id !== docId));
+
+      // Automatically refresh the documents list after successful deletion
+      handleLoadDocs();
+    } catch (error) {
+      console.error("Error deleting document:", error);
+      // Still try to refresh in case the deletion actually worked
+      handleLoadDocs();
     }
   };
-
-  console.log(messages);
 
   return (
     <div
-      className={`py-2 h-full bg-anoteblack-800 w-full flex flex-col ${
+      className={` py-2 h-full bg-anoteblack-800 lg:w-4/5 flex flex-col  ${
         props.menu ? "md:blur-none blur" : ""
       }`}
     >
       {/* Chat title for mobile */}
-      <div className="w-full bg-transparent md:py-0 py-4 md:shadow-none shadow-lg md:mb-0 mb-2 items-center flex justify-center flex-shrink-0">
-        <span className="md:hidden rounded py-2 truncate px-4">
+      <div className="w-full bg-transparent md:py-0 py-4 md:shadow-none shadow-lg md:mb-0 mb-2 items-center flex justify-center  flex-shrink-0">
+        <span className="md:hidden rounded py-2 px-4">
           {props.currChatName}
         </span>
       </div>
-
       <div
         ref={(ref) =>
           ref && ref.scrollTo({ top: ref.scrollHeight, behavior: "smooth" })
@@ -680,29 +561,10 @@ const Chatbot = (props) => {
           messages.length > 0 ? "block" : "hidden"
         } flex justify-center`}
       >
-        <div className="py-3 flex-col mt-0 md:mt-4 px-4 flex gap-3 w-full">
-          <div className="bg-anoteblack-800 flex items-center sticky top-0 lg:top-4 z-10 w-full border-b border-gray-400/30 px-2">
-            {/* Left: Reload button */}
-            <div className="flex items-center flex-shrink-0 z-10">
-              <button
-                onClick={handleRefreshChatName}
-                className="p-2 hover:bg-gray-700 rounded transition-colors"
-                title="Refresh chat name"
-              >
-                <FontAwesomeIcon
-                  icon={faSyncAlt}
-                  className="text-lg text-[#DFDFDF]"
-                />
-              </button>
-            </div>
-            {/* Center: Chat name */}
-            <div className="absolute left-0 right-0 flex justify-center items-center pointer-events-none h-14">
-              <h1 className="text-white truncate text-center w-2/3 pointer-events-auto">
-                {props.currChatName}
-              </h1>
-            </div>
-            {/* Right: Share/Download */}
-            <div className="flex gap-2 flex-shrink-0 ml-auto z-10">
+        <div className="py-3 flex-col mt-0 md:mt-4 px-4 flex gap-3 w-full max-w-4xl mx-6">
+          <div className="bg-anoteblack-800 flex justify-between">
+            <h1>{props.currChatName}</h1>
+            <div className="flex gap-2">
               <button
                 onClick={handleGenerateShareableUrl}
                 className="p-2 hover:bg-gray-700 rounded transition-colors"
@@ -724,149 +586,37 @@ const Chatbot = (props) => {
               </button>
             </div>
           </div>
-          <div className="px-4 md:px-8 lg:px-16 xl:px-32">
-            {messages.map((msg, index) => (
+          {messages.map((msg, index) => (
+            <div
+              key={`${msg.chat_id}-${msg.id || index}`}
+              className={`flex items-center gap-4 ${
+                msg.role === "user" ? "justify-end" : ""
+              }`}
+            >
               <div
-                key={`${msg.chat_id}-${msg.id || index}`}
-                className={`flex items-start gap-4 mb-4 ${
-                  msg.role === "user" ? "justify-end" : "justify-start"
+                className={`rounded-lg p-3 max-w-[80%] ${
+                  msg.role === "user"
+                    ? "from-[#40C6FF] to-[#5299D3] rounded-br-none bg-gradient-to-b text-white ml-auto"
+                    : "bg-transparent border rounded-bl-none text-white"
                 }`}
               >
-                {/* FIXED: Responsive width for assistant messages */}
-                <div
-                  className={`space-y-3 ${
-                    msg.role === "assistant"
-                      ? "w-full md:w-5/6 lg:w-3/4 xl:w-2/3"
-                      : ""
-                  }`}
-                >
-                  {/* Reasoning Box - Shows during streaming and after completion */}
-                  {msg.role === "assistant" && msg.reasoning?.length > 0 && (
-                    <div className="bg-[#0f1419] border border-[#2e3a4c] rounded-xl p-4">
-                      <button
-                        onClick={() => toggleReasoningExpansion(msg.id)}
-                        className="flex items-center justify-between w-full text-left text-xs text-gray-400 hover:text-gray-200 transition-colors"
-                      >
-                        <div className="flex items-center gap-2">
-                          <FontAwesomeIcon icon={faBrain} />
-                          <span>
-                            AI Reasoning Steps ({msg.reasoning.length})
-                          </span>
-                        </div>
-                        <FontAwesomeIcon
-                          icon={
-                            expandedReasoning[msg.id]
-                              ? faChevronUp
-                              : faChevronDown
-                          }
-                          className="text-xs"
-                        />
-                      </button>
+                <p className="whitespace-pre-wrap">{msg.content}</p>
 
-                      {expandedReasoning[msg.id] && (
-                        <div className="mt-3 space-y-2 animate-fade-in">
-                          {msg.reasoning.map((step, idx) => (
-                            <ThinkingIndicator
-                              key={step.id || idx}
-                              step={step}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Main message content */}
-                  <div
-                    className={`rounded-2xl p-4 shadow-lg transition-all ${
-                      msg.role === "user"
-                        ? "bg-gradient-to-br from-[#28b2fb] to-[#111827] text-white ml-auto rounded-br-none"
-                        : "bg-[#1f2937] text-white border border-[#2e3a4c] rounded-bl-none"
-                    }`}
-                  >
-                    {/* Assistant Thinking Animation */}
-                    {msg.isThinking ? (
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          <div className="flex space-x-1">
-                            <div className="w-2 h-2 bg-[#defe47] rounded-full animate-pulse"></div>
-                            <div
-                              className="w-2 h-2 bg-[#defe47] rounded-full animate-pulse"
-                              style={{ animationDelay: "0.2s" }}
-                            ></div>
-                            <div
-                              className="w-2 h-2 bg-[#defe47] rounded-full animate-pulse"
-                              style={{ animationDelay: "0.4s" }}
-                            ></div>
-                          </div>
-                          <span className="text-sm text-gray-400">
-                            AI is thinking...
-                          </span>
-                        </div>
-
-                        {/* Current step indicator */}
-                        {msg.currentStep && (
-                          <ThinkingIndicator step={msg.currentStep} />
-                        )}
-
-                        {/* Show partial content if available during streaming */}
-                        {msg.content && (
-                          <div className="mt-3">
-                            <p className="whitespace-pre-wrap leading-relaxed text-sm">
-                              {msg.content}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div>
-                        {/* Main response content */}
-                        <p className="whitespace-pre-wrap leading-relaxed text-sm">
-                          {msg.content}
-                        </p>
-
-                        {/* Sources Section */}
-                        {msg.sources?.length > 0 && (
-                          <div className="mt-4 pt-4 border-t border-[#2e3a4c]">
-                            <div className="flex items-center gap-2 mb-2 text-gray-400 text-xs font-semibold">
-                              <FontAwesomeIcon icon={faFile} />
-                              <span>Sources</span>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              {msg.sources.map((source, idx) => (
-                                <span
-                                  key={idx}
-                                  className="text-xs bg-[#2e3a4c] text-gray-300 px-2 py-1 rounded"
-                                >
-                                  {typeof source === "string"
-                                    ? source
-                                    : source.name || "Document"}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Assistant Agent Info */}
-                        {msg.role === "assistant" && msg.agent && (
-                          <div className="mt-2 text-[11px] text-gray-500 italic">
-                            🤖 {msg.agent.name}
-                          </div>
-                        )}
-                      </div>
-                    )}
+                {/* Show agent info for assistant messages */}
+                {msg.role === "assistant" && msg.agent && (
+                  <div className="mt-1 text-xs text-gray-500">
+                    🤖 {msg.agent.name}
                   </div>
-                </div>
+                )}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       </div>
-
       <div
         className={`flex-shrink-0 borderrounded-xl ${
           messages.length === 0
-            ? "flex-1 flex items-center gap-2 flex-col justify-center"
+            ? "flex-1 flex items-center  gap-2 flex-col justify-center"
             : ""
         }`}
       >
@@ -878,25 +628,36 @@ const Chatbot = (props) => {
         )}
 
         {/* Input form */}
-        <div className="flex w-full justify-center my-5  px-4">
+        <div className="flex w-full justify-center my-5 px-4">
           <div className="flex items-center gap-3 w-full max-w-4xl">
             {/* Left side - Upload button */}
             <button
               type="button"
               onClick={() => {
-                console.log("Upload button clicked in Chatbot", "selectedChatId:", props.selectedChatId);
+                console.log("Upload button clicked in Chatbot");
+                console.log(
+                  "props.onUploadClick exists:",
+                  !!props.onUploadClick
+                );
+                console.log("Chat ID (id):", id);
                 if (props.onUploadClick) {
+                  console.log("Calling props.onUploadClick");
                   setUploadButtonClicked(true);
-                  props.onUploadClick(props.selectedChatId);
+                  props.onUploadClick();
+                  // Reset the visual state after a short delay
                   setTimeout(() => setUploadButtonClicked(false), 1000);
+                } else {
+                  console.log("props.onUploadClick is not available");
                 }
               }}
-              disabled={props.isUploading}
+              disabled={props.isUploading || !id}
               className={`flex items-center justify-center w-12 h-12 rounded-xl transition-colors flex-shrink-0 ${
                 uploadButtonClicked
                   ? "bg-blue-600 text-white"
                   : props.isUploading
                   ? "bg-gray-500 text-gray-300 cursor-not-allowed"
+                  : !id
+                  ? "bg-gray-600 text-gray-400 cursor-not-allowed"
                   : "bg-blue-500 hover:bg-blue-600 text-white"
               }`}
               title={!id ? "Please select or create a chat first" : "Add files"}
@@ -904,19 +665,23 @@ const Chatbot = (props) => {
               <FontAwesomeIcon icon={faFile} className="text-lg" />
             </button>
 
-            {/* Center - Input */}
-            <div className="flex-1">
+            {/* Center - Input form */}
+            <form
+              id="chat-form"
+              className="flex-1"
+              onSubmit={handleSendMessage}
+            >
               <div className="relative">
-                <div className="relative flex items-center bg-gray-700 rounded-3xl border border-gray-600 focus-within:border-gray-500 transition-colors">
+                {/* Textarea with rounded design */}
+                <div className="relative  flex items-center bg-gray-700 rounded-3xl border border-gray-600 focus-within:border-gray-500 transition-colors">
                   <textarea
                     className="w-full border-none resize-none text-lg px-6 py-2 focus:ring-0 focus:outline-none text-white placeholder:text-gray-400 bg-anoteblack-800 rounded-3xl"
                     rows={1}
                     placeholder="Ask your document a question"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
+                    onKeyDown={handleKeyDown}
                     ref={inputRef}
-                    onKeyDown={handleInputKeyDown}
-                    disabled={messages.some((msg) => msg.isThinking)}
                   />
                 </div>
 
@@ -935,21 +700,15 @@ const Chatbot = (props) => {
                   </div>
                 )}
               </div>
-            </div>
+            </form>
 
             {/* Right side - Send button */}
             <button
-              type="button"
+              type="submit"
               onClick={handleSendMessage}
-              disabled={
-                !message ||
-                message.trim() === "" ||
-                messages.some((msg) => msg.isThinking)
-              }
+              disabled={!message || message.trim() === ""}
               className={`flex items-center justify-center w-12 h-12 rounded-xl transition-colors flex-shrink-0 ${
-                !message ||
-                message.trim() === "" ||
-                messages.some((msg) => msg.isThinking)
+                !message || message.trim() === ""
                   ? "bg-gray-600 text-gray-400 cursor-not-allowed"
                   : "bg-blue-500 hover:bg-blue-600 text-white"
               }`}

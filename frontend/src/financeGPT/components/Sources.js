@@ -62,7 +62,7 @@ function Sources(props) {
   //))}
 
   return (
-    <div className="flex flex-col px-4 bg-anoteblack-800 py-2  overflow-y-scroll">
+    <div className="flex flex-col px-4 bg-anoteblack-800 py-4  overflow-y-scroll">
       <div className="flex flex-row justify-between items-center">
         <h2 className="text-[#FFFFFF] uppercase tracking-wide font-semibold text-s mb-2">
           Sources

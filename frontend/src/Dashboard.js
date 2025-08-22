@@ -17,7 +17,6 @@ import {
   languages, // Import connector options from RouteConstants
   companies,
   LANGUAGE_ROUTES,
-  createcompany,
 } from "./constants/RouteConstants";
 import PaymentsComponent from "./subcomponents/payments/PaymentsComponent";
 import PaymentsProduct from "./subcomponents/payments/PaymentsProduct";
@@ -33,7 +32,6 @@ import GTMChatbot from "./landing_page/landing_page_screens/Chatbots/companies/G
 import ChatbotLanding from "./landing_page/landing_page_screens/Chatbots/ChatbotLanding";
 import Languages from "./landing_page/landing_page_screens/Chatbots/languages/Languages";
 import Companies from "./landing_page/landing_page_screens/Chatbots/companies/Companies";
-import CreateCompany from "./landing_page/landing_page_screens/Chatbots/companies/CreateCompany";
 
 function Dashboard() {
   const [darkTheme, setDarkTheme] = useState(true);
@@ -106,9 +104,8 @@ function Dashboard() {
     <Route path={chatbots} element ={<ChatbotLanding />} />,
     <Route path={languages} element = {<Languages />} />,
     <Route path="/languages/:lang" element={<Languages />} />,
-    <Route path={createcompany} element = {<CreateCompany />} />,
-    <Route path={companies} element = {<Companies />} />,
 
+    <Route path={companies} element = {<Companies />} />,
   ]
   var privateRoutes = [
     <Route

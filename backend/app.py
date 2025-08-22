@@ -1,10 +1,11 @@
-from flask import Flask, request, jsonify, Response, abort, redirect, stream_with_context, Blueprint
+from flask import Flask, request, jsonify, abort, redirect, send_file, Blueprint
+from werkzeug.utils import secure_filename
 from flask_cors import CORS, cross_origin
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 import pandas as pd
-#from opensearchpy import OpenSearch, RequestsHttpConnection, AWSV4SignerAuth
+from opensearchpy import OpenSearch, RequestsHttpConnection, AWSV4SignerAuth
 import boto3
 from api_endpoints.login.handler import LoginHandler, SignUpHandler, ForgotPasswordHandler, ResetPasswordHandler
 import os
@@ -13,6 +14,7 @@ from google_auth_oauthlib.flow import Flow
 from google.oauth2 import id_token
 from pip._vendor import cachecontrol
 import google.auth.transport.requests
+from flask.wrappers import Response
 import json
 import jwt
 import requests
@@ -53,7 +55,7 @@ import io
 from tika import parser as p
 import anthropic
 from anthropic import Anthropic, HUMAN_PROMPT, AI_PROMPT
-from datasets import Dataset
+from datasets import Dataset, load_dataset
 import re
 import ragas
 from ragas.metrics import (
@@ -65,10 +67,17 @@ from ragas.metrics import (
 from bs4 import BeautifulSoup
 from flask_mysql_connector import MySQL
 import MySQLdb.cursors
+from nltk.translate.bleu_score import sentence_bleu
+import nltk
+# Download required NLTK data for BLEU calculation
+try:
+    nltk.data.find('tokenizers/punkt')
+except LookupError:
+    nltk.download('punkt', quiet=True)
 
 #WESLEY
-from api_endpoints.financeGPT.chatbot_endpoints import create_chat_shareable_url, access_sharable_chat, _get_model
-_get_model()
+from api_endpoints.financeGPT.chatbot_endpoints import create_chat_shareable_url, access_sharable_chat
+
 from database.db import get_db_connection
 
 from api_endpoints.financeGPT.chatbot_endpoints import add_prompt_to_workflow_db, add_workflow_to_db, \
@@ -81,9 +90,6 @@ from api_endpoints.financeGPT.chatbot_endpoints import add_prompt_to_workflow_db
     change_chat_mode_db, update_chat_name_db, find_most_recent_chat_from_db, process_prompt_answer, \
     ensure_SDK_user_exists, get_chat_info, ensure_demo_user_exists, get_message_info, get_text_from_url, \
     add_organization_to_db, get_organization_from_db, update_workflow_name_db, retrieve_messages_from_share_uuid
-
-from agents.reactive_agent import ReactiveDocumentAgent, WorkflowReactiveAgent
-from agents.config import AgentConfig
 
 from datetime import datetime
 
@@ -113,7 +119,7 @@ app.register_blueprint(arabic_blueprint)
 
 #if ray.is_initialized() == False:
    #ray.init(logging_level="INFO", log_to_driver=True)
-client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"), base_url="http://host.docker.internal:11434/v1")
+client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 def ensure_ray_started():
     if not ray.is_initialized():
         try:
@@ -125,11 +131,11 @@ def ensure_ray_started():
         except Exception as e:
             print(f"Ray init failed: {e}")
 
-# ensure_ray_started()
 # TODO: Replace with your URLs.
 config = {
   'ORIGINS': [
     'http://localhost:3000',  # React
+    'http://localhost:3001',  # React (alternative port)
     'http://localhost:5000',
     'http://localhost:8000',
     'http://localhost:5050',
@@ -170,19 +176,18 @@ app.config['MYSQL_DATABASE'] = 'agents'
 
 
 #debug
-#print("MySQL config:", {
-#    "host": app.config['MYSQL_HOST'],
-#    "user": app.config['MYSQL_USER'],
-#    "password": "***REDACTED***",
-#    "database": app.config['MYSQL_DATABASE']
-#})
+print("MySQL config:", {
+    "host": app.config['MYSQL_HOST'],
+    "user": app.config['MYSQL_USER'],
+    "password": app.config['MYSQL_PASSWORD'],
+    "database": app.config['MYSQL_DATABASE']
+})
 
 mysql = MySQL(app)
 
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
-ensure_ray_started()
 
 def valid_api_key_required(fn):
   @wraps(fn)
@@ -331,10 +336,8 @@ def callback():
     )
 
     # TODO: COMMENT OUT WHEN DEPLOY TO PROD
-    default_referrer = os.getenv("DEFAULT_REFERRER")
+    default_referrer = "http://dashboard.localhost:3000"
     # default_referrer = "https://dashboard.privatechatbot.ai"
-    if not default_referrer:
-        default_referrer = "http://dashboard.localhost:3000"
     user_id = create_user_if_does_not_exist(id_info.get("email"), id_info.get("sub"), id_info.get("name"), id_info.get("picture"))
 
     access_token = create_access_token(identity=id_info.get("email"))
@@ -540,6 +543,7 @@ def create_organization():
                 # Ingest each sub-URL's text as a document
                 doc_id, doesExist = add_document_to_db(link_text, link, organization_id)
                 if not doesExist:
+                    ensure_ray_started()
                     chunk_document.remote(link_text, 1000, doc_id)
 
         return jsonify({"organization_id": organization_id}), 201
@@ -703,14 +707,10 @@ def retrieve_messages_from_chat():
 
     chat_type = request.json.get('chat_type')
     chat_id = request.json.get('chat_id')
-    
+
     messages = retrieve_message_from_db(user_email, chat_id, chat_type)
-    chat_name = get_chat_info(chat_id)[2]
-    print("chat_name", chat_name[2])
-    return jsonify({
-        "messages": messages,
-        "chat_name": chat_name
-    })
+
+    return jsonify(messages=messages)
 
 @app.route('/retrieve-shared-messages-from-chat', methods=['POST'])
 def get_playbook_messages():
@@ -751,7 +751,7 @@ def infer_chat_name():
 
     
     completion = client.chat.completions.create(
-        model="llama2:latest",
+        model="gpt-4o-mini",
         messages=[
             {"role": "user",
              "content": f"Based off these 2 messages between me and my chatbot, please infer a name for the chat. Keep it to a maximum of 4 words, 5 if you must. Do not use the word chat in it. Some good examples are, AI research paper, Apple financial report, Questions about earnings calls. Return only the chatname and nothing else. Here are the messages: {chat_messages}"}
@@ -810,12 +810,6 @@ def find_most_recent_chat():
 
 @app.route('/ingest-pdf', methods=['POST'])
 def ingest_pdfs():
-    try:
-        user_email = extractUserEmailFromRequest(request)
-    except InvalidTokenError:
-        # If the JWT is invalid, return an error
-        return jsonify({"error": "Invalid JWT"}), 401
-
     start_time = datetime.now()
     print("start time is", start_time)
 
@@ -837,10 +831,11 @@ def ingest_pdfs():
         doc_id, doesExist = add_document_to_db(text, filename, chat_id=chat_id)
 
         if not doesExist:
+            ensure_ray_started()
             chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
 
 
-    return jsonify({"Success": "Document Uploaded"}), 200
+    return jsonify({"error": "Invalid JWT"}), 200
 
 
     #return text, filename
@@ -865,6 +860,7 @@ def ingest_pdfs_wf():
         doc_id, doesExist = add_document_to_db(text, filename, workflow_id)
 
         if not doesExist:
+            ensure_ray_started()
             chunk_document.remote(text_pages, MAX_CHUNK_SIZE, doc_id)
     return text, filename
 
@@ -933,99 +929,48 @@ def reset_chat():
 
     return jsonify({"Success": "Success"}), 200
 
-class CustomJSONEncoder(json.JSONEncoder):
-    def default(self, o):
-        if hasattr(o, '__dict__'):
-            return o.__dict__
-        elif hasattr(o, 'dict') and callable(o.dict):
-            # For Pydantic models
-            return o.dict()
-        elif hasattr(o, '__dataclass_fields__'):
-            # For dataclasses
-            from dataclasses import asdict
-            return asdict(o)
-        return super().default(o)
-    
 @app.route('/process-message-pdf', methods=['POST'])
 def process_message_pdf():
     message = request.json.get('message')
     chat_id = request.json.get('chat_id')
-    model_type = request.json.get('model_type', 0)
+    model_type = request.json.get('model_type')
     model_key = request.json.get('model_key')
 
-    try:
-        user_email = extractUserEmailFromRequest(request)
-    except InvalidTokenError:
-        return jsonify({"error": "Invalid JWT"}), 401
 
-    # Check if agents are enabled
-    if AgentConfig.is_agent_enabled():
+    is_guest = chat_id == 0
+
+    if not is_guest:
         try:
-            # Initialize the reactive agent
-            agent = ReactiveDocumentAgent(model_type=model_type, model_key=model_key)
-            
-            # Process the query using the reactive agent
-            if not user_email or not isinstance(user_email, str):
-                return jsonify({"error": "User email is missing or invalid"}), 401
-            
-            result = agent.process_query_stream(message.strip(), chat_id, user_email)
-            def generate():
-                for chunk in result:
-                    try:
-                        if isinstance(chunk, dict):
-                            chunk_data = chunk
-                        elif hasattr(chunk, 'dict') and callable(getattr(chunk, 'dict', None)):
-                            chunk_data = chunk.dict()
-                        elif hasattr(chunk, '__dict__'):
-                            chunk_data = chunk.__dict__
-                        else:
-                            chunk_data = chunk
+            user_email = extractUserEmailFromRequest(request)
+        except InvalidTokenError:
+        # If the JWT is invalid, return an error
+            return jsonify({"error": "Invalid JWT"}), 401
 
-                        json_data = json.dumps(chunk_data, cls=CustomJSONEncoder)
-                        yield f"data: {json_data}\n\n"
-                        print(f"Streamed chunk: {chunk}")
-                    except (TypeError, ValueError) as e:
-                        print(f"Error serializing chunk {chunk}: {e}")
-            
-            return Response(generate(), status=200)
-               
-
-            # return jsonify({
-            #     "answer": 1, # result["answer"],
-            #     "message_id": 1,# result.get("message_id"),
-            #     "sources": 1, # result.get("sources", []),
-            #     "reasoning": 1 # result.get("agent_reasoning", []) if AgentConfig.LOG_AGENT_REASONING else []
-            # })
-            
-        except Exception as e:
-            print(f"Error in reactive agent processing: {str(e)}")
-            # Fallback to original implementation if agent fails and fallback is enabled
-            if AgentConfig.should_use_fallback():
-                return _process_message_pdf_fallback(message, chat_id, model_type, model_key, user_email)
-            else:
-                return jsonify({"error": "Agent processing failed due to an internal error."}), 500
+        ##Include part where we verify if user actually owns the chat_id later
     else:
-        # Agents disabled, use original implementation
-        return _process_message_pdf_fallback(message, chat_id, model_type, model_key, user_email)
-
-def _process_message_pdf_fallback(message, chat_id, model_type, model_key, user_email):
-    """Fallback implementation using the original direct LLM approach without the ReActive Agent"""
+        user_email = "guest@gmail.com"
     query = message.strip()
 
     #This adds user message to db
-    add_message_to_db(query, chat_id, 1)
+    if not is_guest:
+        add_message_to_db(query, chat_id, 1)
 
     #Get most relevant section from the document
-    sources = get_relevant_chunks(2, query, chat_id, user_email)
+    if not is_guest:
+        sources = get_relevant_chunks(2, query, chat_id, user_email)
+    else: 
+        sources = []
+    
     sources_str = " ".join([", ".join(str(elem) for elem in source) for source in sources])
 
     if (model_type == 0):
         if model_key:
            model_use = model_key
         else:
-           model_use = "llama2:latest"
+           model_use = "gpt-4o-mini"
 
         print("using OpenAI and model is", model_use)
+        
         try:
             completion = client.chat.completions.create(
                 model=model_use,
@@ -1039,7 +984,7 @@ def _process_message_pdf_fallback(message, chat_id, model_type, model_key, user_
         except openai.NotFoundError:
             print(f"The model `{model_use}` does not exist. Falling back to 'gpt-4'.")
             completion = client.chat.completions.create(
-                model="llama2:latest",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "user",
                      "content": f"First, tell the user that their given model key does not exist, and that you have resorted to using GPT-4 before answering their question, then add a line break and answer their question. You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. These are the sources from the text:{sources[0]}{sources[1]} And this is the question:{query}."}
@@ -1066,12 +1011,15 @@ def _process_message_pdf_fallback(message, chat_id, model_type, model_key, user_
         answer = completion.completion
 
     #This adds bot message
-    message_id = add_message_to_db(answer, chat_id, 0)
+    message_id = None
+    if not is_guest:
+        message_id = add_message_to_db(answer, chat_id, 0)
+        if message_id:
 
-    try:
-        add_sources_to_db(message_id, sources)
-    except:
-        print("no sources")
+            try:
+                add_sources_to_db(message_id, sources)
+            except:
+                print("no sources")
 
     return jsonify(answer=answer)
 
@@ -1101,7 +1049,7 @@ def process_message_pdf_demo():
 
     
     completion = client.chat.completions.create(
-        model="llama2:latest",
+        model="gpt-4o-mini",
         messages=[
             {"role": "user",
              "content": f"You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. These are the sources from the text:{sources_str} And this is the question:{query}."}
@@ -1137,6 +1085,7 @@ def ingest_pdfs_demo():
         # Assuming add_document_to_db and chunk_document.remote are implemented
         doc_id, doesExist = add_document_to_db(text, filename, chat_id=chat_id)
         if not doesExist:
+            ensure_ray_started()
             chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
 
     # This mapping is now redundant since we're using a static demo_chat_id, but you could maintain it if you plan to extend functionality
@@ -1144,23 +1093,7 @@ def ingest_pdfs_demo():
 
     return jsonify({"message": "Document processed successfully"}), 200
 
-# @app.route('/reset-chat-demo', methods=['POST'])
-# def reset_chat_demo():
-#     global chat_id
-#     user_email = DEMO_USER_EMAIL
 
-#     ensure_demo_user_exists(user_email)
-
-#     delete_chat_from_db(chat_id, user_email)
-
-#     #create_new_demo_chat(chat_id, user_email)
-#     chat_id = add_chat_to_db(user_email, 0, 0)
-
-#     #reset_uploaded_docs(chat_id, user_email)
-
-#     #reset_chat_db(chat_id, user_email)
-
-#     return jsonify({"Success": "Success"}), 200
 
 @app.route('/download-chat-history-demo', methods=['POST'])
 def download_chat_history_demo():
@@ -1276,6 +1209,7 @@ def process_ticker_info():
 
         if not doesExist:
             print("test")
+            ensure_ray_started()
             chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
             #remote_task = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
             #result = ray.get(remote_task)
@@ -1301,7 +1235,10 @@ def temp_test():
 
     query = "What are some of the risk factors from the company?"
 
-    sources = ["The Company’s business, reputation, results of operations, financial condition and stock price can be affected by a number of factors, whether currently known or unknown, including those described below. When any one or more of these risks materialize from time to time, the Company’s business, reputation, results of operations, financial condition and stock price can be materially and adversely affected. Because of the following factors, as well as other factors affecting the Company’s results of operations and financial condition, past financial performance should not be considered to be a reliable indicator of future performance, and investors should not use historical trends to anticipate results or trends in future periods. This discussion of risk factors contains forward-looking statements. This section should be read in conjunction with Part II, Item 7, “Management’s Discussion and Analysis of Financial Condition and Results of Operations” and the consolidated financial statements and accompanying notes in Part II, Item 8, “Financial Statements and Supplementary Data” of this Form 10-K.", "The Company’s operations and performance depend significantly on global and regional economic conditions and adverse economic conditions can materially adversely affect the Company’s business, results of operations and financial condition. The Company has international operations with sales outside the U.S. representing a majority of the Company’s total net sales. In addition, the Company’s global supply chain is large and complex and a majority of the Company’s supplier facilities, including manufacturing and assembly sites, are located outside the U.S. As a result, the Company’s operations and performance depend significantly on global and regional economic conditions."]
+    sources = [
+        "The Company's business, reputation, results of operations, financial condition and stock price can be affected by a number of factors, whether currently known or unknown, including those described below. When any one or more of these risks materialize from time to time, the Company's business, reputation, results of operations, financial condition and stock price can be materially and adversely affected. Because of the following factors, as well as other factors affecting the Company's results of operations and financial condition, past financial performance should not be considered to be a reliable indicator of future performance, and investors should not use historical trends to anticipate results or trends in future periods. This discussion of risk factors contains forward-looking statements. This section should be read in conjunction with Part II, Item 7, \"Management's Discussion and Analysis of Financial Condition and Results of Operations\" and the consolidated financial statements and accompanying notes in Part II, Item 8, \"Financial Statements and Supplementary Data\" of this Form 10-K.",
+        "The Company's operations and performance depend significantly on global and regional economic conditions and adverse economic conditions can materially adversely affect the Company's business, results of operations and financial condition. The Company has international operations with sales outside the U.S. representing a majority of the Company's total net sales. In addition, the Company's global supply chain is large and complex and a majority of the Company's supplier facilities, including manufacturing and assembly sites, are located outside the U.S. As a result, the Company's operations and performance depend significantly on global and regional economic conditions."
+    ]
 
     completion = anthropic.completions.create(
       model="claude-2",
@@ -1413,17 +1350,9 @@ def generate_financial_report():
 
             # Including Q&A in PDF
             for question in questions:
-                print(f"Processing question: {question}")
-                try:
-                    # Use workflow reactive agent for processing
-                    workflow_agent = WorkflowReactiveAgent()
-                    answer = workflow_agent.process_workflow_query(question, workflowId, user_email)
-                except Exception as e:
-                    print(f"Workflow agent failed, using fallback: {e}")
-                    # Fallback to original process_prompt_answer
-                    answer = process_prompt_answer(question, workflowId, user_email)
-                
-                print("Successfully processed answer")
+                print(f"for loop")
+                answer = process_prompt_answer(question, workflowId, user_email)
+                print("Successfully processed answer: ", )
                 answer_encoded = answer.encode('latin-1', 'replace').decode('latin-1')
                 question_encoded = question.encode('latin-1', 'replace').decode('latin-1')
 
@@ -1533,7 +1462,9 @@ def upload():
 
             if not doesExist:
                 #chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+                ensure_ray_started()
                 result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+                ensure_ray_started()
                 result = ray.get(result_id)
         for path in paths:
 
@@ -1543,7 +1474,9 @@ def upload():
 
             if not doesExist:
                 #chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+                ensure_ray_started()
                 result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+                ensure_ray_started()
                 result = ray.get(result_id)
     elif chat_type == "edgar": #edgar
         print("ticker")
@@ -1573,6 +1506,7 @@ def upload():
             if not doesExist:
                 #print("test")
                 #chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
+                ensure_ray_started()
                 result_id = chunk_document.remote(text, MAX_CHUNK_SIZE, doc_id)
                 
                 result = ray.get(result_id)
@@ -1586,42 +1520,19 @@ def upload():
 @valid_api_key_required
 def public_ingest_pdf():
     user_email = USER_EMAIL_API
-    ensure_SDK_user_exists(user_email)
+    ensure_SDK_user_exists(user_email) #do this here in case the user hasn't uploaded a document yet
 
     message = request.json['message']
     chat_id = request.json['chat_id']
-    model_key = request.json.get('model_key')
 
     model_type, task_type = get_chat_info(chat_id)
 
-    if AgentConfig.is_agent_enabled():
-        try:
-            # Use reactive agent for public API
-            agent = ReactiveDocumentAgent(model_type=model_type, model_key=model_key)
-            result = agent.process_query(message.strip(), chat_id, user_email)
-            
-            # Format sources for compatibility
-            sources_swapped = [[str(elem) for elem in source[::-1]] for source in result.get("sources", [])]
-            
-            return jsonify(
-                message_id=result.get("message_id"),
-                answer=result["answer"],
-                sources=sources_swapped
-            )
-            
-        except Exception as e:
-            print(f"Public chat agent error: {e}")
-            # Fallback to original implementation if enabled
-            if AgentConfig.should_use_fallback():
-                return _public_chat_fallback(message, chat_id, model_type, model_key, user_email)
-            else:
-                return jsonify({"error": f"Agent processing failed: {str(e)}"}), 500
-    else:
-        # Agents disabled, use original implementation
-        return _public_chat_fallback(message, chat_id, model_type, model_key, user_email)
+    model_key = request.json['model_key']
 
-def _public_chat_fallback(message, chat_id, model_type, model_key, user_email):
-    """Fallback implementation for public chat API"""
+    #at the moment don't think we need to add it to the db?
+    #if model_key:
+    #    add_model_key_to_db(model_key, chat_id, user_email)
+
     query = message.strip()
 
     #This adds user message to db
@@ -1632,13 +1543,16 @@ def _public_chat_fallback(message, chat_id, model_type, model_key, user_email):
     sources_str = " ".join([", ".join(str(elem) for elem in source) for source in sources])
 
     sources_swapped = [[str(elem) for elem in source[::-1]] for source in sources]
+    print('sources swapped', sources_swapped)
 
     if (model_type == 0):
         if model_key:
            model_use = model_key
         else:
-           model_use = "llama2:latest"
+           model_use = "gpt-4o-mini"
 
+        print("using OpenAI and model is", model_use)
+        
         try:
             completion = client.chat.completions.create(
                 model=model_use,
@@ -1647,10 +1561,12 @@ def _public_chat_fallback(message, chat_id, model_type, model_key, user_email):
                      "content": f"You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. These are the sources from the text:{sources_str} And this is the question:{query}."}
                 ]
             )
+            print("using fine tuned model")
             answer = str(completion.choices[0].message.content)
         except openai.NotFoundError:
+            print(f"The model `{model_use}` does not exist. Falling back to 'gpt-4'.")
             completion = client.chat.completions.create(
-                model="llama2:latest",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "user",
                      "content": f"First, tell the user that their given model key does not exist, and that you have resorted to using GPT-4 before answering their question, then add a line break and answer their question. You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. These are the sources from the text:{sources[0]}{sources[1]} And this is the question:{query}."}
@@ -1658,10 +1574,15 @@ def _public_chat_fallback(message, chat_id, model_type, model_key, user_email):
             )
             answer = str(completion.choices[0].message.content)
     else:
+        print("using Claude")
+
         if model_key:
            return jsonify({"Error": "You cannot enter a fine-tuned model key when using Claude"}), 400
 
-        anthropic = Anthropic(api_key = os.getenv("ANTHROPIC_API_KEY"))
+        anthropic = Anthropic(
+            api_key = os.getenv("ANTHROPIC_API_KEY")
+        )
+
         completion = anthropic.completions.create(
             model="claude-2",
             max_tokens_to_sample=700,
@@ -1682,7 +1603,7 @@ def _public_chat_fallback(message, chat_id, model_type, model_key, user_email):
     except:
         print("no sources")
 
-    return jsonify(message_id=message_id, answer=answer, sources=sources_swapped)
+    return jsonify(message_id=message_id, answer=answer, sources=sources_swapped) #can modify the sources here if we don't want to return the sources
 
 @app.route('/public/evaluate', methods = ['POST'])
 @valid_api_key_required
@@ -1719,6 +1640,803 @@ def evaluate():
     )
 
     return result
+
+@app.route('/testing-dashboard', methods=['GET'])
+def testing_dashboard():
+    """Web-based testing interface for the submit_model API"""
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Test Submit Model API</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 40px; }
+            .container { max-width: 800px; }
+            textarea { width: 100%; height: 200px; }
+            button { padding: 10px 20px; margin: 10px 0; }
+            .result { background: #f5f5f5; padding: 20px; margin: 20px 0; border-radius: 5px; }
+            .error { background: #ffebee; color: #c62828; }
+            .success { background: #e8f5e8; color: #2e7d32; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Test Submit Model API</h1>
+            
+            <h3>API Key (will be auto-created):</h3>
+            <input type="text" id="apiKey" value="test-api-key-12345" style="width: 300px;">
+            
+            <h3>Test Data (JSON):</h3>
+            <textarea id="testData">{
+  "benchmarkDatasetName": "flores_spanish_translation",
+  "modelName": "test-gpt-model-v1",
+  "modelResults": [
+    "Hola mundo",
+    "Buenos días",
+    "Gracias por su ayuda",
+    "¿Cómo está usted?",
+    "Hasta luego"
+  ]
+}</textarea>
+            
+            <br>
+            <button onclick="testAPI()">Test Submit Model API</button>
+            <button onclick="createAPIKey()">Create Test API Key</button>
+            <button onclick="checkHealth()">Check API Health</button>
+            
+            <div id="result"></div>
+        </div>
+        
+        <script>
+            async function createAPIKey() {
+                const resultDiv = document.getElementById('result');
+                try {
+                    const response = await fetch('/create-test-api-key', { method: 'POST' });
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        document.getElementById('apiKey').value = result.api_key;
+                        resultDiv.innerHTML = `<div class="result success">
+                            <h4>✅ API Key Created</h4>
+                            <p>Key: ${result.api_key}</p>
+                        </div>`;
+                    } else {
+                        resultDiv.innerHTML = `<div class="result error">
+                            <h4>❌ Failed to create API key</h4>
+                            <p>${result.error}</p>
+                        </div>`;
+                    }
+                } catch (error) {
+                    resultDiv.innerHTML = `<div class="result error">
+                        <h4>❌ Error</h4>
+                        <p>${error.message}</p>
+                    </div>`;
+                }
+            }
+            
+            async function testAPI() {
+                const resultDiv = document.getElementById('result');
+                const apiKey = document.getElementById('apiKey').value;
+                const testData = document.getElementById('testData').value;
+                
+                try {
+                    const response = await fetch('/public/submit_model', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        },
+                        body: testData
+                    });
+                    
+                    const result = await response.json();
+                    const statusClass = response.ok ? 'success' : 'error';
+                    
+                    resultDiv.innerHTML = `<div class="result ${statusClass}">
+                        <h4>${response.ok ? '✅' : '❌'} API Response (${response.status})</h4>
+                        <pre>${JSON.stringify(result, null, 2)}</pre>
+                    </div>`;
+                } catch (error) {
+                    resultDiv.innerHTML = `<div class="result error">
+                        <h4>❌ Error</h4>
+                        <p>${error.message}</p>
+                    </div>`;
+                }
+            }
+            
+            async function checkHealth() {
+                const resultDiv = document.getElementById('result');
+                try {
+                    const response = await fetch('/health');
+                    const result = await response.json();
+                    const statusClass = response.ok && result.status === 'healthy' ? 'success' : 'error';
+                    
+                    resultDiv.innerHTML = `<div class="result ${statusClass}">
+                        <h4>${result.status === 'healthy' ? '✅' : '❌'} Health Check</h4>
+                        <pre>${JSON.stringify(result, null, 2)}</pre>
+                    </div>`;
+                } catch (error) {
+                    resultDiv.innerHTML = `<div class="result error">
+                        <h4>❌ Error</h4>
+                        <p>${error.message}</p>
+                    </div>`;
+                }
+            }
+        </script>
+    </body>
+    </html>
+    """
+
+@app.route('/create-test-api-key', methods=['POST'])
+def create_test_api_key():
+    """Create a test API key for development"""
+    try:
+        conn, cursor = get_db_connection()
+        
+        # Check if test user exists, create if not
+        cursor.execute("SELECT id FROM users WHERE email = 'api@example.com'")
+        user = cursor.fetchone()
+        
+        if not user:
+            cursor.execute("""
+                INSERT INTO users (email, person_name, credits) 
+                VALUES ('api@example.com', 'Test API User', 1000)
+            """)
+            user_id = cursor.lastrowid
+        else:
+            user_id = user['id']
+        
+        # Create test API key
+        test_api_key = 'test-api-key-12345'
+        cursor.execute("""
+            INSERT INTO apiKeys (user_id, api_key, key_name) 
+            VALUES (%s, %s, %s)
+            ON DUPLICATE KEY UPDATE api_key = VALUES(api_key)
+        """, (user_id, test_api_key, 'Test API Key'))
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            "success": True,
+            "api_key": test_api_key,
+            "message": "Test API key created successfully"
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@app.route('/public/get_source_sentences', methods=['GET'])
+def get_source_sentences():
+    """
+    Get source sentences from a benchmark dataset for translation
+    
+    Query parameters:
+    - dataset: benchmark dataset name (default: flores_spanish_translation)  
+    - count: number of sentences (default: 5)
+    - start_idx: starting index (default: 0)
+    
+    Returns:
+    {
+        "success": true,
+        "source_sentences": ["English sentence 1", "English sentence 2", ...],
+        "sentence_ids": [0, 1, 2, 3, 4],
+        "dataset": "flores_spanish_translation"
+    }
+    """
+    try:
+        dataset_name = request.args.get('dataset_name', request.args.get('dataset', 'flores_spanish_translation'))
+        count = int(request.args.get('count', 5))
+        start_idx = int(request.args.get('start_idx', 0))
+        
+        # Get database connection to check for custom datasets
+        conn, cursor = get_db_connection()
+        
+        try:
+            # Handle FLORES+ datasets (Spanish, Japanese, Arabic, Chinese, Korean)
+            flores_datasets = {
+                'flores_spanish_translation': 'spa_Latn',
+                'flores_japanese_translation': 'jpn_Jpan', 
+                'flores_arabic_translation': 'arb_Arab',
+                'flores_chinese_translation': 'cmn_Hans',
+                'flores_korean_translation': 'kor_Hang'
+            }
+            
+            if dataset_name in flores_datasets:
+                # Set HF token for dataset access
+                import os
+                hf_token = os.getenv("HF_TOKEN")
+                if hf_token:
+                    os.environ["HF_TOKEN"] = hf_token
+                
+                # Load FLORES+ English source sentences (same for all languages)
+                source_lang = "eng_Latn"
+                source_dataset = load_dataset("openlanguagedata/flores_plus", source_lang, split="devtest")
+                
+                # Get requested range of sentences
+                end_idx = start_idx + count
+                source_sentences = [ex["text"] for ex in source_dataset.select(range(start_idx, end_idx))]
+                sentence_ids = list(range(start_idx, end_idx))
+                total_available = len(source_dataset)
+                
+            else:
+                # Check if it's a custom dataset
+                cursor.execute("""
+                    SELECT reference_data FROM benchmark_datasets 
+                    WHERE name = %s AND active = TRUE
+                """, (dataset_name,))
+                
+                dataset = cursor.fetchone()
+                if not dataset:
+                    return jsonify({
+                        "success": False,
+                        "error": f"Dataset '{dataset_name}' not found"
+                    }), 404
+                
+                reference_data = json.loads(dataset['reference_data'])
+                
+                if 'source_sentences' not in reference_data:
+                    return jsonify({
+                        "success": False,
+                        "error": f"Dataset '{dataset_name}' does not have source sentences"
+                    }), 400
+                
+                all_source_sentences = reference_data['source_sentences']
+                total_available = len(all_source_sentences)
+                
+                # Get requested range
+                end_idx = min(start_idx + count, total_available)
+                source_sentences = all_source_sentences[start_idx:end_idx]
+                sentence_ids = list(range(start_idx, end_idx))
+            
+            return jsonify({
+                "success": True,
+                "source_sentences": source_sentences,
+                "sentence_ids": sentence_ids,
+                "dataset": dataset_name,
+                "total_available": total_available
+            })
+            
+        finally:
+            cursor.close()
+            conn.close()
+            
+    except Exception as e:
+        print(f"Error in get_source_sentences: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": "Internal server error"
+        }), 500
+
+@app.route('/public/submit_model', methods=['POST'])
+def submit_model():
+    """
+    Submit a model's results to a benchmark dataset for evaluation
+    
+    Expected JSON input:  
+    {
+        "benchmarkDatasetName": "flores_spanish_translation",
+        "modelName": "my-model-v1", 
+        "modelResults": ["Traducción 1", "Traducción 2", ...],
+        "sentence_ids": [0, 1, 2, 3, 4]  // Required: specify which FLORES+ sentences were translated
+    }
+    
+    Returns:
+    {
+        "success": true/false,
+        "bleu_score": 0.543,
+        "submission_id": 123,
+        "evaluation_details": {...},
+        "error": "error message if any"
+    }
+    """
+    try:
+        # Parse request data
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "error": "No JSON data provided"}), 400
+        
+        benchmark_dataset_name = data.get('benchmarkDatasetName')
+        model_name = data.get('modelName')
+        model_results = data.get('modelResults')
+        sentence_ids = data.get('sentence_ids')  # Optional: specific FLORES+ sentence positions
+        
+                # Validate required fields
+        if not all([benchmark_dataset_name, model_name, model_results, sentence_ids]):
+            return jsonify({
+                "success": False,
+                "error": "Missing required fields: benchmarkDatasetName, modelName, modelResults, sentence_ids"
+            }), 400
+        
+        if not isinstance(model_results, list):
+            return jsonify({
+                "success": False,
+                "error": "modelResults must be a list"
+            }), 400
+        
+        # Get database connection
+        conn, cursor = get_db_connection()
+        
+        try:
+            # Check if benchmark dataset exists
+            cursor.execute(
+                "SELECT id, task_type, evaluation_metric, reference_data FROM benchmark_datasets WHERE name = %s AND active = TRUE",
+                (benchmark_dataset_name,)
+            )
+            dataset = cursor.fetchone()
+            
+            if not dataset:
+                return jsonify({
+                    "success": False,
+                    "error": f"Benchmark dataset '{benchmark_dataset_name}' not found"
+                }), 404
+            
+            dataset_id = dataset['id']
+            task_type = dataset['task_type']
+            evaluation_metric = dataset['evaluation_metric']
+            reference_data_str = dataset['reference_data']
+            
+            # Store model submission
+            cursor.execute("""
+                INSERT INTO model_submissions (benchmark_dataset_id, model_name, submitted_by, model_results)
+                VALUES (%s, %s, %s, %s)
+            """, (dataset_id, model_name, USER_EMAIL_API, json.dumps(model_results)))
+            
+            submission_id = cursor.lastrowid
+            
+            # Run evaluation based on the dataset type and metric
+            if task_type == 'translation' and evaluation_metric in ['bleu', 'bertscore']:
+                try:
+                    # Handle FLORES+ datasets (Spanish, Japanese, Arabic, Chinese, Korean)
+                    flores_datasets = {
+                        'flores_spanish_translation': 'spa_Latn',
+                        'flores_japanese_translation': 'jpn_Jpan', 
+                        'flores_arabic_translation': 'arb_Arab',
+                        'flores_chinese_translation': 'cmn_Hans',
+                        'flores_korean_translation': 'kor_Hang'
+                    }
+                    
+                    # BERTScore datasets (same language mappings)
+                    flores_bertscore_datasets = {
+                        'flores_spanish_translation_bertscore': 'spa_Latn',
+                        'flores_japanese_translation_bertscore': 'jpn_Jpan',
+                        'flores_arabic_translation_bertscore': 'arb_Arab', 
+                        'flores_chinese_translation_bertscore': 'cmn_Hans',
+                        'flores_korean_translation_bertscore': 'kor_Hang'
+                    }
+                    
+                    all_flores_datasets = {**flores_datasets, **flores_bertscore_datasets}
+                    
+                    if benchmark_dataset_name in all_flores_datasets:
+                        # FLORES+ evaluation logic for all supported languages
+                        # Set HF token for dataset access (environment variable approach)
+                        import os
+                        hf_token = os.getenv("HF_TOKEN")
+                        if hf_token:
+                            os.environ["HF_TOKEN"] = hf_token
+                        
+                        # Load FLORES+ reference sentences for the target language
+                        target_lang = all_flores_datasets[benchmark_dataset_name]
+                        target_dataset = load_dataset("openlanguagedata/flores_plus", target_lang, split="devtest")
+                        
+                        # Use specific sentence positions (Option C - now required)
+                        if len(sentence_ids) != len(model_results):
+                            return jsonify({
+                                "success": False,
+                                "error": "Length of sentence_ids must match length of modelResults"
+                            }), 400
+                        reference_sentences = [target_dataset[idx]["text"] for idx in sentence_ids]
+                        
+                    else:
+                        # Custom dataset evaluation logic
+                        # Parse the reference data from database
+                        reference_data = json.loads(reference_data_str)
+                        
+                        if 'reference_translations' not in reference_data:
+                            return jsonify({
+                                "success": False,
+                                "error": "Dataset does not have reference translations"
+                            }), 400
+                        
+                        all_reference_sentences = reference_data['reference_translations']
+                        
+                        # Use sentence_ids to get specific reference sentences
+                        if len(sentence_ids) != len(model_results):
+                            return jsonify({
+                                "success": False,
+                                "error": "Length of sentence_ids must match length of modelResults"
+                            }), 400
+                        
+                        # Validate sentence_ids are within bounds
+                        max_id = len(all_reference_sentences) - 1
+                        for sid in sentence_ids:
+                            if sid < 0 or sid > max_id:
+                                return jsonify({
+                                    "success": False,
+                                    "error": f"sentence_id {sid} is out of range (0-{max_id})"
+                                }), 400
+                        
+                        reference_sentences = [all_reference_sentences[idx] for idx in sentence_ids]
+                    
+                    # Calculate score based on evaluation metric
+                    if evaluation_metric == 'bleu':
+                        score = get_bleu(model_results, reference_sentences)
+                    elif evaluation_metric == 'bertscore':
+                        score = get_bertscore(model_results, reference_sentences)
+                    
+                except Exception as e:
+                    print(f"{evaluation_metric.upper()} evaluation failed: {str(e)}")
+                    return jsonify({
+                        "success": False,
+                        "error": f"{evaluation_metric.upper()} evaluation failed"
+                    }), 500
+            else:
+                return jsonify({
+                    "success": False,
+                    "error": "Only translation tasks with BLEU or BERTScore metrics supported"
+                }), 400
+            
+            # Store evaluation result (simplified)
+            cursor.execute("""
+                INSERT INTO evaluation_results (model_submission_id, score, evaluation_details)
+                VALUES (%s, %s, %s)
+            """, (submission_id, score, json.dumps({"metric": evaluation_metric})))
+            
+            # Commit the transaction
+            conn.commit()
+            
+             # Return spec-compliant response: success boolean + score
+            return jsonify({
+                "success": True,
+                "score": score
+            })
+            
+        finally:
+            cursor.close()
+            conn.close()
+            
+    except Exception as e:
+        print(f"Error in submit_model: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": "Internal server error"
+        }), 500
+
+@app.route('/public/add_dataset_to_leaderboard', methods=['POST'])
+def add_dataset_to_leaderboard():
+    """
+    Add a new benchmark dataset to the leaderboard
+    
+    Expected form data:
+    - dataset_name: string - unique name for the dataset
+    - description: string - optional description  
+    - task_type: string - e.g., 'translation', 'classification', 'qa'
+    - evaluation_metric: string - e.g., 'bleu', 'accuracy', 'f1'
+    - dataset_file: file - CSV/JSON file with reference data
+    
+    Returns:
+    {
+        "success": true/false,
+        "dataset_id": integer,
+        "error": "error message if any"
+    }
+    """
+    try:
+        # Get form data
+        dataset_name = request.form.get('dataset_name')
+        description = request.form.get('description', '')
+        task_type = request.form.get('task_type')
+        evaluation_metric = request.form.get('evaluation_metric')
+        
+        # Validate required fields
+        if not dataset_name or not task_type or not evaluation_metric:
+            return jsonify({
+                "success": False,
+                "error": "Missing required fields: dataset_name, task_type, evaluation_metric"
+            }), 400
+        
+        # Validate task_type and evaluation_metric combinations
+        valid_combinations = {
+            'translation': ['bleu', 'meteor', 'rouge'],
+            'classification': ['accuracy', 'f1', 'precision', 'recall'],
+            'qa': ['exact_match', 'f1', 'bleu'],
+            'summarization': ['rouge', 'bleu']
+        }
+        
+        if task_type not in valid_combinations:
+            return jsonify({
+                "success": False,
+                "error": f"Unsupported task_type: {task_type}. Supported: {list(valid_combinations.keys())}"
+            }), 400
+            
+        if evaluation_metric not in valid_combinations[task_type]:
+            return jsonify({
+                "success": False,
+                "error": f"Invalid evaluation_metric '{evaluation_metric}' for task_type '{task_type}'. Valid options: {valid_combinations[task_type]}"
+            }), 400
+        
+        # Get uploaded file
+        if 'dataset_file' not in request.files:
+            return jsonify({
+                "success": False,
+                "error": "No dataset_file provided"
+            }), 400
+            
+        dataset_file = request.files['dataset_file']
+        if dataset_file.filename == '':
+            return jsonify({
+                "success": False,
+                "error": "No dataset_file selected"
+            }), 400
+        
+        # Process the dataset file
+        try:
+            reference_data = process_dataset_file(dataset_file, task_type)
+        except ValueError as e:
+            return jsonify({
+                "success": False,
+                "error": f"Invalid dataset file: {str(e)}"
+            }), 400
+        
+        # Save to database
+        conn, cursor = get_db_connection()
+        
+        try:
+            # Check if dataset name already exists
+            cursor.execute("""
+                SELECT id FROM benchmark_datasets WHERE name = %s
+            """, (dataset_name,))
+            
+            if cursor.fetchone():
+                return jsonify({
+                    "success": False,
+                    "error": f"Dataset with name '{dataset_name}' already exists"
+                }), 400
+            
+            # Insert new dataset
+            cursor.execute("""
+                INSERT INTO benchmark_datasets 
+                (name, description, task_type, evaluation_metric, reference_data)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (dataset_name, description, task_type, evaluation_metric, json.dumps(reference_data)))
+            
+            dataset_id = cursor.lastrowid
+            conn.commit()
+            
+            return jsonify({
+                "success": True,
+                "dataset_id": dataset_id
+            })
+            
+        finally:
+            cursor.close()
+            conn.close()
+            
+    except Exception as e:
+        print(f"Error in add_dataset_to_leaderboard: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": "Internal server error"
+        }), 500
+
+def process_dataset_file(file_storage, task_type):
+    """
+    Process uploaded dataset file and extract reference data
+    
+    Returns:
+    - For translation: {"source_sentences": [...], "reference_translations": [...]}
+    - For classification: {"texts": [...], "labels": [...]}  
+    - For qa: {"questions": [...], "answers": [...], "contexts": [...]}
+    """
+    filename = secure_filename(file_storage.filename)
+    ext = os.path.splitext(filename)[1].lower()
+    
+    file_storage.seek(0)
+    
+    if ext == ".csv":
+        import pandas as pd
+        df = pd.read_csv(file_storage)
+        
+        if task_type == 'translation':
+            # Expected columns: source, target (or source_text, target_text)
+            source_col = None
+            target_col = None
+            
+            for col in df.columns:
+                col_lower = col.lower()
+                if col_lower in ['source', 'source_text', 'source_sentence']:
+                    source_col = col
+                elif col_lower in ['target', 'target_text', 'reference', 'reference_translation']:
+                    target_col = col
+            
+            if not source_col or not target_col:
+                raise ValueError(f"Translation dataset must have source and target columns. Found columns: {list(df.columns)}")
+            
+            return {
+                "source_sentences": df[source_col].tolist(),
+                "reference_translations": df[target_col].tolist()
+            }
+            
+        elif task_type == 'classification':
+            # Expected columns: text, label
+            text_col = None
+            label_col = None
+            
+            for col in df.columns:
+                col_lower = col.lower()
+                if col_lower in ['text', 'sentence', 'document']:
+                    text_col = col
+                elif col_lower in ['label', 'class', 'category']:
+                    label_col = col
+            
+            if not text_col or not label_col:
+                raise ValueError(f"Classification dataset must have text and label columns. Found columns: {list(df.columns)}")
+            
+            return {
+                "texts": df[text_col].tolist(),
+                "labels": df[label_col].tolist()
+            }
+            
+        elif task_type == 'qa':
+            # Expected columns: question, answer, context (optional)
+            question_col = None
+            answer_col = None
+            context_col = None
+            
+            for col in df.columns:
+                col_lower = col.lower()
+                if col_lower in ['question', 'query']:
+                    question_col = col
+                elif col_lower in ['answer', 'response']:
+                    answer_col = col
+                elif col_lower in ['context', 'passage', 'document']:
+                    context_col = col
+            
+            if not question_col or not answer_col:
+                raise ValueError(f"QA dataset must have question and answer columns. Found columns: {list(df.columns)}")
+            
+            result = {
+                "questions": df[question_col].tolist(),
+                "answers": df[answer_col].tolist()
+            }
+            
+            if context_col:
+                result["contexts"] = df[context_col].tolist()
+            
+            return result
+            
+        else:
+            raise ValueError(f"Unsupported task_type for CSV: {task_type}")
+            
+    elif ext == ".json":
+        import json
+        data = json.load(file_storage)
+        
+        # Validate JSON structure based on task_type
+        if task_type == 'translation':
+            if not isinstance(data, dict) or 'source_sentences' not in data or 'reference_translations' not in data:
+                raise ValueError("Translation JSON must have 'source_sentences' and 'reference_translations' keys")
+            return data
+            
+        elif task_type == 'classification':
+            if not isinstance(data, dict) or 'texts' not in data or 'labels' not in data:
+                raise ValueError("Classification JSON must have 'texts' and 'labels' keys")
+            return data
+            
+        elif task_type == 'qa':
+            if not isinstance(data, dict) or 'questions' not in data or 'answers' not in data:
+                raise ValueError("QA JSON must have 'questions' and 'answers' keys")
+            return data
+            
+        else:
+            raise ValueError(f"Unsupported task_type for JSON: {task_type}")
+    
+    else:
+        raise ValueError(f"Unsupported file format: {ext}. Supported: .csv, .json")
+
+@app.route('/public/get_leaderboard', methods=['GET'])
+def get_leaderboard():
+    """
+    Get leaderboard showing model submissions and scores for a dataset
+    
+    Query parameters:
+    - dataset: benchmark dataset name (optional, shows all if not specified)
+    - limit: number of results to return (default: 10)
+    
+    Returns:
+    {
+        "success": true,
+        "leaderboard": [
+            {
+                "rank": 1,
+                "model_name": "model-v1",
+                "score": 0.95,
+                "dataset_name": "test_spanish_translation",
+                "task_type": "translation",
+                "evaluation_metric": "bleu",
+                "submitted_at": "2025-01-08T12:34:56Z"
+            }
+        ]
+    }
+    """
+    try:
+        dataset_name = request.args.get('dataset')
+        limit = int(request.args.get('limit', 100))  # Increased from 10 to 100 to show more results per dataset
+        
+        conn, cursor = get_db_connection()
+        
+        try:
+            if dataset_name:
+                # Get leaderboard for specific dataset
+                query = """
+                    SELECT 
+                        ms.model_name,
+                        bd.name as dataset_name,
+                        bd.task_type,
+                        bd.evaluation_metric,
+                        er.score,
+                        ms.created as submitted_at
+                    FROM model_submissions ms
+                    JOIN benchmark_datasets bd ON ms.benchmark_dataset_id = bd.id
+                    JOIN evaluation_results er ON er.model_submission_id = ms.id
+                    WHERE bd.name = %s AND bd.active = TRUE
+                    ORDER BY er.score DESC
+                    LIMIT %s
+                """
+                cursor.execute(query, (dataset_name, limit))
+            else:
+                # Get leaderboard for all datasets
+                query = """
+                    SELECT 
+                        ms.model_name,
+                        bd.name as dataset_name,
+                        bd.task_type,
+                        bd.evaluation_metric,
+                        er.score,
+                        ms.created as submitted_at
+                    FROM model_submissions ms
+                    JOIN benchmark_datasets bd ON ms.benchmark_dataset_id = bd.id
+                    JOIN evaluation_results er ON er.model_submission_id = ms.id
+                    WHERE bd.active = TRUE
+                    ORDER BY bd.name, er.score DESC
+                    LIMIT %s
+                """
+                cursor.execute(query, (limit,))
+            
+            results = cursor.fetchall()
+            
+            # Add ranking
+            leaderboard = []
+            for i, row in enumerate(results):
+                leaderboard.append({
+                    "rank": i + 1,
+                    "model_name": row['model_name'],
+                    "dataset_name": row['dataset_name'],
+                    "task_type": row['task_type'],
+                    "evaluation_metric": row['evaluation_metric'],
+                    "score": float(row['score']),
+                    "submitted_at": row['submitted_at'].isoformat() if row['submitted_at'] else None
+                })
+            
+            return jsonify({
+                "success": True,
+                "leaderboard": leaderboard
+            })
+            
+        finally:
+            cursor.close()
+            conn.close()
+            
+    except Exception as e:
+        print(f"Error in get_leaderboard: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": "Internal server error"
+        }), 500
 
 @app.route('/api/companies', methods=['GET'])
 def get_companies():
@@ -1773,6 +2491,204 @@ def get_user_companies():
     cursor.close()
     return jsonify(companies)
 
+# translate with gpt
+def translate_gpt(prompt):
+    from openai import OpenAI
+    import os
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": "You are a helpful translator."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.3,
+    )
+    return response.choices[0].message.content.strip()
+
+# calculate BLEU score
+def get_bleu(translations, references, weights=(0.5, 0.5, 0, 0)):
+    bleu_scores = [
+        sentence_bleu([ref.split()], trans.split(), weights=weights)
+        for ref, trans in zip(references, translations)
+    ]
+    return sum(bleu_scores) / len(bleu_scores)
+
+# calculate BERTScore
+def get_bertscore(predictions, references):
+    """
+    Calculate BERTScore F1 for translation evaluation
+    Based on implementation from anote_evals.ipynb
+    """
+    try:
+        from bert_score import BERTScorer
+        
+        # Initialize BERTScorer with multilingual BERT model
+        scorer = BERTScorer(model_type='bert-base-multilingual-cased')
+        
+        # Calculate BERTScore - returns Precision, Recall, F1 tensors
+        P, R, F1 = scorer.score(predictions, references)
+        
+        # Return mean F1 score as the primary metric
+        return F1.mean().item()
+        
+    except ImportError:
+        print("Warning: bert_score not installed. Install with: pip install bert_score")
+        return 0.0
+    except Exception as e:
+        print(f"Error calculating BERTScore: {str(e)}")
+        return 0.0
+
+@app.route('/multi-language-gpt-evaluation', methods=['POST'])
+@cross_origin(supports_credentials=True)
+def multi_language_gpt_evaluation():
+    """
+    Multi-language GPT evaluation endpoint
+    Supports Spanish, Japanese, Arabic, Chinese, and Korean translations
+    
+    Expected JSON payload:
+    {
+        "language": "spanish|japanese|arabic|chinese|korean",
+        "count": 5
+    }
+    
+    Returns:
+    {
+        "success": true,
+        "bleu_score": 0.65,
+        "translations": [...],
+        "references": [...],
+        "source_sentences": [...],
+        "language": "spanish",
+        "dataset_name": "flores_spanish_translation"
+    }
+    """
+    try:
+        # get request data
+        data = request.get_json()
+        language = data.get('language', 'spanish').lower()
+        count = data.get('count', 5)
+
+        # Language mapping
+        language_configs = {
+            'spanish': {
+                'target_lang': 'spa_Latn',
+                'prompt_lang': 'Spanish',
+                'dataset_name': 'flores_spanish_translation'
+            },
+            'japanese': {
+                'target_lang': 'jpn_Jpan',
+                'prompt_lang': 'Japanese',
+                'dataset_name': 'flores_japanese_translation'
+            },
+            'arabic': {
+                'target_lang': 'arb_Arab',
+                'prompt_lang': 'Arabic',
+                'dataset_name': 'flores_arabic_translation'
+            },
+            'chinese': {
+                'target_lang': 'cmn_Hans',
+                'prompt_lang': 'Chinese',
+                'dataset_name': 'flores_chinese_translation'
+            },
+            'korean': {
+                'target_lang': 'kor_Hang',
+                'prompt_lang': 'Korean',
+                'dataset_name': 'flores_korean_translation'
+            }
+        }
+        
+        if language not in language_configs:
+            return jsonify({
+                "success": False,
+                "error": f"Unsupported language: {language}. Supported: {list(language_configs.keys())}"
+            }), 400
+
+        config = language_configs[language]
+        
+        # Set HF token for dataset access
+        import os
+        hf_token = os.getenv("HF_TOKEN")
+        if hf_token:
+            os.environ["HF_TOKEN"] = hf_token
+
+        # load datasets
+        source_lang = "eng_Latn"
+        target_lang = config['target_lang']
+        source_dataset = load_dataset("openlanguagedata/flores_plus", source_lang, split="devtest")
+        target_dataset = load_dataset("openlanguagedata/flores_plus", target_lang, split="devtest")
+
+        # compile sentences into lists
+        source_sentences = [ex["text"] for ex in source_dataset.select(range(count))]
+        reference_sentences = [ex["text"] for ex in target_dataset.select(range(count))]
+
+        # generate gpt translations from benchmark source sentences
+        gpt_translations = []
+        for sentence in source_sentences:
+            prompt = f"Translate this sentence to {config['prompt_lang']}:\n\n{sentence}"
+            translation = translate_gpt(prompt)
+            gpt_translations.append(translation)
+            time.sleep(1)
+
+        bleu_score = get_bleu(gpt_translations, reference_sentences)
+
+        # return results as json
+        return jsonify({
+            "success": True,
+            "bleu_score": bleu_score,
+            "translations": gpt_translations,
+            "references": reference_sentences,
+            "source_sentences": source_sentences,
+            "language": language,
+            "dataset_name": config['dataset_name']
+        })
+
+    except Exception as e:
+        print("Error:", str(e))
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@app.route('/spanish-gpt-evaluation', methods=['POST'])
+@cross_origin(supports_credentials=True)
+def spanish_gpt_evaluation():
+    try:
+        # get number of sentences to translate
+        data = request.get_json()
+        count = data.get('count', 10)
+
+        # load datasets
+        source_lang = "eng_Latn"
+        target_lang = "spa_Latn"
+        source_dataset = load_dataset("openlanguagedata/flores_plus", source_lang, split="devtest")
+        target_dataset = load_dataset("openlanguagedata/flores_plus", target_lang, split="devtest")
+
+        # compile sentences into lists
+        source_sentences = [ex["text"] for ex in source_dataset.select(range(count))]
+        reference_sentences = [ex["text"] for ex in target_dataset.select(range(count))]
+
+        # generate gpt translations from benchmark source sentences
+        spa_gpt_translations = []
+        for sentence in source_sentences:
+            prompt = f"Translate this sentence to Spanish:\n\n{sentence}"
+            translation = translate_gpt(prompt)
+            spa_gpt_translations.append(translation)
+            time.sleep(1)
+
+        bleu_score = get_bleu(spa_gpt_translations, reference_sentences)
+
+        # return results as json
+        return jsonify({
+            "bleu_score": bleu_score,
+            "translations": spa_gpt_translations,
+            "references": reference_sentences
+        })
+
+    except Exception as e:
+        print("Error:", str(e))
+        return jsonify({"error": str(e)}), 500
 
 api = Blueprint('api', __name__)
 app.register_blueprint(api)

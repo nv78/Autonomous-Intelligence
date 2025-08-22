@@ -74,9 +74,7 @@ def chat_korean():
             try:
                 file_content = extract_text_from_file(file)
             except Exception as e:
-                import logging
-                logging.error(f"[ERROR] Failed to parse file:", exc_info=True)
-                return jsonify({"error": "Failed to parse file."}), 400
+                return jsonify({"error": f"Failed to parse file: {str(e)}"}), 400
             
             if not file_content.strip():
                 return jsonify({"response": "죄송합니다. 첨부된 문서를 읽을 수 없습니다."})

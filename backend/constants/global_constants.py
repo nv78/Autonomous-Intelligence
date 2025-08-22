@@ -1,7 +1,6 @@
 from datetime import timedelta
 from db_enums import PaidUserStatus
 from enum import IntEnum
-import os 
 
 kSessionTokenExpirationTime = timedelta(days=90)
 kPasswordResetExpirationTime = timedelta(minutes=15)
@@ -34,10 +33,10 @@ planToSearches = {
 
 chatgptLimit = 10000
 
-dbName = os.getenv("DB_NAME")
-dbHost = os.getenv("DB_HOST")  # Docker service name for the database container
-dbPassword = os.getenv("DB_PASSWORD")
-dbUser = os.getenv("DB_USER")
+dbName = "agents"
+dbHost = "db"  # Docker service name for the database container
+dbPassword = ""
+dbUser = "root"
 
 # TODO: COMMENT OUT WHEN DEPLOY TO PROD
 # dbName = "agents"

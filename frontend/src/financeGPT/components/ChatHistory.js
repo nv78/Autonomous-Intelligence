@@ -1,10 +1,8 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import fetcher from "../../http/RequestConfig";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { Dropdown } from "flowbite-react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
 
 function ChatHistory(props) {
   const [chats, setChats] = useState([]);
@@ -15,7 +13,6 @@ function ChatHistory(props) {
   const [chatIdToRename, setChatIdToRename] = useState(null);
   const [newChatName, setNewChatName] = useState("");
   const { id } = useParams();
-  const navigate = useNavigate();
   const retrieveAllChats = async () => {
     console.log("i am in retrieve chats");
     try {
@@ -192,23 +189,14 @@ function ChatHistory(props) {
           document.body
         )}
 
-      <div className="px-3 mt-16">
-        <div className="flex justify-between items-center mb-2">
-          <h2
-            className={`text-xl text-anoteblack-100 ${
-              chats.length === 0 ? "hidden" : ""
-            } font-bold`}
-          >
-            Chat History
-          </h2>
-          <button
-            onClick={() => navigate("/")}
-            className="bg-anoteblack-700  cursor-pointer hover:bg-anoteblack-600 text-white rounded-lg transition-colors"
-            title="Create new chat"
-          >
-            <FontAwesomeIcon icon={faPlus} className="text-base font-bold" />
-          </button>
-        </div>
+      <div className="px-3 mt-12">
+        <h2
+          className={`text-xl text-anoteblack-100 ${
+            chats.length === 0 ? "hidden" : ""
+          } font-bold`}
+        >
+          Chat History
+        </h2>
         <ul className="flex-col py-2 justify-around w-full h-full flex overflow-y-auto">
           {[...chats].reverse().map((chat, index) => (
             <li

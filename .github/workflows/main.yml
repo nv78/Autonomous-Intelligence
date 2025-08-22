@@ -1,4 +1,4 @@
-name: Run Unit Tests 
+name: Lint Frontend (ESLint) & Backend (Python) + CodeQL
 
 on:
   push:
