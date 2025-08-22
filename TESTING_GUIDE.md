@@ -104,4 +104,36 @@ curl -X POST "http://localhost:8000/public/submit_model" \
 
 **Expected Results:**
 - BLEU: ~0.3-0.5
-- BERTScore: ~0.6-0.7 (higher semantic similarity) 
+- BERTScore: ~0.6-0.7 (higher semantic similarity)
+
+## 🎯 **Quick Demo (5 minutes)**
+
+### **For Live Presentations:**
+
+1. **Start System** (1 min):
+   ```bash
+   cd backend && docker-compose up -d
+   cd frontend && PORT=3001 npm start
+   ```
+
+2. **Show Leaderboards** (2 min):
+   - Navigate: http://localhost:3001/evaluations
+   - Point out: "5 languages, dynamic data, 'View More' buttons"
+   - Explain: "Spanish ~0.40 BLEU, Asian languages ~0.00 (normal)"
+
+3. **Submit Model** (2 min):
+   - Click: "Submit Your Model"
+   - Select: "Spanish Translation (FLORES+ BLEU)"
+   - Upload: `test_files/demo_test_spanish.csv`
+   - Result: "~0.40 BLEU score appears in leaderboard"
+
+4. **Show BERTScore** (Optional):
+   - Select: "Spanish Translation (FLORES+ BERTScore)"
+   - Upload: `test_files/demo_test_spanish_bertscore.csv`
+   - Result: "~0.65 BERTScore (higher than BLEU)"
+
+### **Key Talking Points:**
+- **"BLEU works well for Spanish, but gives 0 for Asian languages"**
+- **"BERTScore gives meaningful scores for all languages"**
+- **"Real-time leaderboard updates after submission"**
+- **"Supports both exact matching (BLEU) and semantic similarity (BERTScore)"** 
