@@ -67,7 +67,7 @@ REACT_APP_BACK_END_HOST=http://localhost:8000 PORT=3001 npm start
    - File Upload area
 
 2. **Upload Demo File:**
-   - Use `demo_test_spanish.csv` from project root
+   - Use `test_files/demo_test_spanish.csv`
    - Show file parsing: *"The system extracts model outputs from CSV"*
    - Click "Submit Model"
 
@@ -132,11 +132,11 @@ REACT_APP_BACK_END_HOST=http://localhost:8000 PORT=3001 npm start
 
 ## 🛠️ Demo Files Available
 
-- `demo_test_spanish.csv` - High-quality Spanish translations
-- `demo_test_japanese.csv` - Japanese translations (expect 0 BLEU)
-- `demo_test_arabic.csv` - Arabic translations  
-- `demo_test_chinese.csv` - Chinese translations (expect 0 BLEU)
-- `demo_test_korean.csv` - Korean translations
+- `test_files/demo_test_spanish.csv` - High-quality Spanish translations
+- `test_files/demo_test_japanese.csv` - Japanese translations (expect 0 BLEU)
+- `test_files/demo_test_arabic.csv` - Arabic translations
+- `test_files/demo_test_chinese.csv` - Chinese translations (expect 0 BLEU)
+- `test_files/demo_test_korean.csv` - Korean translations
 
 ---
 

@@ -26,7 +26,7 @@ cd frontend && npm start
 - Click "Submit to Leaderboard" 
 - "Users can submit their translation models here"
 - Select benchmark: **Spanish Translation (FLORES+)**
-- Upload: `demo_test_spanish.csv`
+- Upload: `test_files/demo_test_spanish.csv`
 - Submit → **Expected: ~0.43 BLEU score**
 - "Results appear in leaderboard immediately"
 

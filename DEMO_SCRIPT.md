@@ -43,7 +43,7 @@
 - *"Benchmark dataset - I'll select Spanish Translation"*
 - *"CSV file with model outputs"*
 
-*[Upload demo_test_spanish.csv]*
+*[Upload test_files/demo_test_spanish.csv]*
 
 *"I'm uploading a CSV with Spanish translations. The system automatically parses the model outputs."*
 

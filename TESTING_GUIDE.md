@@ -21,31 +21,31 @@ cd frontend && npm install && PORT=3001 npm start
 ### **BLEU Score Testing:**
 | Language | Test File | Expected Score | Performance Level |
 |----------|-----------|----------------|-------------------|
-| **Spanish** | `demo_test_spanish.csv` | ~0.40 | ✅ Good lexical overlap |
-| **Arabic** | `demo_test_arabic.csv` | ~0.10 | ✅ Moderate overlap |
-| **Korean** | `demo_test_korean.csv` | ~0.13 | ✅ Moderate overlap |
-| **Japanese** | `demo_test_japanese.csv` | ~0.00 | ⚠️ Different valid translation style |
-| **Chinese** | `demo_test_chinese.csv` | ~0.00 | ⚠️ Different valid translation style |
+| **Spanish** | `test_files/demo_test_spanish.csv` | ~0.40 | ✅ Good lexical overlap |
+| **Arabic** | `test_files/demo_test_arabic.csv` | ~0.10 | ✅ Moderate overlap |
+| **Korean** | `test_files/demo_test_korean.csv` | ~0.13 | ✅ Moderate overlap |
+| **Japanese** | `test_files/demo_test_japanese.csv` | ~0.00 | ⚠️ Different valid translation style |
+| **Chinese** | `test_files/demo_test_chinese.csv` | ~0.00 | ⚠️ Different valid translation style |
 
 **Note**: BLEU measures exact word/phrase overlap. Different (but correct) translations can get low scores, especially for languages with multiple valid translation approaches.
 
 ### **BERTScore Testing:**
 | Language | Test File | Expected Score | Why This Works? |
 |----------|-----------|----------------|-----------------|
-| **Spanish** | `demo_test_spanish_bertscore.csv` | ~0.65 | ✅ Semantic similarity captures meaning |
-| **Japanese** | `demo_test_japanese.csv` | ~0.62 | ✅ Works with Asian languages |
-| **Arabic** | `demo_test_arabic.csv` | ~0.65 | ✅ Works with RTL languages |
-| **Chinese** | `demo_test_chinese.csv` | ~0.62 | ✅ Works with character-based |
-| **Korean** | `demo_test_korean.csv` | ~0.60 | ✅ Works with agglutinative |
+| **Spanish** | `test_files/demo_test_spanish_bertscore.csv` | ~0.65 | ✅ Semantic similarity captures meaning |
+| **Japanese** | `test_files/demo_test_japanese.csv` | ~0.62 | ✅ Works with Asian languages |
+| **Arabic** | `test_files/demo_test_arabic.csv` | ~0.65 | ✅ Works with RTL languages |
+| **Chinese** | `test_files/demo_test_chinese.csv` | ~0.62 | ✅ Works with character-based |
+| **Korean** | `test_files/demo_test_korean.csv` | ~0.60 | ✅ Works with agglutinative |
 
 **Note**: BERTScore gives meaningful scores for all languages because it measures semantic similarity, not exact word matches.
 
 ### **Score Range Testing:**
 | File | Expected BLEU | Use Case |
 |------|---------------|----------|
-| `test_high_score.csv` | ~0.8-1.0 | Perfect/near-perfect translations |
-| `test_medium_score.csv` | ~0.3-0.6 | Decent translations |
-| `test_low_score.csv` | ~0.0-0.2 | Poor translations |
+| `test_files/test_high_score.csv` | ~0.8-1.0 | Perfect/near-perfect translations |
+| `test_files/test_medium_score.csv` | ~0.3-0.6 | Decent translations |
+| `test_files/test_low_score.csv` | ~0.0-0.2 | Poor translations |
 
 ## 🎯 **How to Test Each Metric**
 
@@ -53,14 +53,14 @@ cd frontend && npm install && PORT=3001 npm start
 1. Go to: http://localhost:3001/evaluations
 2. Click: "Submit Your Model"
 3. Select: "Spanish Translation (FLORES+ BLEU)"
-4. Upload: `demo_test_spanish.csv`
+4. Upload: `test_files/demo_test_spanish.csv`
 5. Expected: ~0.43 BLEU score
 
 ### **BERTScore Testing:**
 1. Go to: http://localhost:3001/evaluations  
 2. Click: "Submit Your Model"
 3. Select: "Spanish Translation (FLORES+ BERTScore)"
-4. Upload: `demo_test_spanish_bertscore.csv`
+4. Upload: `test_files/demo_test_spanish_bertscore.csv`
 5. Expected: ~0.65 BERTScore (higher than BLEU)
 
 ## ⏱️ **Performance Expectations**

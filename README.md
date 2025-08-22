@@ -111,9 +111,9 @@ Autonomous Intelligence's architecture is built around a decentralized network o
    ```
 
 ### Testing Files
-- `test_high_score.csv` - Perfect translations (BLEU: 1.0)
-- `test_medium_score.csv` - Good translations (BLEU: ~0.39)
-- `test_low_score.csv` - Poor translations (BLEU: ~0.05)
+- `test_files/test_high_score.csv` - Perfect translations (BLEU: 1.0)
+- `test_files/test_medium_score.csv` - Good translations (BLEU: ~0.39)
+- `test_files/test_low_score.csv` - Poor translations (BLEU: ~0.05)
 
 ### Key Features
 
