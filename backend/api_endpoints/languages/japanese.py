@@ -73,8 +73,9 @@ def chat_japanese():
             try:
                 file_content = extract_text_from_file(file)
             except Exception as e:
-                return jsonify({"error": f"Failed to parse file: {str(e)}"}), 400
-            
+                import logging
+                logging.error(f"[FILE PARSE ERROR]", exc_info=True)
+                return jsonify({"error": "Failed to parse file."}), 400
             if not file_content.strip():
                 return jsonify({"response": "申し訳ありませんが、添付文書を読むことができません。"})
 
