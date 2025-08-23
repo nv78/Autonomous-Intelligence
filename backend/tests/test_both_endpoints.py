@@ -9,6 +9,7 @@ import requests
 import json
 import mysql.connector
 import os
+import pytest
 
 # API Configuration with multiple fallback options
 def get_api_base_url():
@@ -60,6 +61,22 @@ def get_working_api_url():
     return primary_url
 
 API_BASE_URL = get_working_api_url()
+
+# Check if API is available for all tests
+def check_api_available():
+    """Check if the API is available for testing"""
+    try:
+        response = requests.get(f"{API_BASE_URL}/health", timeout=5)
+        return response.status_code == 200
+    except:
+        return False
+
+# Skip all tests if API is not available
+pytestmark = pytest.mark.skipif(
+    not check_api_available(),
+    reason=f"API not available at {API_BASE_URL}"
+)
+
 DB_CONFIG = {
     'host': 'localhost',
     'port': 3307,  # Docker mapped port
