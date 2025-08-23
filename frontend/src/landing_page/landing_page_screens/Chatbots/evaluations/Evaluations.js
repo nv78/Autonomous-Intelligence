@@ -29,10 +29,10 @@ const TranslateSentences = () => {
             if (submission.dataset_name.includes('_bertscore')) {
               // BERTScore datasets
               const language = submission.dataset_name.replace('flores_', '').replace('_translation_bertscore', '');
-              key = `${submission.dataset_name}`;  // Don't add extra _bertscore suffix
+              key = `${submission.dataset_name}`;
               displayName = `${language.charAt(0).toUpperCase() + language.slice(1)} – BERTScore`;
             } else {
-              // BLEU datasets (existing logic)
+              // BLEU datasets - use the exact dataset name + "_bleu" for consistency
               const language = submission.dataset_name.replace('flores_', '').replace('_translation', '');
               key = `${submission.dataset_name}_bleu`;
               displayName = `${language.charAt(0).toUpperCase() + language.slice(1)} – BLEU`;
@@ -60,6 +60,9 @@ const TranslateSentences = () => {
               rank: index + 1  // Rank starts at 1 for each category
             }));
           });
+          
+          console.log('Available leaderboard keys:', Object.keys(groupedData));
+          console.log('Grouped data:', groupedData);
           
           // Create datasets in original static order, but replace BLEU sections with dynamic data
           const datasets = [
