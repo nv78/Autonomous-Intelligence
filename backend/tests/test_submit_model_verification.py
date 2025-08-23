@@ -6,8 +6,10 @@ and produces meaningful BLEU scores
 
 import requests
 import json
+import os
 
-API_BASE_URL = "http://localhost:8000"
+# Use internal port when running inside Docker container, external port otherwise
+API_BASE_URL = "http://localhost:5000" if os.path.exists('/.dockerenv') else "http://localhost:5001"
 
 def test_high_quality_translations():
     """Test with high-quality translations (should get good BLEU scores)"""

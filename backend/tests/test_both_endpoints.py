@@ -8,9 +8,11 @@ Comprehensive test script for both BLEU evaluation endpoints:
 import requests
 import json
 import mysql.connector
+import os
 
 # API Configuration
-API_BASE_URL = "http://localhost:8000"
+# Use internal port when running inside Docker container, external port otherwise
+API_BASE_URL = "http://localhost:5000" if os.path.exists('/.dockerenv') else "http://localhost:5001"
 DB_CONFIG = {
     'host': 'localhost',
     'port': 3307,  # Docker mapped port
@@ -115,11 +117,27 @@ def test_get_source_sentences():
         print(f"❌ Request failed: {e}")
         return [], []
 
-def test_submit_model_with_option_c(api_key, sentence_ids, mock_translations):
+def test_submit_model_with_option_c():
     """Test /public/submit_model with Option C (sentence_ids)"""
     print("\n" + "="*60)
     print("🧪 Testing /public/submit_model with Option C (sentence_ids)")
     print("="*60)
+    
+    # First, get source sentences to translate
+    sentence_ids, sources = test_get_source_sentences()
+    if not sentence_ids:
+        print("❌ Failed to get source sentences, skipping test")
+        return
+    
+    # Create mock translations for the sentences we got
+    mock_translations = [
+        "Esta es una traducción de prueba para la oración uno.",
+        "Esta es una traducción de prueba para la oración dos.", 
+        "Esta es una traducción de prueba para la oración tres."
+    ][:len(sentence_ids)]  # Only as many as we have sentence_ids
+    
+    # Generate a test API key (this test might need to be updated if API key validation is strict)
+    api_key = "test-api-key-12345"
     
     payload = {
         "benchmarkDatasetName": "flores_spanish_translation",
