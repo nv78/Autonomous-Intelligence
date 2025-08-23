@@ -222,14 +222,14 @@ function HomeChatbot({ isGuestMode = false, onRequestLogin, setIsLoggedInParent 
       </div>
 
       {/* Hidden file input for direct upload */}
-      <input
+      {/* <input
         type="file"
         ref={fileInputRef}
         onChange={handleFileUpload}
         accept=".pdf,.doc,.docx,.txt,.csv"
         multiple
         style={{ display: "none" }}
-      />
+      /> */}
     </div>
   );
 }

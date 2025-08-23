@@ -16,6 +16,7 @@ import {
   connectorOptions,
   languages, // Import connector options from RouteConstants
   companies,
+  createcompany,
   LANGUAGE_ROUTES,
 } from "./constants/RouteConstants";
 import PaymentsComponent from "./subcomponents/payments/PaymentsComponent";
@@ -32,6 +33,7 @@ import GTMChatbot from "./landing_page/landing_page_screens/Chatbots/companies/G
 import ChatbotLanding from "./landing_page/landing_page_screens/Chatbots/ChatbotLanding";
 import Languages from "./landing_page/landing_page_screens/Chatbots/languages/Languages";
 import Companies from "./landing_page/landing_page_screens/Chatbots/companies/Companies";
+import CreateCompany from "./landing_page/landing_page_screens/Chatbots/companies/CreateCompany";
 
 function Dashboard() {
   const [darkTheme, setDarkTheme] = useState(true);
