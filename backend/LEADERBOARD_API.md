@@ -2,6 +2,24 @@
 
 A research platform for evaluating and ranking AI translation models across 5 languages using both BLEU and BERTScore metrics. Features real-time submissions, dynamic leaderboards, and comprehensive multi-language evaluation.
 
+## ✅ **CURRENT STATUS: WORKING END-TO-END**
+
+### 🎯 **Working URLs:**
+- **Frontend**: http://localhost:3002
+- **Evaluations Page**: http://localhost:3002/evaluations ✅ **LIVE**
+- **Backend API**: http://localhost:8000
+- **Health Check**: http://localhost:8000/health
+
+### 🔍 **Available Leaderboards:**
+Based on live data from the API:
+- **Spanish**: BLEU + BERTScore ✅
+- **Arabic**: BLEU + BERTScore ✅  
+- **Chinese**: BLEU + BERTScore ✅
+- **Japanese**: BLEU + BERTScore ✅
+- **Korean**: BLEU ✅
+
+**Total**: 9 active leaderboards with real submission data
+
 ## Key Features
 
 - **5 Languages**: Spanish, Japanese, Arabic, Chinese, Korean
@@ -32,11 +50,11 @@ A research platform for evaluating and ranking AI translation models across 5 la
    ```bash
    cd ../frontend
    npm install
-   PORT=3001 npm start
+   npm start  # Will auto-select available port (3002)
    ```
 
 3. **Access Applications**
-   - **Evaluations**: http://localhost:3001/evaluations
+   - **Evaluations**: http://localhost:3002/evaluations
    - **Backend API**: http://localhost:8000
    - **Health Check**: http://localhost:8000/health
 
@@ -51,8 +69,8 @@ A research platform for evaluating and ranking AI translation models across 5 la
 
 ## How It Works
 
-1. **Browse Leaderboards**: View current model rankings by language and metric
-2. **Submit Your Model**: Upload CSV with translation results
+1. **Browse Leaderboards**: View current model rankings by language and metric at `/evaluations`
+2. **Submit Your Model**: Upload CSV with translation results via "Submit Model to Leaderboard" button
 3. **Get Evaluated**: System calculates BLEU/BERTScore against FLORES+ references  
 4. **See Results**: Your model appears in real-time leaderboard rankings
 
@@ -82,10 +100,21 @@ POST http://localhost:8000/public/submit_model
 GET http://localhost:8000/public/get_source_sentences?dataset_name=flores_spanish_translation&count=5
 ```
 
-### Get Leaderboard
+### Get Leaderboard (Live Data)
 ```bash
 GET http://localhost:8000/public/get_leaderboard
 ```
+
+**Response includes 9 active leaderboards:**
+- `flores_spanish_translation` (BLEU)
+- `flores_spanish_translation_bertscore` (BERTScore)
+- `flores_arabic_translation` (BLEU)
+- `flores_arabic_translation_bertscore` (BERTScore)
+- `flores_chinese_translation` (BLEU)
+- `flores_chinese_translation_bertscore` (BERTScore)
+- `flores_japanese_translation` (BLEU)
+- `flores_japanese_translation_bertscore` (BERTScore)
+- `flores_korean_translation` (BLEU)
 
 ## Development
 
@@ -101,7 +130,7 @@ GET http://localhost:8000/public/get_leaderboard
 
 ### Architecture
 - **Backend**: Flask API with MySQL database (runs on port 8000)
-- **Frontend**: React with dynamic leaderboard components (runs on port 3001)
+- **Frontend**: React with dynamic leaderboard components (runs on port 3002)
 - **Evaluation**: BLEU (nltk) + BERTScore (bert-base-multilingual-cased)
 - **Data**: FLORES+ benchmark datasets via Hugging Face
 
@@ -109,7 +138,7 @@ GET http://localhost:8000/public/get_leaderboard
 
 ### Port Configuration
 - **Backend**: Accessible at http://localhost:8000 (Docker maps container port 5000 to host port 8000)
-- **Frontend**: Accessible at http://localhost:3001
+- **Frontend**: Accessible at http://localhost:3002 (auto-selected to avoid conflicts)
 - **Database**: MySQL on port 3307 (mapped from container port 3306)
 
 ### Environment Variables
@@ -125,6 +154,9 @@ DB_PASSWORD=
 OPENAI_API_KEY=your_openai_key_here
 HF_TOKEN=your_huggingface_token_here
 ```
+
+## 🐛 **Known Issue: Missing Leaderboards**
+Currently only Spanish-BLEU leaderboard is displaying on the frontend, despite having data for all 9 leaderboards. This is a frontend display issue being investigated.
 
 ## Documentation
 
