@@ -68,7 +68,7 @@ A research platform for evaluating and ranking AI translation models across 5 la
 
 ### Submit Model
 ```bash
-POST /public/submit_model
+POST http://localhost:8000/public/submit_model
 {
   "benchmarkDatasetName": "flores_spanish_translation",
   "modelName": "my-model-v1", 
@@ -79,12 +79,12 @@ POST /public/submit_model
 
 ### Get Source Sentences
 ```bash
-GET /public/get_source_sentences?dataset_name=flores_spanish_translation&count=5
+GET http://localhost:8000/public/get_source_sentences?dataset_name=flores_spanish_translation&count=5
 ```
 
 ### Get Leaderboard
 ```bash
-GET /public/get_leaderboard
+GET http://localhost:8000/public/get_leaderboard
 ```
 
 ## Development
@@ -100,10 +100,31 @@ GET /public/get_leaderboard
    ```
 
 ### Architecture
-- **Backend**: Flask API with MySQL database
-- **Frontend**: React with dynamic leaderboard components
+- **Backend**: Flask API with MySQL database (runs on port 8000)
+- **Frontend**: React with dynamic leaderboard components (runs on port 3001)
 - **Evaluation**: BLEU (nltk) + BERTScore (bert-base-multilingual-cased)
 - **Data**: FLORES+ benchmark datasets via Hugging Face
+
+## Configuration
+
+### Port Configuration
+- **Backend**: Accessible at http://localhost:8000 (Docker maps container port 5000 to host port 8000)
+- **Frontend**: Accessible at http://localhost:3001
+- **Database**: MySQL on port 3307 (mapped from container port 3306)
+
+### Environment Variables
+Ensure your backend `.env` file includes:
+```bash
+# Database configuration
+DB_NAME=agents
+DB_HOST=db
+DB_USER=root
+DB_PASSWORD=
+
+# API Keys
+OPENAI_API_KEY=your_openai_key_here
+HF_TOKEN=your_huggingface_token_here
+```
 
 ## Documentation
 

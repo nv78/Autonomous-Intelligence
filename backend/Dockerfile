@@ -1,6 +1,6 @@
 
 # Development stage
-FROM python:3.9-slim
+FROM python:3.10-slim
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxml2-dev \
     libxslt-dev \
     python3-dev \
+    git \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
