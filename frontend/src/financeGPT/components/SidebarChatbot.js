@@ -11,6 +11,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrashCan } from "@fortawesome/free-solid-svg-icons";
 
 import Sources from "./Sources";
+import ChatHistory from "./ChatHistory";
 import Select from "react-select";
 import { SelectStyles } from "../../styles/SelectStyles";
 import { Modal } from "flowbite-react";
@@ -914,21 +915,21 @@ const SidebarChatbot = forwardRef((props, ref) => {
           </div>
         </div>
       </div>
-      <div className="overflow-y-auto">
-        <Sources
-          onChatSelect={props.onChatSelect}
-          setIsPrivate={props.setIsPrivate}
-          setTicker={props.setTicker}
-          setConfirmedModelKey={props.setConfirmedModelKey}
-          setcurrTask={props.setcurrTask}
-          setCurrChatName={props.setCurrChatName}
-          setIsEdit={props.setIsEdit}
-          setShowChatbot={props.setShowChatbot}
-          handleForceUpdate={props.handleForceUpdate}
-          createNewChat={props.createNewChat}
-          relevantChunk={props.relevantChunk}
-          activeMessageIndex={props.activeMessageIndex}
-        />
+      
+      {/* Chat History Section */}
+      <div className="border-t border-gray-700 pt-4">
+        <div className="px-2">
+          <ChatHistory 
+            chats={props.chats}
+            selectedChatId={props.selectedChatId}
+            onChatSelect={props.onChatSelect}
+            handleForceUpdate={props.handleForceUpdate}
+          />
+        </div>
+      </div>
+      
+      <div className="overflow-y-auto border-t border-gray-700 pt-4">
+
       </div>
       {isModalOpen && (
         <Modal

@@ -577,22 +577,330 @@ def chunk_document_by_page(text_pages, maxChunkSize, document_id):
     globalStartIndex = 0
     page_number = 1
 
+    try:
+        # Get the global text splitter instance
+        text_splitter = _get_text_splitter(maxChunkSize)
+        
+        # Process each page with semantic chunking
+        for page_text in text_pages:
+            # Split page text into semantic chunks
+            page_chunks = text_splitter.split_text(page_text)
+            print(f"Page {page_number}: Created {len(page_chunks)} semantic chunks")
+            
+            # Track position within this page for accurate indexing
+            page_pos = 0
+            for chunk in page_chunks:
+
+                # Find chunk position in the page
+                chunk_start_in_page = page_text.find(chunk, page_pos)
+                if chunk_start_in_page == -1:
+                    chunk_start_in_page = page_text.find(chunk)
+                
+                chunk_end_in_page = chunk_start_in_page + len(chunk)
+                
+                # Calculate global positions
+                global_start = globalStartIndex + chunk_start_in_page
+                global_end = globalStartIndex + chunk_end_in_page
+                
+                chunk_texts.append(chunk)
+                chunk_metadata.append({
+                    "global_start": global_start,
+                    "global_end": global_end,
+                    "page_number": page_number
+                })
+                
+                # Update page position for next chunk search
+                page_pos = chunk_start_in_page + 1
+
+            globalStartIndex += len(page_text)
+            page_number += 1
+
+        # Generate embeddings for all chunks in batches
+        print(f"Generating embeddings for {len(chunk_texts)} semantic page chunks in batches...")
+        embeddings = get_embeddings_batch(chunk_texts, batch_size=32)
+        
+        # Validate dimensions
+        for i, embedding in enumerate(embeddings):
+            if len(embedding) != EMBEDDING_DIMENSIONS:
+                raise RuntimeError(f"Page chunk {i} embedding dimension mismatch: expected {EMBEDDING_DIMENSIONS}, got {len(embedding)}")
+        
+        # Insert the chunks into database
+        chunk_data = []
+        for i, (metadata, embedding) in enumerate(zip(chunk_metadata, embeddings)):
+            embedding_array = np.array(embedding)
+            blob = embedding_array.tobytes()
+            
+            chunk_data.append((
+                metadata["global_start"],
+                metadata["global_end"], 
+                document_id,
+                blob,
+                metadata["page_number"]
+            ))
+
+        # Batch insert into database
+        cursor.executemany(
+            'INSERT INTO chunks (start_index, end_index, document_id, embedding_vector, page_number) VALUES (%s,%s,%s,%s,%s)',
+            chunk_data
+        )
+
+        print(f"Successfully processed {len(chunk_data)} semantic page chunks with batch embeddings")
+        conn.commit()
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f"[FATAL ERROR] Exception during optimized semantic page chunking: {e}")
+        raise RuntimeError("Optimized semantic page chunking failed due to internal error")
+    finally:
+        conn.close()
+
+@ray.remote
+def chunk_document_by_page(text_pages, maxChunkSize, document_id):
+    """
+    Redirects to optimized version.
+    """
+    return chunk_document_by_page_optimized.remote(text_pages, maxChunkSize, document_id)
+
+def _get_model():
+    """
+    Get the global embedding model instance with thread-safe initialization.
+    
+    Returns:
+        SentenceTransformer: The embedding model
+    """
+    global _embedding_model
+
+
+    if _embedding_model:
+        print("Skipping embedding model")
+        return _embedding_model
+
+    try:
+        if _model_lock:
+            with _model_lock:
+                if _embedding_model is None:
+                    print(f"Loading {EMBEDDING_MODEL} model with optimizations...")
+                    import numpy as np  
+                    from sentence_transformers import SentenceTransformer
+                    import torch
+                        
+                        # Use GPU if available for faster inference
+                    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+                    _embedding_model = SentenceTransformer(EMBEDDING_MODEL, device=device)
+                    print(f"Model loaded on device: {device}")
+        else:
+            print(f"Loading {EMBEDDING_MODEL} model...")
+            import numpy as np
+            from sentence_transformers import SentenceTransformer
+            _embedding_model = SentenceTransformer(EMBEDDING_MODEL)
+    except Exception as e:
+        print(f"[ERROR] Failed to load embedding model: {e}")
+        raise RuntimeError(f"Model loading failed: {str(e)}")
+    
+    return _embedding_model
+
+# Dictionary to cache text splitters by chunk size
+_text_splitters = {}
+
+def _get_text_splitter(chunk_size=None):
+    """
+    Get a text splitter instance with thread-safe initialization.
+    Caches splitters by chunk size to avoid recreating them and improve performance.
+    
+    Args:
+        chunk_size (int, optional): Chunk size. Defaults to MAX_CHUNK_SIZE.
+    
+    Returns:
+        RecursiveCharacterTextSplitter: The text splitter
+    """
+    global _text_splitters
+    
+    if chunk_size is None:
+        chunk_size = MAX_CHUNK_SIZE
+    
+    if chunk_size not in _text_splitters:
+        try:
+            if _splitter_lock:
+                with _splitter_lock:
+                    if chunk_size not in _text_splitters:
+                        print(f"Initializing RecursiveCharacterTextSplitter with chunk_size={chunk_size}...")
+                        _text_splitters[chunk_size] = RecursiveCharacterTextSplitter(
+                            chunk_size=chunk_size,
+                            chunk_overlap=CHUNK_OVERLAP,
+                            separators=["\n\n", "\n", ". ", "? ", "! ", " ", ""],
+                            length_function=len,
+                        )
+                        print(f"RecursiveCharacterTextSplitter (chunk_size={chunk_size}) initialized successfully!")
+            else:
+                print(f"Initializing RecursiveCharacterTextSplitter with chunk_size={chunk_size}...")
+                _text_splitters[chunk_size] = RecursiveCharacterTextSplitter(
+                    chunk_size=chunk_size,
+                    chunk_overlap=CHUNK_OVERLAP,
+                    separators=["\n\n", "\n", ". ", "? ", "! ", " ", ""],
+                    length_function=len,
+                )
+        except Exception as e:
+            print(f"[ERROR] Failed to initialize text splitter: {e}")
+            raise RuntimeError(f"Text splitter initialization failed: {str(e)}")
+    
+    return _text_splitters[chunk_size]
+
+def preload_text_splitter():
+    """
+    Preload the text splitter to reduce latency on first use.
+    Should be called during application startup for optimal performance.
+    """
+    try:
+        print("Preloading RecursiveCharacterTextSplitter for faster document processing...")
+        _get_text_splitter()
+        print("RecursiveCharacterTextSplitter preloaded successfully!")
+    except Exception as e:
+        print(f"[WARNING] Failed to preload text splitter: {e}")
+
+def preload_embedding_model():
+    """
+    Preload the embedding model to reduce latency on first use.
+    Should be called during application startup for optimal performance.
+    """
+    try:
+        print("Preloading embedding model for faster PDF processing...")
+        _get_model()
+        print("Embedding model preloaded successfully!")
+    except Exception as e:
+        print(f"[WARNING] Failed to preload embedding model: {e}")
+
+def preload_models():
+    """
+    Preload both the embedding model and text splitter for optimal performance.
+    Should be called during application startup.
+    """
+    preload_text_splitter()
+    preload_embedding_model()
+
+def get_embedding(question):
+    """
+    Get embedding for a given text using Multilingual-E5-large model.
+    
+    Args:
+        question (str): The text to embed
+    
+    Returns:
+        list: The embedding vector (1024 dimensions)
+        
+    Raises:
+        RuntimeError: If the embedding generation fails
+    """
+    try:
+        model = _get_model()
+        
+        # Add prefix for better performance as recommended by the model
+        prefixed_question = f"query: {question}"
+        embedding = model.encode(prefixed_question,  show_progress_bar=True, normalize_embeddings=True).tolist()
+        
+        # Validate dimensions using constant
+        if len(embedding) != EMBEDDING_DIMENSIONS:
+            raise RuntimeError(f"Unexpected embedding dimension: {len(embedding)}, expected {EMBEDDING_DIMENSIONS}")
+            
+        return embedding
+        
+    except Exception as e:
+        print(f"[ERROR] Failed to get embedding: {e}")
+        raise RuntimeError(f"Embedding generation failed: {str(e)}")
+
+@ray.remote
+def chunk_document(text, maxChunkSize, document_id):
+    return chunk_document_optimized.remote(text, maxChunkSize, document_id)
+
+
+def get_embeddings_batch(texts, batch_size=32):
+    """
+    Get embeddings for multiple texts in batches for better performance.
+    
+    Args:
+        texts (list): List of text strings to embed
+        batch_size (int): Number of texts to process in each batch (increased default)
+    
+    Returns:
+        list: List of embedding vectors
+    """
+    try:
+        import numpy as np
+        model = _get_model()
+        embeddings = []
+        
+        # Process texts in batches
+        for i in range(0, len(texts), batch_size):
+            batch_texts = texts[i:i + batch_size]
+            # Add prefix for better performance as recommended by the model
+            prefixed_texts = [f"passage: {text}" for text in batch_texts]
+            
+            # Get batch embeddings with optimized settings
+            batch_embeddings = model.encode(
+                prefixed_texts, 
+                normalize_embeddings=True,
+                batch_size=batch_size,
+                show_progress_bar=False,  # Reduce overhead
+                convert_to_tensor=False   # Direct to list for efficiency
+            )
+            
+            embeddings.extend(batch_embeddings.tolist())
+            print(f"Processed batch {i//batch_size + 1}/{(len(texts) + batch_size - 1)//batch_size}")
+        
+        return embeddings
+        
+    except Exception as e:
+        print(f"[ERROR] Failed to get batch embeddings: {e}")
+        raise RuntimeError(f"Batch embedding generation failed: {str(e)}")
+
+def prepare_chunks_for_embedding(text_pages, maxChunkSize):
+    """
+    Prepare semantic text chunks from pages using RecursiveCharacterTextSplitter without generating embeddings.
+    This separates chunk preparation from embedding generation for optimization.
+    
+    Args:
+        text_pages (list): List of page texts
+        maxChunkSize (int): Maximum size for each chunk
+    
+    Returns:
+        tuple: (chunk_texts, chunk_metadata) for batch processing
+    """
+
+    chunk_texts = []
+    chunk_metadata = []
+    globalStartIndex = 0
+    page_number = 1
+
+    # Get the global text splitter instance
+    text_splitter = _get_text_splitter(maxChunkSize)
+
     for page_text in text_pages:
-        startIndex = 0  # Start index for each page
-        while startIndex < len(page_text):
-            endIndex = startIndex + min(maxChunkSize, len(page_text) - startIndex)
-
-            chunkText = page_text[startIndex:endIndex]
-            chunkText = chunkText.replace("\n", "")
-
-            embeddingVector = openai.embeddings.create(input=chunkText, model="text-embedding-ada-002").data[0].embedding
-            embeddingVector = np.array(embeddingVector)
-            blob = embeddingVector.tobytes()
-
-            cursor.execute('INSERT INTO chunks (start_index, end_index, document_id, embedding_vector, page_number) VALUES (%s,%s,%s,%s,%s)',
-                           [globalStartIndex + startIndex, globalStartIndex + endIndex, document_id, blob, page_number])
-
-            startIndex += maxChunkSize
+        # Split page text into semantic chunks
+        page_chunks = text_splitter.split_text(page_text)
+        
+        # Track position within this page for accurate indexing
+        page_position = 0
+        for chunk in page_chunks:
+            # Find chunk position within the page
+            chunk_start_in_page = page_text.find(chunk, page_position)
+            if chunk_start_in_page == -1:
+                chunk_start_in_page = page_text.find(chunk)
+            
+            chunk_end_in_page = chunk_start_in_page + len(chunk)
+            
+            # Calculate global positions
+            global_start = globalStartIndex + chunk_start_in_page
+            global_end = globalStartIndex + chunk_end_in_page
+            
+            chunk_texts.append(chunk)
+            chunk_metadata.append({
+                "global_start": global_start,
+                "global_end": global_end,
+                "page_number": page_number
+            })
+            
+            # Update page position for next chunk search
+            page_position = chunk_start_in_page + 1
 
         globalStartIndex += len(page_text)
         page_number += 1
