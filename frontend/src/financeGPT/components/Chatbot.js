@@ -26,194 +26,19 @@ const Chatbot = (props) => {
   const [message, setMessage] = useState("");
   const inputRef = useRef(null);
   const navigate = useNavigate();
+  const pollingStartedRef = useRef(false);
   const { id } = useParams();
   const location = useLocation();
   const [chatNameGenerated, setChatNameGenerated] = useState(false);
   const [messages, setMessages] = useState([]);
-  const [uploadedDocs, setUploadedDocs] = useState([]);
-  const [docsViewerOpen, setDocsViewerOpen] = useState(false);
-  const [loadingDocs, setLoadingDocs] = useState(false);
   const [uploadButtonClicked, setUploadButtonClicked] = useState(false);
   const pollingTimeoutRef = useRef(null);
 
-  // Load existing chat messages
-  const handleLoadChat = useCallback(async () => {
-    if (!id) return;
-    if (!props.selectedChatId) {
-      props.handleChatSelect(id);
-    }
-    try {
-      const response = await fetcher("retrieve-messages-from-chat", {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          chat_id: id,
-          chat_type: 0,
-        }),
-      });
+  // State for tracking expanded reasoning sections
+  const [expandedReasoning, setExpandedReasoning] = useState({});
 
-      const response_data = await response.json();
-      if (!props.currChatName && !chatNameGenerated) {
-        props.setCurrChatName(response.chat_name);
-        setChatNameGenerated(true);
-      }
-      // If no messages, this could be a new chat or a chat still processing
-      if (!response_data.messages?.length) {
-        // Check for pending message from navigation state or localStorage
-        const pendingMessage =
-          location.state?.message ||
-          localStorage.getItem(`pending-message-${id}`);
-
-        if (pendingMessage) {
-          const userMessage = {
-            id: "user-content",
-            chat_id: id,
-            role: "user",
-            content: pendingMessage,
-          };
-          const thinkingMessage = {
-            id: `temp-thinking-${Date.now()}`,
-            chat_id: id,
-            role: "assistant",
-            content: "Thinking...",
-          };
-          setMessages([userMessage, thinkingMessage]);
-
-          // Store in localStorage for refresh persistence
-          if (location.state?.message) {
-            localStorage.setItem(
-              `pending-message-${id}`,
-              location.state.message
-            );
-          }
-
-          // Set up polling to check for the response
-          let pollAttempts = 0;
-          const maxPollAttempts = 30; // 60 seconds maximum (30 * 2 seconds)
-
-          // Clear any existing polling timeout
-          if (pollingTimeoutRef.current) {
-            clearTimeout(pollingTimeoutRef.current);
-          }
-
-          const pollForResponse = async () => {
-            pollAttempts++;
-            console.log(
-              `Polling attempt ${pollAttempts}/${maxPollAttempts} for chat ${id}`
-            );
-
-            try {
-              const pollResponse = await fetcher(
-                "retrieve-messages-from-chat",
-                {
-                  method: "POST",
-                  headers: {
-                    Accept: "application/json",
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                    chat_id: id,
-                    chat_type: 0,
-                  }),
-                }
-              );
-
-              const pollData = await pollResponse.json();
-              console.log("Poll response for chat %s:", id, pollData);
-
-              if (pollData.messages?.length > 0) {
-                // We got the response! Update messages
-                console.log(
-                  `Messages received for chat ${id}, stopping polling`
-                );
-                localStorage.removeItem(`pending-message-${id}`);
-                const transformedMessages = pollData.messages.map((item) => ({
-                  id: item.id,
-                  chat_id: id,
-                  content: item.message_text,
-                  role: item.sent_from_user === 1 ? "user" : "assistant",
-                  relevant_chunks: item.relevant_chunks,
-                }));
-                setMessages(transformedMessages);
-                pollingTimeoutRef.current = null; // Clear the ref
-                return; // Stop polling
-              } else if (pollAttempts < maxPollAttempts) {
-                // Still no response, poll again in 2 seconds if we haven't exceeded max attempts
-                console.log(
-                  `No messages yet for chat ${id}, continuing polling...`
-                );
-                pollingTimeoutRef.current = setTimeout(pollForResponse, 2000);
-              } else {
-                // Max attempts reached, show error message
-                console.warn(
-                  "Polling timeout: No response received after maximum attempts"
-                );
-                setMessages((prevMessages) => {
-                  return prevMessages.map((msg) => {
-                    if (msg.content === "Thinking...") {
-                      return {
-                        ...msg,
-                        content:
-                          "Sorry, the request is taking longer than expected. Please try again.",
-                      };
-                    }
-                    return msg;
-                  });
-                });
-                localStorage.removeItem(`pending-message-${id}`);
-                pollingTimeoutRef.current = null; // Clear the ref
-              }
-            } catch (error) {
-              console.error("Error polling for response:", error);
-              // Show error message and stop polling
-              setMessages((prevMessages) => {
-                return prevMessages.map((msg) => {
-                  if (msg.content === "Thinking...") {
-                    return {
-                      ...msg,
-                      content:
-                        "Sorry, I couldn't connect to the server. Please check your connection and try again.",
-                    };
-                  }
-                  return msg;
-                });
-              });
-              localStorage.removeItem(`pending-message-${id}`);
-              pollingTimeoutRef.current = null; // Clear the ref
-            }
-          };
-
-          // Start polling after a short delay
-          pollingTimeoutRef.current = setTimeout(pollForResponse, 2000);
-        } else {
-          // No messages and no pending message - empty chat
-          setMessages([]);
-        }
-        return;
-      }
-
-      // We have messages, so clear any pending message
-      localStorage.removeItem(`pending-message-${id}`);
-
-      const transformedMessages = response_data.messages.map((item) => ({
-        id: item.id,
-        chat_id: id,
-        content: item.message_text,
-        role: item.sent_from_user === 1 ? "user" : "assistant",
-        relevant_chunks: item.relevant_chunks,
-      }));
-      console.log(transformedMessages);
-      setMessages(transformedMessages);
-    } catch (error) {
-      console.error("Error loading chat:", error);
-    }
-  }, [id, location.state?.message]);
   const inferChatName = async (text, answer, chatId) => {
-    const combined_text = text + " " + answer;
-    console.log("infer chat with chatId:", chatId);
+    const combinedText = `${text} ${answer}`;
     try {
       const response = await fetcher("infer-chat-name", {
         method: "POST",
@@ -221,118 +46,224 @@ const Chatbot = (props) => {
           Accept: "application/json",
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          messages: combined_text,
-          chat_id: chatId,
-        }),
+        body: JSON.stringify({ messages: combinedText, chat_id: chatId }),
       });
-      const response_data = await response.json();
-      console.log("response data 123", response_data.chat_name);
-      props.setCurrChatName(response_data.chat_name);
-
+      const data = await response.json();
+      props.setCurrChatName(data.chat_name);
       props.handleForceUpdate();
-    } catch (error) {
-      console.error("Error inferring chat name:", error);
+    } catch (err) {
+      console.error("Chat name inference failed", err);
     }
   };
-  // Load uploaded documents for the current chat
-  const handleLoadDocs = useCallback(async () => {
+
+  const pollForMessages = useCallback((chatId, maxAttempts = 3) => {
+    let attempts = 0;
+
+    const poll = async () => {
+      attempts++;
+      try {
+        const res = await fetcher("retrieve-messages-from-chat", {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ chat_id: chatId, chat_type: 0 }),
+        });
+
+        const data = await res.json();
+        if (data.messages && data.messages.length > 0) {
+          const formatted = data.messages.map((m) => ({
+            id: m.id,
+            chat_id: chatId,
+            content: m.message_text,
+            role: m.sent_from_user === 1 ? "user" : "assistant",
+            relevant_chunks: m.relevant_chunks,
+            reasoning: m.reasoning || [], // Include reasoning data from database
+            sources: m.sources || [], // Include sources if available
+          }));
+          setMessages(formatted);
+          localStorage.removeItem(`pending-message-${chatId}`);
+          pollingTimeoutRef.current = null;
+          return;
+        }
+
+        if (attempts < maxAttempts) {
+          pollingTimeoutRef.current = setTimeout(poll, 2000);
+        } else {
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.isThinking
+                ? {
+                    ...msg,
+                    content:
+                      "Sorry, the request is taking too long. Please try again.",
+                    isThinking: false,
+                  }
+                : msg
+            )
+          );
+        }
+      } catch (err) {
+        console.error("Polling error:", err);
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.isThinking
+              ? {
+                  ...msg,
+                  content:
+                    "Sorry, I couldn't connect to the server. Please check your connection.",
+                  isThinking: false,
+                }
+              : msg
+          )
+        );
+        localStorage.removeItem(`pending-message-${chatId}`);
+      }
+    };
+
+    pollingTimeoutRef.current = setTimeout(poll, 2000);
+  }, []);
+
+  const handleLoadChat = useCallback(async () => {
     if (!id) return;
 
-    setLoadingDocs(true);
+    if (!props.selectedChatId) {
+      props.handleChatSelect(id);
+    }
+
     try {
-      const response = await fetcher("retrieve-current-docs", {
+      const res = await fetcher("retrieve-messages-from-chat", {
         method: "POST",
         headers: {
           Accept: "application/json",
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          chat_id: id,
-        }),
+        body: JSON.stringify({ chat_id: id, chat_type: 0 }),
       });
 
-      const response_data = await response.json();
-      if (response_data.doc_info) {
-        setUploadedDocs((prevDocs) => {
-          const previousCount = prevDocs.length;
-          // Auto-open documents viewer when first document is uploaded
-          if (previousCount === 0 && response_data.doc_info.length > 0) {
-            setDocsViewerOpen(true);
+      const data = await res.json();
+
+      console.log("res", data);
+      props.setCurrChatName(data.chat_name);
+      setChatNameGenerated(true);
+
+      if (!data.messages?.length) {
+        const pending =
+          location.state?.message ||
+          localStorage.getItem(`pending-message-${id}`);
+        if (pending) {
+          console.log(
+            "[handleLoadChat] Loading pending message after new chat creation:",
+            pending
+          );
+          const userMsg = {
+            id: "user-content",
+            chat_id: id,
+            role: "user",
+            content: pending,
+          };
+          const thinkingMsg = {
+            id: `thinking-${Date.now()}`,
+            chat_id: id,
+            role: "assistant",
+            content: "",
+            isThinking: true,
+            reasoning: [],
+            sources: [],
+          };
+          setMessages([userMsg, thinkingMsg]);
+          if (location.state?.message) {
+            localStorage.setItem(
+              `pending-message-${id}`,
+              location.state.message
+            );
           }
-          return response_data.doc_info;
-        });
-        console.log(response_data.doc_info);
+          await sendToAPI(pending, id, thinkingMsg.id);
+          return;
+        } else {
+          setMessages([]);
+        }
+        return;
       }
-    } catch (error) {
-      console.error("Error loading documents:", error);
-      setUploadedDocs([]);
+
+      localStorage.removeItem(`pending-message-${id}`);
+      const formatted = data.messages.map((m) => ({
+        id: m.id,
+        chat_id: id,
+        content: m.message_text,
+        role: m.sent_from_user === 1 ? "user" : "assistant",
+        relevant_chunks: m.relevant_chunks,
+        reasoning: m.reasoning || [], // Include reasoning data from database
+        sources: m.sources || [], // Include sources if available
+      }));
+      setMessages(formatted);
+    } catch (err) {
+      console.error("Failed to load chat:", err);
     }
-    setLoadingDocs(false);
-  }, [id]);
+  }, [id, location.state?.message, pollForMessages]);
 
-  // Load chat when component mounts or ID changes
-  useEffect(() => {
-    // Clear any existing polling when chat changes
-    if (pollingTimeoutRef.current) {
-      clearTimeout(pollingTimeoutRef.current);
-      pollingTimeoutRef.current = null;
-    }
-
-    if (id) {
-      handleLoadChat();
-      handleLoadDocs();
-    } else {
-      setMessages([]);
-      setChatNameGenerated(false);
-      setUploadedDocs([]);
-    }
-
-    // Cleanup function to clear polling on unmount or chat change
-    return () => {
-      if (pollingTimeoutRef.current) {
-        clearTimeout(pollingTimeoutRef.current);
-        pollingTimeoutRef.current = null;
-      }
-    };
-  }, [id, handleLoadChat, handleLoadDocs]);
-
-  // Main message sending function
   const handleSendMessage = async (event) => {
     event.preventDefault();
+    if (!message.trim()) return;
 
-    // Only prevent submission if there's no message text
-    if (!message || message.trim() === "") return;
-
-    const currentPath = window.location.pathname;
-    const currentMessage = message;
-
-    // Clear input immediately
+    const currentMessage = message.trim();
     setMessage("");
 
-    // If we're on root path or base chat path, create new chat first
     let targetChatId = id;
-    if (currentPath === "/" || currentPath === "/chat" || !id) {
+
+    const isNewChat =
+      !id ||
+      window.location.pathname === "/" ||
+      window.location.pathname === "/chat";
+
+    if (isNewChat) {
       try {
-        // Create new chat first
         targetChatId = await props.createNewChat();
-        // Navigate to new chat URL
         navigate(`/chat/${targetChatId}`, {
           state: { message: currentMessage },
         });
-      } catch (error) {
-        console.error("Error creating new chat:", error);
-        // Restore message on failure
+
+        localStorage.setItem(`pending-message-${targetChatId}`, currentMessage);
+
+        const userMsg = {
+          id: `user-${Date.now()}`,
+          chat_id: targetChatId,
+          role: "user",
+          relevant_chunks: [],
+          content: currentMessage,
+        };
+        const thinkingMsg = {
+          id: `thinking-${Date.now()}`,
+          chat_id: targetChatId,
+          role: "assistant",
+          content: "",
+          isThinking: true,
+          reasoning: [],
+          sources: [],
+        };
+
+        setMessages([userMsg, thinkingMsg]);
+
+        if (!pollingStartedRef.current) {
+          pollForMessages(targetChatId);
+          pollingStartedRef.current = true;
+        }
+
+        return;
+      } catch (err) {
+        console.error("Failed to create chat:", err);
         setMessage(currentMessage);
         return;
       }
     }
 
-    // Add user message and thinking placeholder immediately
-    const thinkingId = `temp-thinking-${Date.now()}`;
-    const newMessages = [
+    // For existing chat
+    const thinkingId = `thinking-${Date.now()}`;
+    setMessages((prev) => [
+      ...prev,
       {
-        id: `temp-user-${Date.now()}`,
+        id: `user-${Date.now()}`,
         chat_id: targetChatId,
         role: "user",
         content: currentMessage,
@@ -341,22 +272,14 @@ const Chatbot = (props) => {
         id: thinkingId,
         chat_id: targetChatId,
         role: "assistant",
-        content: "Thinking...",
+        content: "",
+        isThinking: true,
+        reasoning: [],
+        sources: [],
       },
-    ];
+    ]);
 
-    // Store the message in localStorage for refresh persistence
     localStorage.setItem(`pending-message-${targetChatId}`, currentMessage);
-
-    if (currentPath === "/" || currentPath === "/chat" || !id) {
-      // New chat - set messages directly
-      setMessages(newMessages);
-    } else {
-      // Existing chat - append to existing messages
-      setMessages((prev) => [...prev, ...newMessages]);
-    }
-
-    // Send to API
     await sendToAPI(currentMessage, targetChatId, thinkingId);
   };
 
@@ -916,173 +839,45 @@ const Chatbot = (props) => {
     }
   };
 
-  // Send message to API and handle response
-  const sendToAPI = async (messageText, chatId, thinkingId = null) => {
-    try {
-      const response = await fetcher("process-message-pdf", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: messageText,
-          chat_id: Number(chatId),
-          model_type: props.isPrivate,
-          model_key: props.confirmedModelKey,
-        }),
-      });
-
-      const response_data = await response.json();
-      const answer = response_data.answer;
-
-      // Replace the specific "Thinking..." message with actual response
-      setMessages((messages) => {
-        // Find the specific thinking message by its ID
-        const thinkingIndex = messages.findIndex(
-          (msg) => msg.id === thinkingId
-        );
-
-        if (thinkingIndex !== -1) {
-          // Replace the found "Thinking..." message
-          const updatedMessages = [...messages];
-          updatedMessages[thinkingIndex] = {
-            ...updatedMessages[thinkingIndex],
-            id: response_data.id,
-            content: answer,
-          };
-          return updatedMessages;
-        }
-
-        // Fallback: find first "Thinking..." message for this chat if thinkingId doesn't match
-        const fallbackIndex = messages.findIndex(
-          (msg) =>
-            msg.content === "Thinking..." && msg.chat_id === Number(chatId)
-        );
-
-        if (fallbackIndex !== -1) {
-          const updatedMessages = [...messages];
-          updatedMessages[fallbackIndex] = {
-            ...updatedMessages[fallbackIndex],
-            id: response_data.id,
-            content: answer,
-          };
-          return updatedMessages;
-        }
-
-        // If no "Thinking..." message found, just add the new response
-        return [
-          ...messages,
-          {
-            id: response_data.id,
-            chat_id: Number(chatId),
-            role: "assistant",
-            content: answer,
-          },
-        ];
-      });
-
-      // Update chat name for first message (only if chat name hasn't been generated yet)
-      if (!chatNameGenerated) {
-        console.log("Generating chat name for chat:", chatId);
-        await inferChatName(messageText, answer, chatId);
-        setChatNameGenerated(true);
-        props.handleForceUpdate?.();
-      }
-
-      // Clear any pending message from localStorage since we got a response
-      localStorage.removeItem(`pending-message-${chatId}`);
-
-      // Refresh documents list to pick up any newly uploaded files from sidebar
-      setTimeout(() => {
-        handleLoadDocs();
-      }, 1000);
-    } catch (error) {
-      console.error("Error sending message:", error);
-
-      // Replace the specific "Thinking..." message with error message
-      setMessages((messages) => {
-        // Find the specific thinking message by its ID
-        const thinkingIndex = messages.findIndex(
-          (msg) => msg.id === thinkingId
-        );
-
-        if (thinkingIndex !== -1) {
-          // Replace the found "Thinking..." message
-          const updatedMessages = [...messages];
-          updatedMessages[thinkingIndex] = {
-            ...updatedMessages[thinkingIndex],
-            content:
-              "Sorry, I couldn't connect to the server. Please check your connection and try again.",
-          };
-          return updatedMessages;
-        }
-
-        // Fallback: find first "Thinking..." message for this chat if thinkingId doesn't match
-        const fallbackIndex = messages.findIndex(
-          (msg) =>
-            msg.content === "Thinking..." && msg.chat_id === Number(chatId)
-        );
-
-        if (fallbackIndex !== -1) {
-          const updatedMessages = [...messages];
-          updatedMessages[fallbackIndex] = {
-            ...updatedMessages[fallbackIndex],
-            content:
-              "Sorry, I couldn't connect to the server. Please check your connection and try again.",
-          };
-          return updatedMessages;
-        }
-
-        // If no "Thinking..." message found, add a new error message
-        return [
-          ...messages,
-          {
-            id: `error-${Date.now()}`,
-            chat_id: Number(chatId),
-            role: "assistant",
-            content:
-              "Sorry, I couldn't connect to the server. Please check your connection and try again.",
-          },
-        ];
-      });
-
-      // Don't clear localStorage on error - keep the pending message for potential retry
+  useEffect(() => {
+    if (pollingTimeoutRef.current) {
+      clearTimeout(pollingTimeoutRef.current);
+      pollingTimeoutRef.current = null;
     }
-  };
 
-  // Handle Enter key press
-  const handleKeyDown = (e) => {
+    pollingStartedRef.current = false;
+
+    if (id) {
+      handleLoadChat();
+    } else {
+      setMessages([]);
+      setChatNameGenerated(false);
+    }
+
+    return () => {
+      if (pollingTimeoutRef.current) {
+        clearTimeout(pollingTimeoutRef.current);
+        pollingTimeoutRef.current = null;
+      }
+    };
+  }, [id, handleLoadChat]);
+
+  const handleInputKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSendMessage(e);
+      if (message.trim() !== "") {
+        handleSendMessage(e);
+      }
     }
   };
 
-  // Handle deleting an uploaded document
-  const handleDeleteDoc = async (docId) => {
-    console.log("here");
-    try {
-      await fetcher("delete-doc", {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          doc_id: docId,
-        }),
-      });
-
-      setUploadedDocs((prev) => prev.filter((doc) => doc.doc_id !== docId));
-
-      // Automatically refresh the documents list after successful deletion
-      handleLoadDocs();
-    } catch (error) {
-      console.error("Error deleting document:", error);
-      // Still try to refresh in case the deletion actually worked
-      handleLoadDocs();
+  const handleRefreshChatName = async () => {
+    if (typeof handleLoadChat === "function") {
+      await handleLoadChat();
     }
   };
+
+  console.log(messages);
 
   return (
     <div
@@ -1142,18 +937,12 @@ const Chatbot = (props) => {
               </button>
             </div>
           </div>
-          {messages.map((msg, index) => (
-            <div
-              key={`${msg.chat_id}-${msg.id || index}`}
-              className={`flex items-center gap-4 ${
-                msg.role === "user" ? "justify-end" : ""
-              }`}
-            >
+          <div className="px-4 md:px-8 lg:px-16 xl:px-32">
+            {messages.map((msg, index) => (
               <div
-                className={`rounded-lg p-3 max-w-[80%] ${
-                  msg.role === "user"
-                    ? "from-[#40C6FF] to-[#5299D3] rounded-br-none bg-gradient-to-b text-white ml-auto"
-                    : "bg-transparent border rounded-bl-none text-white"
+                key={`${msg.chat_id}-${msg.id || index}`}
+                className={`flex items-start gap-4 mb-4 ${
+                  msg.role === "user" ? "justify-end" : "justify-start"
                 }`}
               >
                 {/* FIXED: Responsive width for assistant messages */}
@@ -1257,16 +1046,17 @@ const Chatbot = (props) => {
                       </div>
                     )}
                   </div>
-                )}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
+
       <div
         className={`flex-shrink-0 borderrounded-xl ${
           messages.length === 0
-            ? "flex-1 flex items-center  gap-2 flex-col justify-center"
+            ? "flex-1 flex items-center gap-2 flex-col justify-center"
             : ""
         }`}
       >
@@ -1278,36 +1068,25 @@ const Chatbot = (props) => {
         )}
 
         {/* Input form */}
-        <div className="flex w-full justify-center my-5 px-4">
+        <div className="flex w-full justify-center my-5  px-4">
           <div className="flex items-center gap-3 w-full max-w-4xl">
             {/* Left side - Upload button */}
             <button
               type="button"
               onClick={() => {
-                console.log("Upload button clicked in Chatbot");
-                console.log(
-                  "props.onUploadClick exists:",
-                  !!props.onUploadClick
-                );
-                console.log("Chat ID (id):", id);
+                console.log("Upload button clicked in Chatbot", "selectedChatId:", props.selectedChatId);
                 if (props.onUploadClick) {
-                  console.log("Calling props.onUploadClick");
                   setUploadButtonClicked(true);
-                  props.onUploadClick();
-                  // Reset the visual state after a short delay
+                  props.onUploadClick(props.selectedChatId);
                   setTimeout(() => setUploadButtonClicked(false), 1000);
-                } else {
-                  console.log("props.onUploadClick is not available");
                 }
               }}
-              disabled={props.isUploading || !id}
+              disabled={props.isUploading}
               className={`flex items-center justify-center w-12 h-12 rounded-xl transition-colors flex-shrink-0 ${
                 uploadButtonClicked
                   ? "bg-blue-600 text-white"
                   : props.isUploading
                   ? "bg-gray-500 text-gray-300 cursor-not-allowed"
-                  : !id
-                  ? "bg-gray-600 text-gray-400 cursor-not-allowed"
                   : "bg-blue-500 hover:bg-blue-600 text-white"
               }`}
               title={!id ? "Please select or create a chat first" : "Add files"}
@@ -1315,23 +1094,19 @@ const Chatbot = (props) => {
               <FontAwesomeIcon icon={faFile} className="text-lg" />
             </button>
 
-            {/* Center - Input form */}
-            <form
-              id="chat-form"
-              className="flex-1"
-              onSubmit={handleSendMessage}
-            >
+            {/* Center - Input */}
+            <div className="flex-1">
               <div className="relative">
-                {/* Textarea with rounded design */}
-                <div className="relative  flex items-center bg-gray-700 rounded-3xl border border-gray-600 focus-within:border-gray-500 transition-colors">
+                <div className="relative flex items-center bg-gray-700 rounded-3xl border border-gray-600 focus-within:border-gray-500 transition-colors">
                   <textarea
                     className="w-full border-none resize-none text-lg px-6 py-2 focus:ring-0 focus:outline-none text-white placeholder:text-gray-400 bg-anoteblack-800 rounded-3xl"
                     rows={1}
                     placeholder="Ask your document a question"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    onKeyDown={handleKeyDown}
                     ref={inputRef}
+                    onKeyDown={handleInputKeyDown}
+                    disabled={messages.some((msg) => msg.isThinking)}
                   />
                 </div>
 
@@ -1350,15 +1125,21 @@ const Chatbot = (props) => {
                   </div>
                 )}
               </div>
-            </form>
+            </div>
 
             {/* Right side - Send button */}
             <button
-              type="submit"
+              type="button"
               onClick={handleSendMessage}
-              disabled={!message || message.trim() === ""}
+              disabled={
+                !message ||
+                message.trim() === "" ||
+                messages.some((msg) => msg.isThinking)
+              }
               className={`flex items-center justify-center w-12 h-12 rounded-xl transition-colors flex-shrink-0 ${
-                !message || message.trim() === ""
+                !message ||
+                message.trim() === "" ||
+                messages.some((msg) => msg.isThinking)
                   ? "bg-gray-600 text-gray-400 cursor-not-allowed"
                   : "bg-blue-500 hover:bg-blue-600 text-white"
               }`}
