@@ -1,7 +1,6 @@
 # Autonomous Intelligence
 
-[Autonomous Intelligence](https://privatechatbot.ai/) is an open source research project aimed at building 
-collaborative multi-agent AI systems. The agentic framework provides a robust infrastructure for creating and managing multiple AI agents, and enables developers and organizations to build, deploy, and optimize AI agents that work well in dynamic, complex environments.
+[Autonomous Intelligence](https://privatechatbot.ai/) is an open source research project aimed at building collaborative multi-agent AI systems. The agentic framework provides a robust infrastructure for creating and managing multiple AI agents, and enables developers and organizations to build, deploy, and optimize AI agents that work well in dynamic, complex environments.
 
 ## Product Overview
 
@@ -26,8 +25,8 @@ Autonomous Intelligence's architecture is built around a decentralized network o
 
 ### Core Components
 
-| Component                    | Description                                                                                        |
-|------------------------------|----------------------------------------------------------------------------------------------------|
+| Component                    | Description                                                                                       |
+|------------------------------|---------------------------------------------------------------------------------------------------|
 | **Orchestrator**             | Central hub for task assignment, execution, and monitoring. Manages agent interactions and refines workflows dynamically. |
 | **Agent**                    | An autonomous unit programmed to perform tasks, make decisions, and communicate with other agents. |
 | **Task**                     | A specific assignment completed by an agent, providing all necessary details like description, tools, and responsibilities. |
@@ -40,7 +39,7 @@ Autonomous Intelligence's architecture is built around a decentralized network o
 
 ## Workflow Example
 
-1. **Input Query**: The user provides a task, e.g., "Reach out to a list of 10,000 New York-based heads of AI who work in mid-sized finance companies."
+1. **Input Query**: The user provides a task, e.g., “Reach out to a list of 10,000 New York-based heads of AI who work in mid-sized finance companies.”
 2. **Data Collection**: The orchestrator leverages an AI-powered data foundation and the web to source the most reliable leads. The agent processes the input criteria to generate a list, such as Job Title: Data Scientist, Industry: Technology, Company Size: >1,000, Location: United States
 3. **Agent Workflow**: The AI workflow processes the input by applying specific rules and guidelines to filter the data. Agents collaborate to refine the lead list and create tailored email drafts for each contact.
 4. **Email and List Generation**: The system outputs a curated list of leads, including contact information, along with tailored email content ready for automated delivery.
@@ -52,25 +51,25 @@ Autonomous Intelligence's architecture is built around a decentralized network o
 
 ### Key Features
 
-| Feature                    | Description                                                                                    |
-|----------------------------|------------------------------------------------------------------------------------------------|
-| **Dynamic Workflow Creation** | Build complex workflows with drag-and-drop tools.                                         |
-| **Agent Collaboration**    | Enable sequential, parallel, or hierarchical execution of tasks.                           |
+| Feature                    | Description                                                                                     |
+|----------------------------|-------------------------------------------------------------------------------------------------|
+| **Dynamic Workflow Creation** | Build complex workflows with drag-and-drop tools.                                             |
+| **Agent Collaboration**    | Enable sequential, parallel, or hierarchical execution of tasks.                               |
 | **Customizable Framework** | Integrate third-party apps and tools, such as Slack, AWS, or Google Workspace.                 |
-| **Real-Time Debugging**    | Visualize and troubleshoot workflows using interactive flowcharts.                         |
-| **Model-Agnostic Design**  | Supports various models, including OpenAI, Claude, Llama, and Mistral.                    |
+| **Real-Time Debugging**    | Visualize and troubleshoot workflows using interactive flowcharts.                             |
+| **Model-Agnostic Design**  | Supports various models, including OpenAI, Claude, Llama, and Mistral.                        |
 | **Private Deployments**    | Operate securely in local environments with privacy-preserving configurations.                 |
 
 ## Use Cases
 
 Within the Agent Registry, we will be adding many domain specific agents. Here are a few example use cases, with corresponding demos:
 
-| **Use Case**              | **Description**     | **Link**                                              |
-|---------------------------|---------------------|------------------------------------------------------|
-| **AI Assisted Coding**    | Automate feature implementations and pull requests    | [Watch Video](https://www.youtube.com/watch?v=K2KUVdZjZnc) |
-| **AI Assisted RFPs**      | Draft, refine, and submit grant proposals efficiently    | [Watch Video](https://www.youtube.com/watch?v=fE4_Yjjfl0M) |
-| **AI Assisted Outreach**  | Automate email campaigns, sequences, and follow-ups    | [Learn More](https://upreach.ai/)                    |
-| **Job Applications**      | Automate resume customization and job application submissions    | [Learn More](https://roboapply.ai/)                  |
+| **Use Case**              | **Description**                                                                  | **Link**                                              |
+|---------------------------|----------------------------------------------------------------------------------|------------------------------------------------------|
+| **AI Assisted Coding**    | Automate feature implementations and pull requests                              | [Watch Video](https://www.youtube.com/watch?v=K2KUVdZjZnc) |
+| **AI Assisted RFPs**      | Draft, refine, and submit grant proposals efficiently                           | [Watch Video](https://www.youtube.com/watch?v=fE4_Yjjfl0M) |
+| **AI Assisted Outreach**  | Automate email campaigns, sequences, and follow-ups                             | [Learn More](https://upreach.ai/)                    |
+| **Job Applications**      | Automate resume customization and job application submissions                   | [Learn More](https://roboapply.ai/)                  |
 
 
 ## Getting Started

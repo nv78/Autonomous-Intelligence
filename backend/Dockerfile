@@ -8,10 +8,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     default-jdk \
     pkg-config \
     default-libmysqlclient-dev \
-    libxml2-dev \
-    libxslt-dev \
-    python3-dev \
-    git \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
@@ -24,6 +20,14 @@ RUN pip install --no-cache-dir --upgrade pip wheel setuptools
 
 # Install tokenizers and anthropic separately
 RUN pip install --no-cache-dir tokenizers==0.13.3 anthropic==0.7.4
+
+# Install system dependencies needed for lxml (and python-docx)
+RUN apt-get update && apt-get install -y \
+    libxml2-dev \
+    libxslt-dev \
+    python3-dev \
+    build-essential \
+ && rm -rf /var/lib/apt/lists/*
 
 # Set up application directory
 WORKDIR /app
