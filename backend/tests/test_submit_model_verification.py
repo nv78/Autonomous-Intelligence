@@ -8,8 +8,56 @@ import requests
 import json
 import os
 
-# Use internal port when running inside Docker container, external port otherwise
-API_BASE_URL = "http://localhost:5000" if os.path.exists('/.dockerenv') else "http://localhost:5001"
+# API URL configuration with multiple fallback options
+def get_api_base_url():
+    # 1. Check environment variable first (for CI/CD flexibility)
+    if os.getenv('TEST_API_BASE_URL'):
+        return os.getenv('TEST_API_BASE_URL')
+    
+    # 2. Check if running inside Docker container
+    if os.path.exists('/.dockerenv'):
+        return "http://localhost:5000"
+    
+    # 3. Try to detect if we're in CI environment
+    if os.getenv('CI') or os.getenv('GITHUB_ACTIONS'):
+        return "http://localhost:5000"  # CI usually runs services on internal ports
+    
+    # 4. Default to external port for local development
+    return "http://localhost:5001"
+
+def check_api_connection(url):
+    """Check if the API is accessible at the given URL"""
+    try:
+        response = requests.get(f"{url}/health", timeout=2)
+        return response.status_code == 200
+    except:
+        return False
+
+def get_working_api_url():
+    """Get the first working API URL from possible options"""
+    primary_url = get_api_base_url()
+    
+    # Try primary URL first
+    if check_api_connection(primary_url):
+        return primary_url
+    
+    # Try alternative ports if primary fails
+    alternative_urls = [
+        "http://localhost:5000",
+        "http://localhost:5001", 
+        "http://localhost:8000"
+    ]
+    
+    for url in alternative_urls:
+        if url != primary_url and check_api_connection(url):
+            print(f"⚠️  Primary URL {primary_url} failed, using {url}")
+            return url
+    
+    # If nothing works, return primary URL and let the test fail with clear error
+    print(f"⚠️  No working API found, using {primary_url} (may fail)")
+    return primary_url
+
+API_BASE_URL = get_working_api_url()
 
 def test_high_quality_translations():
     """Test with high-quality translations (should get good BLEU scores)"""
