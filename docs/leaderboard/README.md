@@ -9,8 +9,8 @@ A research platform for evaluating and ranking AI translation models across 5 la
 ### 🎯 **Working URLs:**
 - **Frontend**: http://localhost:3002
 - **Evaluations Page**: http://localhost:3002/evaluations ✅ **LIVE**
-- **Backend API**: http://localhost:8000
-- **Health Check**: http://localhost:8000/health
+- **Backend API**: http://localhost:5001
+- **Health Check**: http://localhost:5001/health
 
 ### 🔍 **Available Leaderboards:**
 Based on live data from the API:
@@ -57,8 +57,8 @@ Based on live data from the API:
 
 3. **Access Applications**
    - **Evaluations**: http://localhost:3002/evaluations
-   - **Backend API**: http://localhost:8000
-   - **Health Check**: http://localhost:8000/health
+   - **Backend API**: http://localhost:5001
+   - **Health Check**: http://localhost:5001/health
 
 ## Evaluation Metrics Comparison
 
@@ -107,7 +107,7 @@ Based on live data from the API:
 
 ### Submit Model
 ```bash
-POST http://localhost:8000/public/submit_model
+POST http://localhost:5000/public/submit_model
 {
   "benchmarkDatasetName": "flores_spanish_translation",
   "modelName": "my-model-v1", 
@@ -118,12 +118,12 @@ POST http://localhost:8000/public/submit_model
 
 ### Get Source Sentences
 ```bash
-GET http://localhost:8000/public/get_source_sentences?dataset_name=flores_spanish_translation&count=5
+GET http://localhost:5000/public/get_source_sentences?dataset_name=flores_spanish_translation&count=5
 ```
 
 ### Get Leaderboard (Live Data)
 ```bash
-GET http://localhost:8000/public/get_leaderboard
+GET http://localhost:5000/public/get_leaderboard
 ```
 
 **Response includes 9 active leaderboards:**

@@ -17,7 +17,7 @@ const TranslateSentences = () => {
   useEffect(() => {
     const fetchLeaderboardData = async () => {
       try {
-        const response = await axios.get("http://localhost:8000/public/get_leaderboard");
+        const response = await axios.get("http://localhost:5001/public/get_leaderboard");
         if (response.data.success) {
           // Group submissions by dataset and metric, create the same structure as before
           const groupedData = {};
