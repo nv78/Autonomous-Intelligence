@@ -37,7 +37,7 @@ def create_test_api_key(api_key="test-api-key-12345"):
         conn.commit()
         cursor.close()
         conn.close()
-        print(f"✅ Created test API key: {api_key}")
+    
         return api_key
         
     except Exception as e:

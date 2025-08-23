@@ -168,6 +168,8 @@ const TranslateSentences = () => {
             },
           ];
 
+          console.log('Final datasets array length:', datasets.length);
+          console.log('Final datasets:', datasets.map(d => d.name));
           setDatasets(datasets);
         }
       } catch (err) {
