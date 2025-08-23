@@ -67,7 +67,7 @@ const TranslateSentences = () => {
           // Create datasets in original static order, but replace BLEU sections with dynamic data
           const datasets = [
             // Spanish BLEU - dynamic data
-            groupedData['flores_spanish_translation_bleu'] || {
+            groupedData['flores_spanish_translation'] || {
               name: "Spanish – BLEU",
               url: "https://huggingface.co/datasets/openlanguagedata/flores_plus",
               models: [
@@ -87,7 +87,7 @@ const TranslateSentences = () => {
               ]
             },
             // Japanese BLEU - dynamic data
-            groupedData['flores_japanese_translation_bleu'] || {
+            groupedData['flores_japanese_translation'] || {
               name: "Japanese – BLEU",
               url: "https://huggingface.co/datasets/openlanguagedata/flores_plus",
               models: [
@@ -107,7 +107,7 @@ const TranslateSentences = () => {
               ]
             },
             // Arabic BLEU - dynamic data
-            groupedData['flores_arabic_translation_bleu'] || {
+            groupedData['flores_arabic_translation'] || {
               name: "Arabic – BLEU",
               url: "https://huggingface.co/datasets/openlanguagedata/flores_plus",
               models: [
@@ -127,7 +127,7 @@ const TranslateSentences = () => {
               ]
             },
             // Chinese BLEU - dynamic data  
-            groupedData['flores_chinese_translation_bleu'] || {
+            groupedData['flores_chinese_translation'] || {
               name: "Chinese – BLEU",
               url: "https://huggingface.co/datasets/openlanguagedata/flores_plus",
               models: [
@@ -147,7 +147,7 @@ const TranslateSentences = () => {
               ]
             },
             // Korean BLEU - dynamic data
-            groupedData['flores_korean_translation_bleu'] || {
+            groupedData['flores_korean_translation'] || {
               name: "Korean – BLEU",
               url: "https://huggingface.co/datasets/openlanguagedata/flores_plus",
               models: [

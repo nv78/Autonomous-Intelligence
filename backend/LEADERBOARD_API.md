@@ -18,7 +18,7 @@ Based on live data from the API:
 - **Japanese**: BLEU + BERTScore ✅
 - **Korean**: BLEU ✅
 
-**Total**: 9 active leaderboards with real submission data
+**Total**: 10 active leaderboards with real submission data
 
 ## Key Features
 
