@@ -30,6 +30,7 @@ export const companies = "/companies";
 // Leaderboard routes
 export const evaluations = "/evaluations";
 export const leaderboard = "/leaderboard";
+export const submittoleaderboardPath = "/submit-to-leaderboard";
 
 export const LANGUAGE_ROUTES = {
   japanese: "/languages/japanese",
