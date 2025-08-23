@@ -2,6 +2,8 @@
 
 A research platform for evaluating and ranking AI translation models across 5 languages using both BLEU and BERTScore metrics. Features real-time submissions, dynamic leaderboards, and comprehensive multi-language evaluation.
 
+> **📍 Documentation Location**: This documentation is located in `docs/leaderboard/` to keep it organized separately from the main repository's other functionalities.
+
 ## ✅ **CURRENT STATUS: WORKING END-TO-END**
 
 ### 🎯 **Working URLs:**
@@ -78,9 +80,28 @@ Based on live data from the API:
 
 **Quick Demo**: See `TESTING_GUIDE.md` for complete instructions
 
-**Test Files Available**: All testing files are in `test_files/` directory
-- Language-specific demos for each supported language
-- Score range examples (high/medium/low performance)
+### 📁 Test Files Available (Complete Coverage)
+
+**BLEU Test Files** (`test_files/`):
+- `demo_test_spanish.csv` - Spanish BLEU evaluation
+- `demo_test_japanese.csv` - Japanese BLEU evaluation  
+- `demo_test_korean.csv` - Korean BLEU evaluation
+- `demo_test_arabic.csv` - Arabic BLEU evaluation
+- `demo_test_chinese.csv` - Chinese BLEU evaluation
+
+**BERTScore Test Files** (`test_files/`):
+- `demo_test_spanish_bertscore.csv` - Spanish BERTScore evaluation
+- `demo_test_japanese_bertscore.csv` - Japanese BERTScore evaluation
+- `demo_test_korean_bertscore.csv` - Korean BERTScore evaluation  
+- `demo_test_arabic_bertscore.csv` - Arabic BERTScore evaluation
+- `demo_test_chinese_bertscore.csv` - Chinese BERTScore evaluation
+
+**Score Range Examples**:
+- `test_high_score.csv` - High-quality translation examples
+- `test_medium_score.csv` - Medium-quality translation examples  
+- `test_low_score.csv` - Low-quality translation examples
+
+**Total**: 13 test files covering all 10 leaderboard combinations + quality examples
 
 ## API Endpoints
 
