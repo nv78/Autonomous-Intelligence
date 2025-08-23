@@ -32,9 +32,9 @@ const TranslateSentences = () => {
               key = `${submission.dataset_name}`;
               displayName = `${language.charAt(0).toUpperCase() + language.slice(1)} – BERTScore`;
             } else {
-              // BLEU datasets - use the exact dataset name + "_bleu" for consistency
+              // BLEU datasets - use the exact dataset name as key
               const language = submission.dataset_name.replace('flores_', '').replace('_translation', '');
-              key = `${submission.dataset_name}_bleu`;
+              key = `${submission.dataset_name}`;
               displayName = `${language.charAt(0).toUpperCase() + language.slice(1)} – BLEU`;
             }
             
