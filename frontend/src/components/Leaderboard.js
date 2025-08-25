@@ -20,7 +20,7 @@ const Leaderboard = () => {
     const fetchLeaderboard = async () => {
       try {
         setLoading(true);
-        const response = await axios.get("http://localhost:8000/public/get_leaderboard");
+        const response = await axios.get("http://localhost:5001/public/get_leaderboard");
         if (response.data.success) {
           setLiveLeaderboard(response.data.leaderboard);
         } else {

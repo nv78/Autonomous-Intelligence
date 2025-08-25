@@ -808,6 +808,12 @@ def find_most_recent_chat():
 
 @app.route('/ingest-pdf', methods=['POST'])
 def ingest_pdfs():
+    try:
+        user_email = extractUserEmailFromRequest(request)
+    except InvalidTokenError:
+        # If the JWT is invalid, return an error
+        return jsonify({"error": "Invalid JWT"}), 401
+
     start_time = datetime.now()
     print("start time is", start_time)
 
