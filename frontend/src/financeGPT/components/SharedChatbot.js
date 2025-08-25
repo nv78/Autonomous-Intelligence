@@ -100,7 +100,6 @@ const SharedChatbot = (props) => {
 
   const handleDownload = async () => {
     if (props.selectedChatId === null) {
-      console.log("Error: no chat selected"); //replace this later with a popup
     } else {
       try {
         const response = await fetcher('download-chat-history', {
@@ -201,7 +200,6 @@ const SharedChatbot = (props) => {
 
   const inferChatName = async (text, answer) => {
     const combined_text = text.concat(answer);
-    console.log("infer chat");
     try {
       const response = await fetcher("infer-chat-name", {
         method: "POST",
@@ -215,7 +213,7 @@ const SharedChatbot = (props) => {
         }),
       });
       const response_data = await response.json();
-      console.log("response data 123", response_data.chat_name)
+      
       props.setCurrChatName(response_data.chat_name);
 
       props.handleForceUpdate();
@@ -228,7 +226,6 @@ const SharedChatbot = (props) => {
   const handleLoadChat = async () => {
 
     if (props.selectedChatId === 0) {
-      console.log("Guest session - not loading from database");
       // Only reset to welcome message if this is the initial load
       if (messages.length === 0) {
         setMessages([
@@ -265,7 +262,6 @@ const SharedChatbot = (props) => {
       const response_data = await response.json();
 
       if (!response_data.messages || response_data.messages.length === 0) {
-      console.log("⚠️ No messages returned from API");
       return;
       }
 
@@ -371,12 +367,6 @@ const SharedChatbot = (props) => {
                         }}
                         className="bg-[#141414] text-white"
                       >
-                        {console.log(
-                          "active message index",
-                          props.activeMessageIndex,
-                          index
-                        )}
-                        {console.log("xyz is", msg.relevant_chunks)}
                         {props.setRelevantChunk(msg.relevant_chunks)}
                         <p>{msg.relevant_chunks}</p>
                       </div>

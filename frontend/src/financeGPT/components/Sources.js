@@ -1,13 +1,8 @@
 import { React, useState, useEffect } from "react";
-import fetcher from "../../http/RequestConfig";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faChevronDown,
   faChevronUp,
-  faCommentDots,
-  faPen,
-  faPenToSquare,
-  faTrashCan,
 } from "@fortawesome/free-solid-svg-icons";
 
 function Sources(props) {
@@ -20,7 +15,6 @@ function Sources(props) {
   };
 
   useEffect(() => {
-    console.log("relevant chunk is", props.relevantChunk);
     const extractedInfo = extractDocumentInfo(props.relevantChunk);
     setSourcesInfo(extractedInfo);
   }, [props.relevantChunk]);
@@ -39,27 +33,6 @@ function Sources(props) {
     return results;
   };
 
-  //{docs.map((doc) => (
-  //  <div
-  //    key={doc.document_name}
-  //    className="flex items-center justify-between px-4 hover:bg-[#3A3B41] rounded-xl"
-  //  >
-  //    <button
-  //      key={doc.document_name}
-  //      className="flex items-center p-2 my-1 rounded-lg "
-  //    >
-  //      <span className="text-lg">📄</span>{" "}
-  //      {/* Replace with actual icon */}
-  //      <span className="ml-2">{doc.document_name}</span>
-  //    </button>
-  //    <button
-  //      onClick={() => handleDeleteDoc(doc.document_name, doc.id)}
-  //      className="p-2 ml-4 rounded-full "
-  //    >
-  //      <FontAwesomeIcon icon={faTrashCan} />
-  //    </button>
-  //  </div>
-  //))}
 
   return (
     <div className="flex flex-col px-4 bg-anoteblack-800 py-2  overflow-y-scroll">

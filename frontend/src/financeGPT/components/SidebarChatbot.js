@@ -1,4 +1,3 @@
-import { useNavigate } from "react-router-dom";
 import React, {
   useState,
   useEffect,
@@ -9,9 +8,6 @@ import React, {
 import fetcher from "../../http/RequestConfig";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrashCan } from "@fortawesome/free-solid-svg-icons";
-import { faEye } from "@fortawesome/free-solid-svg-icons";
-
-import Sources from "./Sources";
 import ChatHistory from "./ChatHistory";
 import Select from "react-select";
 import { SelectStyles } from "../../styles/SelectStyles";
@@ -26,7 +22,6 @@ const SidebarChatbot = forwardRef((props, ref) => {
   const [showConfirmModelKey, setShowConfirmModelKey] = useState(false);
   const [showErrorKeyMessage, setShowErrorKeyMesage] = useState(false);
   const [showConfirmResetKey, setShowConfirmResetKey] = useState(false);
-  const [pendingModel, setPendingModel] = useState(props.isPrivate);
   const [modelKey, setModelKey] = useState("");
 
   const [showConfirmPopupDoc, setShowConfirmPopupDoc] = useState(false);
@@ -63,7 +58,6 @@ const SidebarChatbot = forwardRef((props, ref) => {
   }, [props.selectedChatId, props.forceUpdate]);
 
   useEffect(() => {
-    console.log("test");
     //changeChatMode(props.isPrivate);
     props.handleForceUpdate();
   }, [props.isPrivate]);
@@ -113,9 +107,7 @@ const SidebarChatbot = forwardRef((props, ref) => {
 
   // File upload handlers
   const handleFileSelect = async (event) => {
-    console.log("File selection event triggered");
     const files = Array.from(event.target.files);
-    console.log("Files selected:", files);
 
     if (files.length === 0) {
       return;
@@ -135,7 +127,6 @@ const SidebarChatbot = forwardRef((props, ref) => {
     // Add new files to existing selection
     const newFiles = [...selectedFiles, ...files];
     setSelectedFiles(newFiles);
-    console.log("Updated selected files:", newFiles);
 
     // Clear the input value so the same file can be selected again if needed
     event.target.value = "";
@@ -143,7 +134,6 @@ const SidebarChatbot = forwardRef((props, ref) => {
     // Automatically upload the newly selected files
     try {
       await handleFileUpload(files, chatId);
-      console.log("Files uploaded successfully");
       // Poll for chat readiness and trigger redirect if ready
       if (chatId && props.onChatReady) {
         const ready = await pollForChatReady(chatId);
@@ -152,7 +142,6 @@ const SidebarChatbot = forwardRef((props, ref) => {
         }
       }
     } catch (error) {
-      console.error("Auto-upload failed:", error);
       alert("Failed to upload files. Please try again.");
       // Remove the files that failed to upload from selectedFiles
       setSelectedFiles((prev) => prev.filter((file) => !files.includes(file)));
@@ -170,18 +159,13 @@ const SidebarChatbot = forwardRef((props, ref) => {
     filesToUpload = selectedFiles,
     chatId = props.selectedChatId
   ) => {
-    console.log("Upload button clicked!");
-    console.log("Files to upload:", filesToUpload);
-    console.log("Chat ID:", chatId);
-    console.log("Selected Chat ID from props:", props.selectedChatId);
+
 
     if (filesToUpload.length === 0) {
-      console.log("No files selected");
       return null;
     }
 
     if (!chatId) {
-      console.log("No chat ID available");
       alert("Please select or create a chat first before uploading files.");
       return null;
     }
@@ -415,7 +399,7 @@ const SidebarChatbot = forwardRef((props, ref) => {
   };
 
   const confirmDeleteDoc = () => {
-    console.log("Deleting document:", docToDeleteName);
+
 
     deleteDoc(docToDeleteId);
     setShowConfirmPopupDoc(false);
@@ -429,10 +413,8 @@ const SidebarChatbot = forwardRef((props, ref) => {
     /* Delete chat section */
   }
   const handleModelKey = async () => {
-    console.log("is private", props.isPrivate);
     //setChatIdToRename(chat_id);
     if (props.isPrivate === 1) {
-      console.log("cow");
       setShowErrorKeyMesage(true);
     } else {
       setShowConfirmModelKey(true);
@@ -459,7 +441,6 @@ const SidebarChatbot = forwardRef((props, ref) => {
   };
 
   const confirmResetModel = () => {
-    console.log("i am here");
     resetChat();
     addModelKeyToDb(null);
     props.setConfirmedModelKey("");
@@ -513,7 +494,6 @@ const SidebarChatbot = forwardRef((props, ref) => {
       }), //model_type=1 when private, model_type=0 when public
     })
       .then((response) => {
-        console.log("Chat mode changed successfully");
 
         //props.handleForceUpdate();
       })

@@ -7,66 +7,6 @@ import { GetPrivateGPTDashboardUrl } from "../../util/DomainParsing";
 const Pricing = (props) => {
   let dispatch = useDispatch();
   var showCurrentPlan = !(typeof props.currentPlanIndexOverride == "undefined");
-  // const product3 = {
-  //   id: 3,
-  //   title: "Private Chatbot",
-  //   url: "https://docs.anote.ai/privategpt/privategpt.html",
-  //   forceContactUs: true,
-  //   signUpBasePrivateGPTUrl: GetPrivateGPTDashboardUrl(),
-  //   tiers: [
-  //     {
-  //       name: "Basic",
-  //       price: "Free",
-  //       month: false,
-  //       productHash: "privategpt1",
-  //       features: [
-  //         "Access to the standard GPT model and Claude model without privacy-preserving features",
-  //         "Supported File Formats: PDFs, TXTs, DOCXs, PPTXs",
-  //         "Maximum Number of Files: Up to 5 files per month",
-  //         "Total File Size Limit: Up to 10 MB per month",
-  //         "Maximum Chats: 10 chats per month",
-  //       ],
-  //     },
-  //     {
-  //       name: "Standard",
-  //       price: "$500",
-  //       popular: true,
-  //       month: true,
-  //       productHash: "privategpt2",
-  //       features: [
-  //         "Privacy-preserving LLM using a model like GPT-4ALL or LLAMA2",
-  //         "Supported File Formats: PDFs, TXTs, DOCXs, PPTXs",
-  //         "Maximum Number of Files: Up to 20 files per month",
-  //         "Total File Size Limit: Up to 50 MB per month",
-  //         "Maximum Chats: 20 chats per month",
-  //       ],
-  //     },
-  //     {
-  //       name: "Premium",
-  //       price: "$1,000",
-  //       productHash: "privategpt3",
-  //       month: true,
-  //       features: [
-  //         "Privacy-preserving LLM using a model like GPT-4ALL or LLAMA2",
-  //         "Supported File Formats: PDFs, TXTs, DOCXs, PPTXs",
-  //         "Maximum Number of Files: Up to 50 files per month",
-  //         "Total File Size Limit: Up to 100 MB per month",
-  //         "Maximum Chats: 50 chats per month",
-  //       ],
-  //     },
-  //     {
-  //       name: "Enterprise",
-  //       month: false,
-  //       price: "Contact us",
-  //       features: [
-  //         "Fully custom fine tuned private LLM tailored to your specific use case and requirements",
-  //         "Maximum Number of Files: Customizable based on enterprise requirements",
-  //         "Total File Size Limit: Customizable based on enterprise requirements",
-  //         "Maximum Chats: Unlimited chats per month",
-  //       ],
-  //     },
-  //   ],
-  // };
   const product3 = {
     id: 3,
     title: "Panacea",
@@ -133,19 +73,14 @@ const Pricing = (props) => {
     showCurrentPlan,
     index
   ) {
-    console.log(tier.price);
-    console.log(product.forceContactUs);
     if (tier.price == "Contact us" || product.forceContactUs == true) {
-      console.log(1);
       return "Contact us";
     } else {
       if (tier.name == "Basic") {
         // return "Try Now";
         return "Contact Us"
       }
-      // if (product.title == "Private Chatbot" && tier.name == "Basic") {
-      //   return "Try Now"
-      // }
+  
       if (!showCurrentPlan) {
         return "Sign Up";
       } else {
@@ -153,7 +88,6 @@ const Pricing = (props) => {
           return "Cancel";
         } else {
           if (props.disableUpgrade) {
-            console.log(2);
             return "Contact us";
           } else {
             if (currentPlanIndexOverride > index) {
@@ -173,13 +107,6 @@ const Pricing = (props) => {
     showCurrentPlan,
     index
   ) {
-    // if (tier.price === "Free") {
-    //   if (product.title === "Data Labeler") {
-    //     window.location = "https://dashboard.anote.ai"; }
-    //   // } else if (product.title === "Private Chatbot") {
-    //   //   window.location = "https://privatechatbot.ai";
-    //   // }
-    // } else if (
     if (
       tier.price === "Contact us" ||
       product.forceContactUs === true ||

@@ -7,10 +7,9 @@ import {
   faUndoAlt,
 } from "@fortawesome/free-solid-svg-icons";
 import "../../landing_page_styles/LandingPageChatbot.css";
-import { Flowbite, TextInput } from "flowbite-react";
 import fetcher from "../../../http/RequestConfig";
 
-const API_ENDPOINT = process.env.REACT_APP_API_ENDPOINT;
+
 
 const Chatbot = (props) => {
   const [messages, setMessages] = useState([]);
@@ -130,25 +129,6 @@ const Chatbot = (props) => {
   };
 
 
-  // const resetServer = async () => {
-  //   const response = await fetcher("reset-chat-demo", {
-  //     method: "POST",
-  //     headers: {
-  //       Accept: "application/json",
-  //       "Content-Type": "application/json",
-  //     },
-  //   });
-  //   console.log("Reset server operation completed");
-
-  //   setMessages([
-  //     {
-  //       message: "Hello, I am your Panacea, your agentic AI assistant. What can I do to help?",
-  //       sentTime: "just now",
-  //       direction: "incoming",
-  //     },
-  //   ]);
-  //   setIsFirstMessageSent(false);
-  // };
 
   return (
     <>

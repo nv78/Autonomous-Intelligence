@@ -4,7 +4,6 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 import pandas as pd
-#from opensearchpy import OpenSearch, RequestsHttpConnection, AWSV4SignerAuth
 import boto3
 from api_endpoints.login.handler import LoginHandler, SignUpHandler, ForgotPasswordHandler, ResetPasswordHandler
 import os
@@ -97,8 +96,14 @@ from api_endpoints.languages.spanish import spanish_blueprint
 from api_endpoints.languages.arabic import arabic_blueprint
 from datetime import datetime
 from flask import current_app
+from datadog import initialize, statsd, api
+import logging
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("myapp")
 
+from ddtrace import patch_all, tracer
+patch_all()
 
 
 load_dotenv(override=True)
@@ -167,7 +172,6 @@ app.config['MYSQL_HOST'] = 'db'
 app.config['MYSQL_USER'] = 'root'
 app.config['MYSQL_PASSWORD'] = ''
 app.config['MYSQL_DATABASE'] = 'agents'
-
 
 #debug
 #print("MySQL config:", {
@@ -305,6 +309,27 @@ def login():
       
       return response
 
+
+# Configure Datadog (points to Docker Datadog agent)
+options = {
+    'host': 'datadog',  # Docker service name of Datadog container
+    'port': 8125
+}
+initialize(**options)
+
+api.Event.create(
+    title="Test log",
+    text="Hello from Flask app",
+    tags=["service:backend"]
+)
+
+@app.route("/")
+def home():
+    # Increment a request counter
+    statsd.increment('my_app.request_count')
+    # Send a gauge metric
+    statsd.gauge('my_app.active_users', 5)
+    return "Metrics sent to Datadog!"
 
 
 @app.route("/callback")  #this is the page that will handle the callback process meaning process after the authorization

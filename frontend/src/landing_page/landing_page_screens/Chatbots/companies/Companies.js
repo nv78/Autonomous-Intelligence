@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
-import { createcompany, companies} from "../../../../constants/RouteConstants";
 
 const Companies = () => {
   const [companies, setCompanies] = useState([]);
@@ -46,7 +45,6 @@ const Companies = () => {
         }
       })
       .then(res => {
-        console.log("User Chatbots API Response:", res.data); // Add this
         setUserChatbots(res.data);
       })
       .catch(err => console.error("Error fetching user chatbots:", err));
@@ -54,8 +52,6 @@ const Companies = () => {
   }, [isLoggedIn, accessToken]);
 
   
-
-
   return (
     <section className="text-gray-100 body-font overflow-hidden min-h-screen bg-black px-4 py-10">
       <div className="flex flex-col text-center w-full mb-10">

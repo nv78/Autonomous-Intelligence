@@ -41,7 +41,6 @@ function HomeChatbot({ isGuestMode = false, onRequestLogin, setIsLoggedInParent 
   const [confirmedModelKey, setConfirmedModelKey] = useState("");
 
   const handleChatSelect = (chatId) => {
-    console.log("select")
     setSelectedChatId(chatId);
   };
 
@@ -87,7 +86,6 @@ function HomeChatbot({ isGuestMode = false, onRequestLogin, setIsLoggedInParent 
 
   // Handle upload trigger from chatbot - direct approach
   const handleUploadClick = (chatId) => {
-    console.log("handleUploadClick called with chatId:", chatId);
     // If a chatId is provided, ensure selectedChatId is set
     if (chatId && chatId !== selectedChatId) {
       setSelectedChatId(chatId);
@@ -95,17 +93,14 @@ function HomeChatbot({ isGuestMode = false, onRequestLogin, setIsLoggedInParent 
     
     // Try direct file input first
     if (fileInputRef.current) {
-      console.log("Triggering file input dialog");
       fileInputRef.current.click();
       return;
     }
     
     // Fallback to sidebar approach
     if (sidebarRef.current && sidebarRef.current.openFileDialog) {
-      console.log("Using sidebar openFileDialog");
       sidebarRef.current.openFileDialog();
     } else {
-      console.log("Using trigger upload fallback");
       // Fallback to trigger approach
       setTriggerUpload(true);
     }
@@ -136,7 +131,7 @@ function HomeChatbot({ isGuestMode = false, onRequestLogin, setIsLoggedInParent 
       }
       formData.append("chat_id", selectedChatId);
 
-      console.log("Uploading files for chat:", selectedChatId);
+
       
       const response = await fetcher("ingest-pdf", {
         method: "POST",
@@ -144,7 +139,7 @@ function HomeChatbot({ isGuestMode = false, onRequestLogin, setIsLoggedInParent 
       });
 
       const responseData = await response.json();
-      console.log("Upload response:", responseData);
+
       
       // Force update to refresh documents list
       handleForceUpdate();
@@ -169,7 +164,6 @@ function HomeChatbot({ isGuestMode = false, onRequestLogin, setIsLoggedInParent 
     }
 
     const retrieveAllChats = async () => {
-      console.log("i am in retrieve chats");
       setLoading(true);
       try {
         const response = await fetcher("retrieve-all-chats", {
@@ -183,7 +177,6 @@ function HomeChatbot({ isGuestMode = false, onRequestLogin, setIsLoggedInParent 
 
         const response_data = await response.json();
         setChats(response_data.chat_info);
-        console.log("retriving data", response_data);
       } catch (error) {
         // Only log errors that aren't silent network errors
         if (!error.silent) {

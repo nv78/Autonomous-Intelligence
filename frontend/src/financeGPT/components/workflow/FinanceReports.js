@@ -28,10 +28,9 @@ function FinanceReports() {
 
 
     useEffect(() => {
-      console.log("Initializing workflow");
+
 
       const createNewWorkflow = async () => {
-        console.log("createNewWorkflow");
         const response = await fetcher("create-new-workflow", {
           method: "POST",
           headers: {
@@ -46,7 +45,6 @@ function FinanceReports() {
         });
 
         const response_data = await response.json();
-        console.log("WORKFLOW SUCCESSFULLY CREATED. ID:", response_data.workflow_id);
         setWorkflowId(response_data.workflow_id);
 
         return response_data.workflow_id;
@@ -54,19 +52,15 @@ function FinanceReports() {
 
         const workflow_name = "Untitled Workflow (" + workflowId.toString() +")";
         setWorkflowName(workflow_name);
-        console.log(workflow_name);
     }, []);
 
     const handleRenameWorkflow = async (workflowId) => {
-      console.log("handleRenameWorkflow");
       setWorkflowIdToRename(workflowId);
-      console.log("HANDLE RENAME WORKFLOW FOR WORKFLOW ", workflowId)
       setNewWorkflowName("");
       setShowRenameModal(true);
     };
 
     const confirmRenameWorkflow = () => {
-      console.log("new workflow name", newWorkflowName);
       renameWorkflow(workflowIdToRename, newWorkflowName);
       setWorkflowName(newWorkflowName);
       setShowRenameModal(false);
@@ -77,7 +71,7 @@ function FinanceReports() {
     };
 
     const renameWorkflow = async (workflowId, new_name) => {
-      console.log("New name: ", new_name, " & workflow id: ", workflowId)
+
 
       const response = await fetcher("/update-workflow-name", {
         method: "POST",
@@ -96,7 +90,6 @@ function FinanceReports() {
 
     const renameModal = showRenameModal ? (
       <>
-      {console.log("renameModal")}
         <div
           style={{
             position: "fixed",
@@ -156,7 +149,7 @@ function FinanceReports() {
     ) : null;
 
     const handleTickerChange = (e) => {
-        console.log("handleTickerChange");
+
         const inputTicker = e.target.value.toUpperCase();
         setTicker(inputTicker);
         setIsValidTicker(checkTickerValidity(inputTicker));
@@ -164,31 +157,27 @@ function FinanceReports() {
 
     const handleAddTicker = (e) => {
         if (isValidTicker && !tickers.includes(ticker) && e.key === "Enter") {
-            console.log("handleAddTicker");
             setTickers([...tickers, ticker]);
             setTicker("");
             setIsValidTicker(false);
-            console.log("Tickers:", tickers);
+
         }
     };
 
     const handleRemoveTicker = (removedTicker) => {
-        console.log("handleRemoveTicker");
+
         const updatedTickers = tickers.filter((t) => t !== removedTicker);
         setTickers(updatedTickers);
-        console.log("Tickers:", tickers);
+
     };
 
     const handleRemoveFile = (removedFile) => {
-        console.log("handleRemoveFile");
         // Filter out the removed file from the files state
         const updatedFiles = files.filter((file) => file !== removedFile);
         setFiles(updatedFiles);
-        console.log("Files:", updatedFiles);
     };
 
     const handleFileChange = (e) => {
-        console.log("handleFileChange");
         const selectedFiles = e.target.files;
 
         // Update the files state with the selected files
@@ -199,12 +188,10 @@ function FinanceReports() {
     };
 
     const handleQuestionChange = (e) => {
-        console.log("handleQuestionChange");
         setCurrentQuestion(e.target.value);
     };
 
     const askQuestion = () => {
-        console.log("askQuestion");
         if (currentQuestion.trim() !== "") {
             setQuestions([...questions, currentQuestion]);
             setCurrentQuestion("");
@@ -212,13 +199,11 @@ function FinanceReports() {
     };
 
     const handleRemoveQuestion = (removedQuestion) => {
-        console.log("handleRemoveQuestion");
         const updatedQuestions = questions.filter((q) => q !== removedQuestion);
         setQuestions(updatedQuestions);
     };
 
     const checkTickerValidity = async (inputTicker) => {
-        console.log("checkTickerValidity");
         const response = await fetcher("check-valid-ticker", {
             method: "POST",
             headers: {
@@ -229,14 +214,12 @@ function FinanceReports() {
         });
 
         const data = await response.json();
-        console.log("ticker abc", inputTicker);
-        console.log("data is", data.isValid);
+
         setIsValidTicker(data.isValid);
     };
 
     const generatePDF = async () => {
         try {
-            console.log("Requesting PDF generation...");
             // Make a fetch request to your Flask backend endpoint
             const response = await fetcher("/generate_financial_report", {
                 method: "POST",
@@ -261,7 +244,6 @@ function FinanceReports() {
                 // Set the PDF content in the state
                 setPdfContent(pdfDataUrl);
 
-                console.log("PDF generated successfully");
             } else {
                 console.error("Failed to generate or download PDF");
                 // Handle error scenarios

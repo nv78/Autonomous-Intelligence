@@ -57,3 +57,10 @@ mysqlclient
 
 # Evaluation
 ragas>=0.2.0     
+
+# observability 
+datadog==0.49.0
+ddtrace==1.9.3
+
+
+

@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from "react";
-import axios from "axios";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faFileDownload,
@@ -65,7 +64,7 @@ const ChatbotEdgar = (props) => {
 
   const handleDownload = async () => {
     if (props.selectedChatId === null) {
-      console.log("Error: no chat selected"); //replace this later with a popup
+      console.warn("none selected"); //replace this later with a popup
     } else {
       try {
         const response = await fetcher('download-chat-history', {
@@ -164,7 +163,6 @@ const ChatbotEdgar = (props) => {
 
   const inferChatName = async(text, answer) => {
     const combined_text = text.concat(answer);
-    console.log("infer chat");
     try {
       const response = await fetcher("infer-chat-name", {
         method: "POST",
@@ -178,7 +176,6 @@ const ChatbotEdgar = (props) => {
         }),
       });
       const response_data = await response.json();
-      console.log("response data 123", response_data.chat_name)
       props.setCurrChatName(response_data.chat_name);
 
       props.handleForceUpdate();
@@ -190,7 +187,6 @@ const ChatbotEdgar = (props) => {
 
   const handleLoadChat = async () => {
     try {
-      console.log("chat type is", props.chat_type);
       const response = await fetcher("retrieve-messages-from-chat", {
         method: "POST",
         headers: {
@@ -268,8 +264,6 @@ const ChatbotEdgar = (props) => {
     });
 
     const data = await response.json();
-    console.log("tiker abc", inputTicker);
-    console.log("data is", data.isValid);
     setIsValidTicker(data.isValid);
   };
 
@@ -530,11 +524,6 @@ const ChatbotEdgar = (props) => {
                           className="bg-[#141414]
  text-white"
                         >
-                          {console.log(
-                            "active message index",
-                            props.activeMessageIndex,
-                            index
-                          )}
                           {props.setRelevantChunk(msg.relevant_chunks)}
                           <p>{msg.relevant_chunks}</p>
                         </div>

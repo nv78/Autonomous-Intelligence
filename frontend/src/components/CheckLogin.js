@@ -1,7 +1,5 @@
-import React from "react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import PaymentsComponent from "../subcomponents/payments/PaymentsComponent";
 import { useLocation } from "react-router-dom";
 import "../styles/Login.css";
 import { pricingRedirectPath } from "../constants/RouteConstants";
@@ -18,8 +16,7 @@ function CheckLogin(props) {
 
   const accessToken = localStorage.getItem("accessToken");
   const sessionToken = localStorage.getItem("sessionToken");
-  console.log("get access token");
-  console.log(accessToken);
+
   
   // Update login state based on tokens
   useEffect(() => {
@@ -62,7 +59,6 @@ function CheckLogin(props) {
     // Always show guest mode for non-logged-in users, with modal for login
     mainView = <HomeChatbot isGuestMode={true} onRequestLogin={() => setShowLogin(true)} setIsLoggedInParent={props.setIsLoggedInParent} />;
   } else if (!props.showRestrictedRouteRequiringPayments) {
-    //mainView = <PaymentsComponent />;
     mainView = <HomeChatbot isGuestMode={false} setIsLoggedInParent={props.setIsLoggedInParent} />;
   } else {
     // TODO: Replace this with your home page component.
@@ -89,12 +85,9 @@ function CheckLogin(props) {
       setFreeTrialCode(freeTrialCodeStr);
     }
 
-    console.log("accessToken checklogin");
-    console.log(accessToken);
-    console.log(refreshToken);
+
     // Save the tokens in local storage if they exist
     if (accessToken && refreshToken) {
-      console.log("save access token");
       localStorage.setItem("accessToken", accessToken);
       localStorage.setItem("refreshToken", refreshToken);
       props.setIsLoggedInParent(true);

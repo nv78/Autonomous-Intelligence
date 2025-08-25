@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from "react";
-import { LANGUAGE_ROUTES } from "../../../../constants/RouteConstants";
 import { useParams, useNavigate } from "react-router-dom";
 
 
@@ -67,7 +66,6 @@ const Languages = () => {
       
   
     const sendMessage = async (text) => {
-      console.log("🟡 Attempting to send:", text);
       if (!text.trim()) return;
       inputRef.current.value = "";
   
@@ -101,17 +99,16 @@ const Languages = () => {
           formData.append("file", file);
         }
 
-        console.log("Sending message:", text);
+  
 
         const res = await fetch(apiUrl, {
           method: "POST",
-          // headers: { "Content-Type": "application/json" },
           body: formData,
         });
   
         const data = await res.json();
 
-        console.log("Received response:", res);
+
   
         setMessages((prev) =>
           prev.map((msg) =>

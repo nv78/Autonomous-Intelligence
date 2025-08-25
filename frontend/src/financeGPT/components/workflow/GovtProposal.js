@@ -26,7 +26,6 @@ function GovtProposal() {
 
     useEffect(() => {
       const createNewWorkflow = async () => {
-        console.log("createNewWorkflow");
         const response = await fetcher("create-new-workflow", {
           method: "POST",
           headers: {
@@ -41,7 +40,6 @@ function GovtProposal() {
         });
 
         const response_data = await response.json();
-        console.log("WORKFLOW SUCCESSFULLY CREATED. ID:", response_data.workflow_id);
         setWorkflowId(response_data.workflow_id);
 
         return response_data.workflow_id;
@@ -49,19 +47,15 @@ function GovtProposal() {
 
         const workflow_name = "Untitled Workflow (" + workflowId.toString() +")";
         setWorkflowName(workflow_name);
-        console.log(workflow_name);
     }, []);
 
     const handleRenameWorkflow = async (workflowId) => {
-      console.log("handleRenameWorkflow");
       setWorkflowIdToRename(workflowId);
-      console.log("HANDLE RENAME WORKFLOW FOR WORKFLOW ", workflowId)
       setNewWorkflowName("");
       setShowRenameModal(true);
     };
 
     const confirmRenameWorkflow = () => {
-      console.log("new workflow name", newWorkflowName);
       renameWorkflow(workflowIdToRename, newWorkflowName);
       setWorkflowName(newWorkflowName);
       setShowRenameModal(false);
@@ -72,7 +66,7 @@ function GovtProposal() {
     };
 
     const renameWorkflow = async (workflowId, new_name) => {
-      console.log("New name: ", new_name, " & workflow id: ", workflowId)
+
 
       const response = await fetcher("/update-workflow-name", {
         method: "POST",
@@ -91,7 +85,6 @@ function GovtProposal() {
 
     const renameModal = showRenameModal ? (
       <>
-      {console.log("renameModal")}
         <div
           style={{
             position: "fixed",
@@ -151,15 +144,15 @@ function GovtProposal() {
     ) : null;
 
     const handleRemoveFile = (removedFile) => {
-        console.log("handleRemoveFile");
+
         // Filter out the removed file from the files state
         const updatedFiles = files.filter((file) => file !== removedFile);
         setFiles(updatedFiles);
-        console.log("Files:", updatedFiles);
+
     };
 
     const handleFileChange = (e) => {
-        console.log("handleFileChange");
+
         const selectedFiles = e.target.files;
 
         // Update the files state with the selected files
@@ -170,12 +163,12 @@ function GovtProposal() {
     };
 
     const handleQuestionChange = (e) => {
-        console.log("handleQuestionChange");
+
         setCurrentQuestion(e.target.value);
     };
 
     const askQuestion = () => {
-        console.log("askQuestion");
+
         if (currentQuestion.trim() !== "") {
             setQuestions([...questions, currentQuestion]);
             setCurrentQuestion("");
@@ -183,7 +176,6 @@ function GovtProposal() {
     };
 
     const handleRemoveQuestion = (removedQuestion) => {
-        console.log("handleRemoveQuestion");
         const updatedQuestions = questions.filter((q) => q !== removedQuestion);
         setQuestions(updatedQuestions);
     };

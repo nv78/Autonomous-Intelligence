@@ -144,7 +144,6 @@ const Chatbot = (props) => {
 
       const data = await res.json();
 
-      console.log("res", data);
       props.setCurrChatName(data.chat_name);
       setChatNameGenerated(true);
 
@@ -153,10 +152,6 @@ const Chatbot = (props) => {
           location.state?.message ||
           localStorage.getItem(`pending-message-${id}`);
         if (pending) {
-          console.log(
-            "[handleLoadChat] Loading pending message after new chat creation:",
-            pending
-          );
           const userMsg = {
             id: "user-content",
             chat_id: id,
@@ -345,7 +340,7 @@ const Chatbot = (props) => {
             const dataContent = line.slice(6);
 
             if (dataContent === "[DONE]") {
-              console.log("✅ Stream completed");
+      
               // Mark streaming as complete and ensure final state
               setMessages((prev) =>
                 prev.map((msg) =>
@@ -431,7 +426,7 @@ const Chatbot = (props) => {
   const updateMessageWithStreamData = (message, eventData) => {
     const updatedMessage = { ...message };
 
-    console.log("Processing event:", eventData);
+
 
     switch (eventData.type) {
       case "tool_start":
@@ -663,7 +658,6 @@ const Chatbot = (props) => {
           return <FontAwesomeIcon icon={faCog} className="text-gray-400" />;
       }
     };
-    console.log("stepsss", step)
     const getStepColor = (type) => {
       switch (type) {
         case "llm_reasoning":
@@ -700,7 +694,7 @@ const Chatbot = (props) => {
           return "border-l-gray-400 bg-gray-800/20";
       }
     };
-    console.log(`${step.message || "Processing"}: `, step);
+
     if (!step) return null;
     return (
       <div
@@ -877,7 +871,6 @@ const Chatbot = (props) => {
     }
   };
 
-  console.log(messages);
 
   return (
     <div
@@ -1074,7 +1067,7 @@ const Chatbot = (props) => {
             <button
               type="button"
               onClick={() => {
-                console.log("Upload button clicked in Chatbot", "selectedChatId:", props.selectedChatId);
+      
                 if (props.onUploadClick) {
                   setUploadButtonClicked(true);
                   props.onUploadClick(props.selectedChatId);

@@ -1,49 +1,30 @@
-import { React, useEffect, useState } from "react";
-import { logout, refreshCredits, useNumCredits } from "../redux/UserSlice";
+import { useEffect} from "react";
+import { logout, useNumCredits } from "../redux/UserSlice";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import {
   accountPath,
-  selectWorkflowsPath,
-  chatbotPath,
   apiKeyDashboardPath,
   downloadPrivateGPTPath,
-  gtmPath,
   landing,
   chatbots,
 } from "../constants/RouteConstants";
-import { Dropdown, Navbar, Avatar, DarkThemeToggle } from "flowbite-react";
+import { Dropdown, Navbar, Avatar} from "flowbite-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCoins } from "@fortawesome/free-solid-svg-icons";
 import { useLocation } from "react-router-dom";
 import { useUser, viewUser } from "../redux/UserSlice";
-
-import { useHistory } from "react-router-dom";
-import { Link } from "react-router-dom";
 
 function MainNav(props) {
   const location = useLocation();
   let dispatch = useDispatch();
   let navigate = useNavigate();
   let user = useUser();
-  console.log("user", user);
   let numCredits = useNumCredits();
 
   useEffect(() => {
     dispatch(viewUser());
   }, []);
-
-  // useEffect(() => {
-  //   if (user && "id" in user) {
-  //     // Start polling when the component mounts
-  //     const intervalId = setInterval(() => {
-  //       // dispatch(refreshCredits());
-  //     }, 5000); // Poll every 5 seconds
-
-  //     // Clear the polling interval when the component unmounts
-  //     return () => clearInterval(intervalId);
-  //   }
-  // }, [user]);
 
   var imageUrl = null;
   if (user && "profile_pic_url" in user) {
@@ -52,7 +33,6 @@ function MainNav(props) {
 
   return (
     <Navbar className="fixed w-full z-50 bg-anoteblack-800" fluid>
-      {/* <Navbar.Brand href="https://privatechatbot.ai"> */}
       <Navbar.Brand onClick={() => navigate(landing)}>
         <div className="h-8 w-8 bg-center bg-contain bg-[url('../public/logonew.png')] dark:bg-[url('../public/logonew.png')]"></div>
         <span className="self-center md:block hidden whitespace-nowrap text-lg font-semibold text-white pl-2">

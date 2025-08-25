@@ -4,10 +4,8 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: anote-backend
-    restart: unless-stopped
     ports:
-      - "5000:5000"  # Map container's 5000 to host's 8000
-      - "6379:6379"  # Ray
+      - "8000:5000"  # Map container's 5000 to host's 5000
     volumes:
       - ./:/app
       - ./db:/app/db
@@ -22,18 +20,23 @@ services:
       - FLASK_DEBUG=1
       - PYTHONUNBUFFERED=1
       - PYTHONDONTWRITEBYTECODE=1
-      - REDIS_HOST=redis # Use Docker service name
-      - REDIS_PORT=6379 # Use internal Redis port
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DD_AGENT_HOST=datadog
+      - GIT_PYTHON_REFRESH=quiet
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
-      # tika:
-      #   condition: service_healthy
     networks:
       - anote-network
     shm_size: "2.44gb"
+    logging:
+      driver: "json-file"   # optional for local rotation
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s
@@ -82,12 +85,13 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+
   redis:
     image: redis:7-alpine
     container_name: anote-redis
     restart: unless-stopped
     ports:
-      - "6370:6370"
+      - "6379:6379"
     volumes:
       - redis-data:/data
     networks:
@@ -99,6 +103,26 @@ services:
       retries: 5
       start_period: 10s
 
+  datadog:
+    image: gcr.io/datadoghq/agent:latest
+    container_name: datadog-agent
+    restart: unless-stopped
+    environment:
+      - DD_API_KEY=${DD_API_KEY}   # make sure .env has this
+      - DD_SITE=us5.datadoghq.com
+      - DD_LOGS_ENABLED=true
+      - DD_APM_ENABLED=true
+      - DD_DOGSTATSD_NON_LOCAL_TRAFFIC=true
+    ports:
+      - "8125:8125/udp"   # DogStatsD
+      - "8126:8126"       # APM traces
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc/:/host/proc/:ro
+      - /sys/fs/cgroup:/host/sys/fs/cgroup:ro
+    networks:
+      - anote-network
+
 networks:
   anote-network:
     driver: bridge
@@ -106,4 +130,4 @@ networks:
 volumes:
   mysql-data:
   redis-data:
-  tika-data: # Volume for Tika server data
+  tika-data:

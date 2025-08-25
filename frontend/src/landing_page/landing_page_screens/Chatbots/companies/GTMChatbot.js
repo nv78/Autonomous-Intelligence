@@ -22,7 +22,6 @@ const GTMChatbot = () => {
   }, [messages]);
 
   const sendMessage = async (text) => {
-    console.log("🟡 Attempting to send:", text);
     if (!text.trim()) return;
     inputRef.current.value = "";
 
@@ -53,7 +52,6 @@ const GTMChatbot = () => {
         formData.append("file", file);
       }
 
-      console.log("Sending message:", text);
 
       const res = await fetch("/gtm/respond", {
         method: "POST",
@@ -64,7 +62,7 @@ const GTMChatbot = () => {
 
       const data = await res.json();
 
-      console.log("Received response:", res);
+
 
       setMessages((prev) =>
         prev.map((msg) =>

@@ -46,7 +46,7 @@ function PDFUploader({ chat_id, handleForceUpdate }) {
       formData.append("files[]", files[i]);
     }
 
-    //console.log("chat_id", chat_id);
+
     formData.append("chat_id", chat_id);
 
     setIsUploading(true);

@@ -126,7 +126,6 @@ export const refreshCredits = createAsyncThunk("user/refreshCredits", async (pay
 });
 
 export const createCheckoutSession = createAsyncThunk("user/createCheckoutSession", async (payload, thunk) => {
-  console.log(payload);
   const response = await fetcher("createCheckoutSession", {
     method: "POST",
     headers: {
