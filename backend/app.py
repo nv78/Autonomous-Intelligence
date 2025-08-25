@@ -1023,7 +1023,7 @@ def _process_message_pdf_fallback(message, chat_id, model_type, model_key, user_
         if model_key:
            model_use = model_key
         else:
-           model_use = "llama2:latest"
+           model_use = "gpt-4o-mini"
 
         print("using OpenAI and model is", model_use)
         try:
@@ -1039,7 +1039,7 @@ def _process_message_pdf_fallback(message, chat_id, model_type, model_key, user_
         except openai.NotFoundError:
             print(f"The model `{model_use}` does not exist. Falling back to 'gpt-4'.")
             completion = client.chat.completions.create(
-                model="llama2:latest",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "user",
                      "content": f"First, tell the user that their given model key does not exist, and that you have resorted to using GPT-4 before answering their question, then add a line break and answer their question. You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. These are the sources from the text:{sources[0]}{sources[1]} And this is the question:{query}."}
@@ -1631,7 +1631,7 @@ def _public_chat_fallback(message, chat_id, model_type, model_key, user_email):
         if model_key:
            model_use = model_key
         else:
-           model_use = "llama2:latest"
+           model_use = "gpt-4o-mini"
 
         try:
             completion = client.chat.completions.create(
@@ -1644,7 +1644,7 @@ def _public_chat_fallback(message, chat_id, model_type, model_key, user_email):
             answer = str(completion.choices[0].message.content)
         except openai.NotFoundError:
             completion = client.chat.completions.create(
-                model="llama2:latest",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "user",
                      "content": f"First, tell the user that their given model key does not exist, and that you have resorted to using GPT-4 before answering their question, then add a line break and answer their question. You are a factual chatbot that answers questions about uploaded documents. You only answer with answers you find in the text, no outside information. These are the sources from the text:{sources[0]}{sources[1]} And this is the question:{query}."}
