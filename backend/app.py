@@ -705,10 +705,14 @@ def retrieve_messages_from_chat():
 
     chat_type = request.json.get('chat_type')
     chat_id = request.json.get('chat_id')
-
+    
     messages = retrieve_message_from_db(user_email, chat_id, chat_type)
-
-    return jsonify(messages=messages)
+    chat_name = get_chat_info(chat_id)[2]
+    print("chat_name", chat_name[2])
+    return jsonify({
+        "messages": messages,
+        "chat_name": chat_name
+    })
 
 @app.route('/retrieve-shared-messages-from-chat', methods=['POST'])
 def get_playbook_messages():
