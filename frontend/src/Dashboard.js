@@ -16,8 +16,8 @@ import {
   connectorOptions,
   languages, // Import connector options from RouteConstants
   companies,
-  LANGUAGE_ROUTES,
   createcompany,
+  LANGUAGE_ROUTES,
 } from "./constants/RouteConstants";
 import PaymentsComponent from "./subcomponents/payments/PaymentsComponent";
 import PaymentsProduct from "./subcomponents/payments/PaymentsProduct";

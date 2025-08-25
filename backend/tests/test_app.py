@@ -100,6 +100,17 @@ class TestFlaskApp(unittest.TestCase):
         
         self.assertIn(response.status_code, [200, 201])
 
+    # @patch("database.db.get_db_connection")
+    # def test_forgotpwd(self, mock_get_db_connection):
+    #     mock_conn = MagicMock()
+    #     mock_cursor = MagicMock()
+    #     mock_get_db_connection.return_value = (mock_conn, mock_cursor)
+    #     data = {"email": "nvidra10@anote.ai"}
+    #     response = self.app.post("/forgotPassword", json=data)
+    #     print(response.status_code, response.get_json())
+    #     self.assertIn(
+    #         response.status_code, [200, 202]
+    #     )
 
     @patch("app.extractUserEmailFromRequest")
     def test_refresh_credits_success(self, mock_extract_email):

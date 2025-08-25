@@ -6,7 +6,7 @@ const GTMChatbot = () => {
   const [file, setFile] = useState(null);
   const [messages, setMessages] = useState([
     {
-      message: "Hello, I’m your Anote chatbot. How can I help you today?",
+      message: "Hello, I’m your chatbot. How can I help you today?",
       direction: "incoming",
     },
   ]);
@@ -97,7 +97,7 @@ const GTMChatbot = () => {
       {/* Header */}
       <div className="flex justify-between items-center mb-2">
         <FontAwesomeIcon icon={faUndoAlt} className="cursor-pointer text-white" />
-        <h2 className="text-lg font-semibold">Anote</h2>
+        <h2 className="text-lg font-semibold">Chat</h2>
         <div></div>
       </div>
       <hr className="border-gray-600 mb-2" />
