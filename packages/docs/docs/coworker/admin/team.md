@@ -34,6 +34,24 @@ Under **Team rules → Sign-in**:
   - Only an admin whose own address is on the domain can turn it on, and only one organization can claim each domain.
   - People an admin removed can't rejoin this way.
 
+## Provisioning with SCIM (Okta, Microsoft Entra)
+
+Let your identity provider add and remove people automatically:
+
+1. **Team → Team rules → Provisioning (SCIM) → Create token**. Copy the token; it's shown once.
+2. In your identity provider, add a SCIM 2.0 app with:
+   - base URL `https://<your Ourogen host>/api/coworker/scim/v2`;
+   - authentication: bearer token, the one you copied;
+   - provisioning actions: create users, deactivate users.
+3. Assign people to the app.
+
+**What each action does**
+- **Assigning someone** invites them. They join when they accept, or the first time they sign in with Google or Microsoft as that address.
+- **Unassigning or deactivating someone** removes them: their coworker is paused and every connection is revoked.
+- **Reactivating someone** invites them again.
+
+Users are matched by email (`userName`). Group push isn't needed. **Rotate token** replaces the token, and **Turn off** stops provisioning.
+
 ## Usage
 
 The member list shows each member's last 30 days:

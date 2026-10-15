@@ -284,7 +284,8 @@ TABLES: dict[str, str] = {
         domain VARCHAR(255) NOT NULL DEFAULT '',
         owner_user_id INT NOT NULL,
         policies {text},
-        created_at VARCHAR(40) NOT NULL
+        created_at VARCHAR(40) NOT NULL,
+        scim_token_hash VARCHAR(64) NOT NULL DEFAULT ''
     """,
     "cw_org_members": """
         id {pk},
@@ -388,6 +389,7 @@ ADDED_COLUMNS: list[tuple[str, str, str]] = [
     ("cw_runs", "attempts", "INT NOT NULL DEFAULT 1"),
     ("cw_runs", "error", "{text}"),
     ("cw_runs", "tokens", "INT NOT NULL DEFAULT 0"),
+    ("cw_orgs", "scim_token_hash", "VARCHAR(64) NOT NULL DEFAULT ''"),
     ("cw_runs", "cost_micros", "INT"),
 ]
 
