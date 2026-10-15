@@ -499,7 +499,11 @@ function ModelSection() {
             <span className="flex-1 text-sm">
               {m.label} <span className="text-xs text-gray-500">· {groups[m.provider] || m.provider} · {m.note}</span>
             </span>
-            {!m.available && <span className="text-xs text-gray-500">Needs a {groups[m.provider] || m.provider} key</span>}
+            {!m.available && (
+              <span className="text-xs text-gray-500">
+                {m.provider === 'ollama' ? 'Needs an Ollama server' : `Add ${m.provider === 'openai' ? 'an' : 'a'} ${groups[m.provider] || m.provider} key`}
+              </span>
+            )}
           </label>
         ))}
       </Card>

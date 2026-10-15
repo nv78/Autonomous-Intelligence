@@ -11,7 +11,7 @@ This guide gets you from zero to a working coworker in about 10 minutes with **n
 You need Docker Desktop. From the repo root:
 
 ```bash
-git checkout feature/coworker-trust-billing-mobile   # or main, once the PRs are merged
+git checkout develop   # or main, once develop is promoted
 cp packages/backend/.env.example packages/backend/.env
 docker compose up --build
 ```
@@ -39,6 +39,9 @@ You're back in the normal chat. The header shows **🤖 Coworker**, **Approvals*
 
 | Type this | What you should see |
 |---|---|
+| `Reply to my unanswered emails` | One approval card per waiting thread. Approve one and, a moment later, the chat shows **✅ Sent to…** with the exact email. |
+| `Join my call with Dana and pitch the pilot, then send me the summary` | In the demo it runs the whole call with a scripted prospect, then posts **📞 Call finished**: summary, lead score, a call card, and the follow-up to approve. |
+| `What did you do today?` | Today's calls, sends, and what's waiting |
 | `What needs a reply?` | Triaged list: sales lead, scheduling, support, investor, team |
 | `What's going on with Acme?` | Proposal status, "you're waiting on them", the security review on your calendar, and an offer to nudge |
 | `Who is Dana?` | Role, company, relationship, and recent interactions |
@@ -59,13 +62,14 @@ Use **🧪 Simulate** in the header:
 - **Malicious email (prompt-injection attempt).** It asks the AI to forward invoices to a stranger. The coworker refuses to reply and logs a 🛡️ security notice. Check **Coworker → Activity**.
 - **Teammate asks a question on Slack.** If you enabled *Answer teammates on Slack*, it drafts an answer from your docs (the discount policy).
 
-Then open **Coworker** from the sidebar:
+The chat sidebar now has a **Today** section with the work your coworker did next to your chats. Then open **Coworker** from the sidebar:
 
+- **Today.** One day at a time: calls (with scores), what it sent, briefs, escalations, and what's waiting. Meetings still ahead get **Send my coworker**.
 - **Approvals.** Everything waiting on you, plus recently handled actions.
 - **Responsibilities.** Toggle jobs on or off, change autonomy per job, **Run now**, or add your own in plain English.
 - **Activity.** Every action and who approved it, with the daily digest on top and **Export CSV**.
 - **Memory.** Search everything, fix people, see decisions and how you write.
-- **Settings.** Autonomy per action type, with hard floors that always ask first. Also connections, disclosure footer, undo window, plan and usage, and download or delete all data.
+- **Settings.** Autonomy per action type, with hard floors that always ask first. Also connections (Google, Slack, HubSpot), notifications, recording consent, **the model** (Claude, GPT, Gemini, or Ollama), **plans** (upgrade or downgrade through Stripe), and download or delete all data.
 
 **Kill switch:** click **Active · Pause** in any header. Queued sends are cancelled and nothing runs until you resume.
 
@@ -139,14 +143,16 @@ npm install --legacy-peer-deps
 EXPO_PUBLIC_API_URL=http://<your-computer-ip>:5000 npx expo start
 ```
 
-Log in, then tap 🤖 in the chat header to approve, edit, or reject actions and to pause the coworker from your phone.
+Log in. The chat talks to your coworker (same hand-offs as the web). Tap 🤖 for **Approvals**, **Today**, and **Calls**. Open a live call to read the transcript, whisper an instruction, or **Take over**. On a physical device, push notifications for approvals have **Approve** and **Reject** right on the notification.
 
 ## For developers
 
 ```bash
 cd packages/backend
-pytest tests/ -q --cov=. --cov-fail-under=80   # 437 tests, ~92% coverage
-python -m coworker.evals.run                    # triage, call guardrails, recall, injection
+pytest tests/ -q --cov=. --cov-fail-under=80   # ~800 tests, ~93% coverage
+python -m coworker.evals.run                    # 7 suites, 249 cases (blocks CI on regressions)
+python -m coworker.evals.report                 # eval dashboard (HTML) from history.jsonl
+python -m coworker.vendor_check                 # read-only check of every configured vendor
 python -m coworker.worker --once                # run every coworker's loop once
 python -m coworker.admin revoke-all --user 1    # incident response
 ```
@@ -159,7 +165,9 @@ python -m coworker.admin revoke-all --user 1    # incident response
 
 - Without `ANTHROPIC_API_KEY`, chat runs an offline planner that understands the common requests in this guide. Free-form questions fall back to memory search.
 - Voice input in the browser needs Chrome or Edge.
-- Consent verification checks the spoken statement and one-time code, not a biometric match. That match is required before general availability.
+- The default voice match (consent recording vs. samples) is a local pitch and spectral check. It catches clearly different voices. Set `VOICEPRINT_BACKEND=resemblyzer` before general availability.
 - The Recall.ai and Tavus adapters follow their published APIs but haven't been exercised against live accounts here.
 - Gmail's restricted scopes need Google verification before anyone outside your test users can connect.
 - Prices in Settings are hypotheses for the pilot, not published prices.
+- Push notifications need a physical device and an EAS project ID.
+- `scripts/demo/record_demo.py` re-records the 2-minute product video against your local stack.
