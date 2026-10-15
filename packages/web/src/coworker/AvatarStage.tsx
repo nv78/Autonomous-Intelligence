@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../App';
 import { coworkerApi } from './api';
 
@@ -49,6 +49,26 @@ export default function AvatarStage({
   const person = name.replace(/'s AI coworker.*$/i, '').trim() || name;
   const initials = (ownerName || person).split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
   const dim = size === 'lg' ? 'w-40 h-40 sm:w-48 sm:h-48' : 'w-20 h-20';
+  // Video follows the voice: plays while speaking, pauses otherwise. If it
+  // errors or stalls, fall back to the photo (or initials) and keep the voice:
+  // a frozen face is worse than a still one.
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoFailed, setVideoFailed] = useState(false);
+  const stallTimer = useRef<number | undefined>(undefined);
+  useEffect(() => setVideoFailed(false), [videoUrl]);
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (speaking) v.play().catch(() => setVideoFailed(true));
+    else v.pause();
+  }, [speaking, videoUrl, videoFailed]);
+  const onStall = () => {
+    window.clearTimeout(stallTimer.current);
+    stallTimer.current = window.setTimeout(() => setVideoFailed(true), 1500);
+  };
+  const onFlowing = () => window.clearTimeout(stallTimer.current);
+  useEffect(() => () => window.clearTimeout(stallTimer.current), []);
+  const showVideo = !!videoUrl && !videoFailed;
   return (
     <div className="flex flex-col items-center gap-3 select-none">
       <div className="relative">
@@ -58,8 +78,10 @@ export default function AvatarStage({
           }`}
         />
         <div className={`relative ${dim} rounded-full overflow-hidden bg-gradient-to-br from-gray-200 to-gray-300 dark:from-[#3a3a3a] dark:to-[#2a2a2a] flex items-center justify-center ring-2 ring-white dark:ring-[#212121]`}>
-          {videoUrl ? (
-            <video src={videoUrl} muted loop autoPlay={speaking} playsInline className={`w-full h-full object-cover transition-transform duration-150 ${speaking ? 'scale-[1.02]' : ''}`} />
+          {showVideo ? (
+            <video ref={videoRef} src={videoUrl!} muted loop playsInline onError={() => setVideoFailed(true)}
+              onStalled={onStall} onWaiting={onStall} onPlaying={onFlowing} onTimeUpdate={onFlowing}
+              className={`w-full h-full object-cover transition-transform duration-150 ${speaking ? 'scale-[1.02]' : ''}`} />
           ) : photoUrl ? (
             <img src={photoUrl} alt="" className={`w-full h-full object-cover transition-transform duration-150 ${speaking ? 'scale-[1.03]' : ''}`} />
           ) : (

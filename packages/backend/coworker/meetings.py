@@ -281,6 +281,12 @@ def _offline_reply(store: Store, user_id: int, meeting: dict[str, Any], text: st
             "team would use it day to day?")
 
 
+def _speaking_style(store: Store, user_id: int) -> str:
+    from coworker import twin
+
+    return twin.style_prompt(store, user_id)
+
+
 def _llm_reply(store: Store, user_id: int, meeting: dict[str, Any], text: str, answers: dict[str, Any]) -> str:
     pb = playbook(store, user_id)
     coworker = store.get_coworker(user_id) or {}
@@ -297,7 +303,8 @@ def _llm_reply(store: Store, user_id: int, meeting: dict[str, Any], text: str, a
         f"Pricing you may state (nothing else): {pb.get('pricing_notes') or 'none; say ' + first + ' will follow up'}\n"
         f"Escalate to {first}, never decide yourself: {', '.join(pb['escalate'])}.\n"
         f"Still to learn: {', '.join(missing) or 'nothing; move to next steps'}.\n"
-        f"If asked whether you are human, say you are an AI. Never claim to be {first}.\n\n{security.SYSTEM_RULES}"
+        f"If asked whether you are human, say you are an AI. Never claim to be {first}.\n"
+        f"{_speaking_style(store, user_id)}\n\n{security.SYSTEM_RULES}"
     )
     prompt = (f"Transcript so far:\n{transcript}\n\nThey just said:\n{security.wrap_untrusted(text, 'call')}\n\n"
               "Relevant facts:\n" + "\n".join(f"- {f.get('title')}: {f.get('snippet') or f.get('detail') or ''}" for f in facts)

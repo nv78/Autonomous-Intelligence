@@ -2,6 +2,8 @@
 
     python -m coworker.admin revoke-all --user 42     # kill switch + revoke every token
     python -m coworker.admin pause-everyone           # pause every coworker
+    python -m coworker.admin approve-voice --user 42 --reviewer you@ourogen.ai
+                                                      # manual voice-match review
 
 ``revoke-all`` pauses the coworker, cancels queued actions, revokes Google
 and Slack tokens with the providers, and deletes the stored tokens.
@@ -12,7 +14,7 @@ import argparse
 from typing import Any
 
 from coworker import executor
-from coworker.connectors import google, slack
+from coworker.connectors import google, hubspot, slack
 from coworker.connectors.base import decrypt_token
 from coworker.store import Store, get_store
 
@@ -26,6 +28,8 @@ def revoke_all(store: Store, user_id: int) -> dict[str, Any]:
             google.revoke(token)
         elif row["provider"] == "slack":
             slack.revoke(token)
+        elif row["provider"] == "hubspot":
+            hubspot.revoke(token)
         store.delete_connection(user_id, row["provider"])
         revoked.append(row["provider"])
     store.log(user_id, "security", f"All access revoked ({', '.join(revoked) or 'no connections'}) by an administrator")
@@ -45,12 +49,19 @@ def main() -> None:  # pragma: no cover - CLI wrapper
     r = sub.add_parser("revoke-all")
     r.add_argument("--user", type=int, required=True)
     sub.add_parser("pause-everyone")
+    v = sub.add_parser("approve-voice")
+    v.add_argument("--user", type=int, required=True)
+    v.add_argument("--reviewer", required=True)
     args = parser.parse_args()
     from app import create_app
 
     with create_app().app_context():
         if args.cmd == "revoke-all":
             print(revoke_all(get_store(), args.user))
+        elif args.cmd == "approve-voice":
+            from coworker import twin
+
+            print(twin.approve_voice_match(get_store(), args.user, args.reviewer))
         else:
             print(f"Paused {pause_everyone(get_store())} coworkers")
 

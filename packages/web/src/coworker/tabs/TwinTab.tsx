@@ -34,29 +34,58 @@ export default function TwinTab() {
     load();
   }, []);
 
-  const upload = async (kind: string, file: Blob, filename: string) => {
+  const upload = async (kind: string, file: Blob, filename: string, extra: Record<string, string> = {}) => {
     const form = new FormData();
     form.append('kind', kind);
     form.append('file', file, filename);
+    Object.entries(extra).forEach(([k, v]) => form.append(k, v));
     await api.upload('/twin/assets', form);
     await load();
   };
 
+  const sampleText = useRef('');
+  const sampleStart = useRef(0);
+  const sampleRec = useRef<any>(null);
   const recordVoice = async () => {
     setMsg('');
     try {
       const rec = await recordMedia('audio');
       stopRef.current = rec.stop;
+      sampleText.current = '';
+      sampleStart.current = Date.now();
+      // Transcribe while recording so the coworker learns your pace and phrasing for calls.
+      if (hasSpeechRecognition()) {
+        sampleRec.current = createRecognizer({ onFinal: (t) => { sampleText.current = `${sampleText.current} ${t}`.trim(); } });
+        sampleRec.current?.start();
+      }
       setRecording('voice');
     } catch (e) {
       setMsg(`Microphone unavailable: ${errorMessage(e)}`);
     }
   };
   const stopVoice = async () => {
+    sampleRec.current?.stop();
     const blob = await stopRef.current!();
     setRecording(null);
-    await upload('voice_sample', blob, 'voice-sample.webm');
+    const extra: Record<string, string> = {};
+    if (sampleText.current) {
+      extra.transcript = sampleText.current;
+      extra.seconds = String((Date.now() - sampleStart.current) / 1000);
+    }
+    await upload('voice_sample', blob, 'voice-sample.webm', extra);
     setMsg('Voice sample saved.');
+  };
+  const checkMatch = async () => {
+    setMsg('Comparing your consent recording with your samples…');
+    try {
+      const r = await api.post('/twin/voice-match');
+      setMsg(r.status === 'match' ? '✅ Your consent recording matches your samples.'
+        : r.status === 'mismatch' ? `Your consent recording doesn't sound like: ${r.samples.filter((x: any) => x.verdict === 'mismatch').map((x: any) => x.filename).join(', ')}. Only you can create your twin.`
+        : `Couldn't confirm a match (${r.status}). Re-record your consent somewhere quiet, for at least 5 seconds.`);
+      await load();
+    } catch (e) {
+      setMsg(errorMessage(e));
+    }
   };
 
   const getChallenge = async () => {
@@ -212,6 +241,15 @@ export default function TwinTab() {
               ))}
             </ul>
           )}
+          {status.speakingStyle && (
+            <div className="pt-2 border-t border-gray-100 dark:border-gray-700/70 text-xs text-gray-600 dark:text-gray-300">
+              <p className="font-medium mb-1">How you speak (used on calls)</p>
+              <p>
+                {status.speakingStyle.pace} pace, about {status.speakingStyle.wpm} words a minute
+                {status.speakingStyle.phrases.length > 0 && <> · you often say {status.speakingStyle.phrases.slice(0, 3).map((p: string) => `“${p}”`).join(', ')}</>}
+              </p>
+            </div>
+          )}
         </Card>
       </Section>
 
@@ -246,8 +284,18 @@ export default function TwinTab() {
             <p className="text-sm">✅ Your voice is ready and used on calls.</p>
           ) : (
             <>
-              <button className={primaryBtn} disabled={!consented || !samples.length || busy} onClick={createVoice}>Create my AI voice</button>
+              <div className="flex flex-wrap gap-2">
+                <button className={primaryBtn} disabled={!consented || !samples.length || busy} onClick={createVoice}>Create my AI voice</button>
+                <button className={ghostBtn} disabled={!consented || !samples.length || busy} onClick={checkMatch}>Check voice match</button>
+              </div>
+              {status.voiceMatch && (
+                <p className="text-xs">
+                  Voice match: <span className="font-medium">{status.voiceMatch.status}</span>
+                  {status.voiceMatch.status !== 'match' && ' · Cloning stays blocked until your consent recording matches your samples.'}
+                </p>
+              )}
               <p className="text-xs text-gray-500">
+                Before cloning, I check that the voice in your consent recording is the voice in your samples.{' '}
                 {!status.voiceConfigured
                   ? 'Voice cloning needs ELEVENLABS_API_KEY on the server. Until then, calls use a browser voice.'
                   : !consented ? 'Verify consent first.' : !samples.length ? 'Add a voice sample first.' : ''}
