@@ -3,16 +3,19 @@ import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "../App";
 import AuthLayout from "../components/AuthLayout";
+import MicrosoftSignInButton from "../components/MicrosoftSignInButton";
 import { API_BASE_URL } from "../constants/constants";
 
-const GOOGLE_ERROR_MESSAGES: Record<string, string> = {
+const SIGN_IN_ERROR_MESSAGES: Record<string, string> = {
   google_denied: "Google sign-in was cancelled",
-  missing_code: "Google sign-in failed",
-  invalid_state: "Google sign-in session expired, please try again",
-  not_configured: "Google sign-in is not configured",
+  missing_code: "Sign-in failed",
+  invalid_state: "Sign-in session expired, please try again",
+  not_configured: "That sign-in option is not configured",
   google_auth_failed: "Google sign-in failed",
-  unverified_email: "Google account has no verified email",
+  unverified_email: "That account has no verified email address",
   service_unavailable: "Authentication service unavailable",
+  microsoft_denied: "Microsoft sign-in was cancelled",
+  microsoft_auth_failed: "Microsoft sign-in failed",
 };
 
 export default function LoginPage() {
@@ -23,7 +26,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState(() => {
     const code = searchParams.get("error");
-    return code ? GOOGLE_ERROR_MESSAGES[code] || "Google sign-in failed" : "";
+    return code ? SIGN_IN_ERROR_MESSAGES[code] || "Sign-in failed" : "";
   });
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -71,6 +74,7 @@ export default function LoginPage() {
           </svg>
           {googleLoading ? "Redirecting..." : "Continue with Google"}
         </button>
+        <MicrosoftSignInButton disabled={googleLoading || loading} onError={setError} />
         <div className="flex items-center gap-3 mb-6">
           <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
           <span className="text-xs text-gray-600 dark:text-gray-400">OR</span>

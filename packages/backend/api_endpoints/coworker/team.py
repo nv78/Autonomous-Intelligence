@@ -54,7 +54,8 @@ def create_org() -> tuple:
 def update_org() -> tuple:
     data = request.get_json(silent=True) or {}
     try:
-        orgs.update(store(), uid(), data.get("name"), data.get("policies") if isinstance(data.get("policies"), dict) else None)
+        orgs.update(store(), uid(), data.get("name"), data.get("policies") if isinstance(data.get("policies"), dict) else None,
+                    domain=str(data["domain"]) if "domain" in data else None)
     except orgs.OrgError as exc:
         return _fail(exc)
     return jsonify({"org": orgs.overview(store(), uid())}), 200

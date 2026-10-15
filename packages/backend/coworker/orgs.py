@@ -9,6 +9,12 @@
   - ``blocked_domains``: the coworker never sends to these.
   - ``recording_consent``: forces "all_party" for every member.
   - ``allowed_models``: members can only choose from this list.
+  - ``sso_required``: members must sign in with Google or Microsoft; the
+    password form refuses them.
+  - ``domain_auto_join``: anyone who signs in with Google or Microsoft at the
+    organization's domain joins automatically (no invite needed). Only for a
+    company domain the turning-on admin's own address is at, and only one
+    organization per domain.
 
 * Joining an organization counts as the employer's authorization for its
   domain. Removing a member revokes their connections and pauses their
@@ -25,6 +31,10 @@ from coworker.store import IntegrityError, Store, iso
 ROLES = ("admin", "member")
 INVITE_SALT = "coworker-org-invite"
 INVITE_MAX_AGE = 14 * 86400
+PUBLIC_EMAIL_DOMAINS = frozenset({
+    "gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "live.com", "msn.com", "yahoo.com", "icloud.com",
+    "me.com", "mac.com", "aol.com", "proton.me", "protonmail.com", "gmx.com", "mail.com", "yandex.com", "zoho.com",
+})
 
 
 class OrgError(Exception):
@@ -102,13 +112,18 @@ def create(store: Store, user_id: int, name: str, domain: str = "", email: str =
     return org
 
 
-def update(store: Store, user_id: int, name: str | None = None, new_policies: dict[str, Any] | None = None) -> dict[str, Any]:
+def update(store: Store, user_id: int, name: str | None = None, new_policies: dict[str, Any] | None = None,
+           domain: str | None = None) -> dict[str, Any]:
     org = _require_admin(store, user_id)
     values: dict[str, Any] = {}
     if name is not None and name.strip():
         values["name"] = name.strip()[:255]
+    if domain is not None:
+        values["domain"] = _clean_domain(domain)
     if new_policies is not None:
         values["policies"] = clean_policies(new_policies)
+    if (values.get("policies") or org.get("policies") or {}).get("domain_auto_join"):
+        _check_auto_join(store, user_id, org, values.get("domain", org.get("domain") or ""))
     if values:
         store.update("cw_orgs", int(org["id"]), None, values)
         store.log(user_id, "org", "Updated organization policies" if "policies" in values else "Renamed the organization",
@@ -132,7 +147,27 @@ def clean_policies(raw: dict[str, Any]) -> dict[str, Any]:
         out["recording_consent"] = raw["recording_consent"]
     models = raw.get("allowed_models") or []
     out["allowed_models"] = [str(m) for m in models if isinstance(m, str)][:20]
+    out["sso_required"] = bool(raw.get("sso_required"))
+    out["domain_auto_join"] = bool(raw.get("domain_auto_join"))
     return out
+
+
+def _clean_domain(domain: str) -> str:
+    return domain.strip().lower().lstrip("@")[:255]
+
+
+def _check_auto_join(store: Store, user_id: int, org: dict[str, Any], domain: str) -> None:
+    """Auto-join hands membership to anyone at the domain, so the domain must really be the company's."""
+    if not domain:
+        raise OrgError("Set your company domain before turning on automatic joining.")
+    if domain in PUBLIC_EMAIL_DOMAINS:
+        raise OrgError(f"{domain} is a public email provider, so automatic joining would let anyone in.")
+    m = membership(store, user_id) or {}
+    if str(m.get("email") or "").split("@")[-1].lower() != domain:
+        raise OrgError(f"Only an admin with an @{domain} address can turn on automatic joining for it.", "forbidden", 403)
+    others = store.query("SELECT id, policies FROM cw_orgs WHERE domain = %s AND id != %s", (domain, org["id"]))
+    if any((o.get("policies") or {}).get("domain_auto_join") for o in others):
+        raise OrgError(f"Another organization already has automatic joining for {domain}.", "conflict", 409)
 
 
 # -- invites ---------------------------------------------------------------------
@@ -232,12 +267,54 @@ def accept(store: Store, user_id: int, user_email: str, token: str) -> dict[str,
     store.update("cw_org_members", int(row["id"]), None, {"user_id": user_id, "status": "active", "joined_at": iso()})
     org = store.get("cw_orgs", org_id)
     assert org is not None
+    _joined(store, user_id, org, email)
+    return org
+
+
+def _joined(store: Store, user_id: int, org: dict[str, Any], email: str) -> None:
     coworker = store.get_coworker(user_id)
     if coworker:  # the organization is the employer's authorization for its domain
         store.update_coworker(user_id, settings={**(coworker.get("settings") or {}), "employer_authorized": {
-            "domain": org.get("domain") or email.split("@")[-1], "basis": "organization", "org_id": org_id, "at": iso()}})
+            "domain": org.get("domain") or email.split("@")[-1], "basis": "organization", "org_id": org["id"], "at": iso()}})
     store.log(user_id, "org", f"Joined {org['name']}")
+
+
+# -- single sign-on ------------------------------------------------------------------
+
+def on_sso_login(store: Store, user_id: int, email: str, managed_domain: str) -> dict[str, Any] | None:
+    """After a Google or Microsoft sign-in: join the domain's organization if it has automatic joining on.
+
+    ``managed_domain`` is the domain the identity provider says the company
+    controls (Google Workspace ``hd``, or the Microsoft tenant's UPN domain).
+    A verified address isn't enough: a personal account registered on a work
+    address outlives the job. Returns the organization joined, or None.
+    """
+    email = email.strip().lower()
+    domain = email.split("@")[-1]
+    if ("@" not in email or domain in PUBLIC_EMAIL_DOMAINS or managed_domain.strip().lower() != domain
+            or membership(store, user_id)):
+        return None
+    org = next((o for o in store.query("SELECT * FROM cw_orgs WHERE domain = %s ORDER BY id", (domain,))
+                if (o.get("policies") or {}).get("domain_auto_join")), None)
+    if not org:
+        return None
+    row = store.one("SELECT * FROM cw_org_members WHERE org_id = %s AND email = %s", (org["id"], email))
+    if row and row["status"] == "removed":
+        return None  # an admin removed this person; don't let them walk back in
+    if row:
+        store.update("cw_org_members", int(row["id"]), None, {"user_id": user_id, "status": "active", "joined_at": iso()})
+    else:
+        store.insert("cw_org_members", {"org_id": org["id"], "user_id": user_id, "email": email, "role": "member",
+                                        "status": "active", "invited_at": iso(), "joined_at": iso()})
+    _joined(store, user_id, org, email)
     return org
+
+
+def sso_required(store: Store, email: str) -> bool:
+    """Whether this address belongs to an organization that only allows Google/Microsoft sign-in."""
+    rows = store.query("SELECT o.policies FROM cw_org_members m JOIN cw_orgs o ON o.id = m.org_id "
+                       "WHERE m.email = %s AND m.status = 'active'", (email.strip().lower(),))
+    return any((r.get("policies") or {}).get("sso_required") for r in rows)
 
 
 # -- members ----------------------------------------------------------------------

@@ -20,6 +20,7 @@ export default function TeamTab() {
   const [invite, setInvite] = useState({ email: '', role: 'member' });
   const [policies, setPolicies] = useState<any>({});
   const [blocked, setBlocked] = useState('');
+  const [domain, setDomain] = useState('');
   const [msg, setMsg] = useState('');
   const [link, setLink] = useState('');
 
@@ -28,6 +29,7 @@ export default function TeamTab() {
     setOrg(d.org);
     setPolicies(d.org?.policies || {});
     setBlocked((d.org?.policies?.blocked_domains || []).join('\n'));
+    setDomain(d.org?.domain || '');
   };
   useEffect(() => {
     load().catch(() => setOrg(null));
@@ -69,6 +71,7 @@ export default function TeamTab() {
   const allowed: string[] = policies.allowed_models || [];
   const savePolicies = () =>
     run(() => api.patch('/org', {
+      domain,
       policies: { ...policies, blocked_domains: blocked.split(/[\n,]/).map((d) => d.trim()).filter(Boolean) },
     }), 'Saved. Every member’s coworker follows these rules now.');
 
@@ -167,6 +170,21 @@ export default function TeamTab() {
                 </label>
               ))}
             </div>
+          </div>
+          <div className="space-y-2 border-t border-gray-100 dark:border-gray-700/70 pt-4">
+            <p className="text-sm font-medium">Sign-in</p>
+            <input className={`${inputCls} max-w-xs`} disabled={!isAdmin} placeholder="Company domain (e.g. acme.com)"
+              value={domain} onChange={(e) => setDomain(e.target.value)} />
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" disabled={!isAdmin} checked={!!policies.sso_required}
+                onChange={(e) => setPolicies({ ...policies, sso_required: e.target.checked })} />
+              Members must sign in with Google or Microsoft (no passwords)
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" disabled={!isAdmin} checked={!!policies.domain_auto_join}
+                onChange={(e) => setPolicies({ ...policies, domain_auto_join: e.target.checked })} />
+              Anyone who signs in with Google or Microsoft at {domain ? `@${domain}` : 'your domain'} joins automatically
+            </label>
           </div>
           {isAdmin && <button className={primaryBtn} onClick={savePolicies}>Save rules</button>}
         </Card>
