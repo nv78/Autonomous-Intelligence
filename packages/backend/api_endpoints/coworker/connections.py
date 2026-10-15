@@ -1,4 +1,4 @@
-"""Connect, sync, and disconnect Google and Slack."""
+"""Connect, sync, and disconnect Google, Slack, and HubSpot."""
 from __future__ import annotations
 
 import os
@@ -9,7 +9,7 @@ from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 from api_endpoints.coworker.common import coworker_bp, error, frontend_url, store, uid
 from api_endpoints.coworker.core import refresh_knowledge
-from coworker.connectors import google, slack
+from coworker.connectors import google, hubspot, slack
 from coworker.connectors.base import ConnectorError, decrypt_token, encrypt_token
 from middleware.auth import require_auth
 
@@ -147,6 +147,53 @@ def _save_slack(user_id: int, token: dict[str, Any]) -> None:
 
 # -- Disconnect & sync ------------------------------------------------------
 
+# -- HubSpot ----------------------------------------------------------------
+
+def _save_hubspot(user_id: int, token: dict[str, Any]) -> None:
+    s = store()
+    s.upsert_connection(user_id, "hubspot", account_label=token.get("portal", "HubSpot"), token_enc=encrypt_token(token),
+                        scopes=token.get("scope", ""), status="connected", error="")
+    s.log(user_id, "connection", f"Connected HubSpot ({token.get('portal', '')})")
+
+
+@coworker_bp.post("/connections/hubspot/start")
+@require_auth
+def hubspot_start() -> tuple:
+    if not hubspot.is_configured():
+        return error("HubSpot OAuth isn't configured. Paste a private app token instead, or set HUBSPOT_CLIENT_ID and "
+                     "HUBSPOT_CLIENT_SECRET.", 501, "not_configured")
+    return jsonify({"url": hubspot.auth_url(_state(uid(), "hubspot"))}), 200
+
+
+@coworker_bp.get("/connections/hubspot/callback")
+def hubspot_callback() -> Any:
+    state = _read_state(request.args.get("state", ""), "hubspot")
+    if not state:
+        return _back("hubspot", False, "invalid or expired state")
+    try:
+        token = hubspot.exchange_code(request.args.get("code", ""))
+    except ConnectorError as exc:
+        return _back("hubspot", False, str(exc))
+    _save_hubspot(int(state["uid"]), token)
+    return _back("hubspot", True)
+
+
+@coworker_bp.post("/connections/hubspot/token")
+@require_auth
+def hubspot_token() -> tuple:
+    value = str((request.get_json(silent=True) or {}).get("token", "")).strip()
+    if not value.startswith("pat-"):
+        return error("Paste a HubSpot private app token (it starts with pat-)")
+    if not store().get_coworker(uid()):
+        return error("Set up your coworker first", 404, "not_found")
+    try:
+        token = hubspot.verify_private_token(value)
+    except ConnectorError as exc:
+        return error(str(exc), 400, "invalid_token")
+    _save_hubspot(uid(), token)
+    return jsonify({"connected": True, "portal": token["portal"]}), 200
+
+
 @coworker_bp.delete("/connections/<provider>")
 @require_auth
 def disconnect(provider: str) -> tuple:
@@ -162,6 +209,9 @@ def disconnect(provider: str) -> tuple:
     elif provider == "slack":
         slack.revoke(token)
         purged = s.delete_items(user_id, "slack")
+    elif provider == "hubspot":
+        hubspot.revoke(token)
+        purged = 0  # nothing synced from HubSpot; records stay in the user's CRM
     else:
         purged = s.delete_items(user_id)
     s.delete_connection(user_id, provider)

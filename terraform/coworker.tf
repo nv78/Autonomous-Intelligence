@@ -101,6 +101,17 @@ variable "smtp_url" {
   default     = ""
 }
 
+variable "hubspot_client_id" {
+  type    = string
+  default = ""
+}
+
+variable "hubspot_client_secret" {
+  type      = string
+  sensitive = true
+  default   = ""
+}
+
 variable "sentry_dsn" {
   type      = string
   sensitive = true
@@ -143,12 +154,13 @@ locals {
     { name = "TWIN_S3_SSE", value = "aws:kms" },
     { name = "AWS_REGION", value = var.aws_region },
     { name = "SMTP_FROM", value = var.smtp_from },
+    { name = "HUBSPOT_CLIENT_ID", value = var.hubspot_client_id },
     { name = "COWORKER_RETENTION_DAYS", value = tostring(var.coworker_retention_days) },
   ]
 
   coworker_secrets = [
     for name in ["SLACK_CLIENT_SECRET", "ELEVENLABS_API_KEY", "RECALL_API_KEY", "TAVUS_API_KEY", "PILOT_SLACK_WEBHOOK_URL", "SMTP_URL", "SENTRY_DSN",
-    "ALERT_SLACK_WEBHOOK_URL"] :
+    "ALERT_SLACK_WEBHOOK_URL", "HUBSPOT_CLIENT_SECRET"] :
     { name = name, valueFrom = "${aws_secretsmanager_secret.backend.arn}:${name}::" }
   ]
 }
