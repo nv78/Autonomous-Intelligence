@@ -99,6 +99,8 @@ def domain_of(email: str) -> str:
 
 def is_noise(item: dict[str, Any]) -> bool:
     meta = item.get("meta") or {}
+    if meta.get("notification") or str(item.get("subject") or "").startswith("[Ourogen]"):
+        return True  # our own notification emails
     labels = [str(label) for label in meta.get("labels", []) or []]
     if any(label in ("CATEGORY_PROMOTIONS", "CATEGORY_SOCIAL", "CATEGORY_UPDATES", "SPAM") for label in labels):
         return True
@@ -502,6 +504,7 @@ def stale_threads(store: Store, user_id: int, days: int = 4, max_age_days: int =
         cite({"type": "item", **it}) for it in latest.values()
         if it["direction"] == "outbound" and oldest <= it["occurred_at"] < cutoff
         and (it.get("meta") or {}).get("sent_by") != "coworker"
+        and not is_noise(it)
         and not extract_decision(it.get("body") or "")  # we closed this one ourselves; don't chase it
         and any(w in f"{it['subject']} {it['body']}".lower() for w in ("proposal", "pricing", "pilot", "contract", "next steps", "security"))
     ]

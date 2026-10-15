@@ -12,7 +12,6 @@ from flask import Response, jsonify, request, stream_with_context
 
 from api_endpoints.coworker.common import coworker_bp, error, store, uid
 from coworker import brain, executor, policy, responsibilities
-from coworker.connectors.base import workspace_for
 from coworker.store import iso, parse_iso, utcnow
 from database.db import (
     create_chat,
@@ -249,7 +248,11 @@ def tick() -> tuple:
     return jsonify(run_tick(user_id, force=force)), 200
 
 
-def run_tick(user_id: int, force: bool = False) -> dict[str, Any]:
+def run_tick(user_id: int, force: bool = False, inline_sync: bool = False) -> dict[str, Any]:
+    """One pass of the coworker loop. Web requests queue network sync in the
+    background; only the worker (``inline_sync=True``) syncs in-process."""
+    from coworker import notify, sync_jobs
+
     s = store()
     coworker = s.get_coworker(user_id) or {}
     settings = coworker.get("settings") or {}
@@ -258,19 +261,23 @@ def run_tick(user_id: int, force: bool = False) -> dict[str, Any]:
     if not force and last and (now - last).total_seconds() < TICK_MIN_SECONDS:
         return {"skipped": True}
     settings["last_tick"] = iso(now)
-    synced: dict[str, int] = {}
+    synced: dict[str, Any] = {}
     last_sync = parse_iso(settings.get("last_sync"))
     if coworker.get("mode") == "live" and (force or not last_sync or (now - last_sync).total_seconds() > SYNC_MIN_SECONDS):
-        synced = workspace_for(user_id, s).sync()
         settings["last_sync"] = iso(now)
-        if any(synced.values()):
-            from api_endpoints.coworker.core import refresh_knowledge
-
-            refresh_knowledge(user_id)
+        job = sync_jobs.request(s, user_id)
+        if inline_sync:
+            synced = (sync_jobs.run_job(s, int(job["id"])) or {}).get("counts") or {}
+            coworker = s.get_coworker(user_id) or coworker
+            settings = {**(coworker.get("settings") or {}), "last_tick": iso(now), "last_sync": iso(now)}
+        else:
+            sync_jobs.start(s, job)
+            synced = {"queued": int(job["id"])}
     s.update_coworker(user_id, settings=settings)
     results = responsibilities.run_all(s, user_id) if coworker.get("status") == "active" else []
     due = executor.run_due(s, user_id)
-    return {"synced": synced, "results": results, **due}
+    notified = notify.maybe_notify_approvals(s, user_id)
+    return {"synced": synced, "results": results, "notified": notified, **due}
 
 
 # ---------------------------------------------------------------------------

@@ -10,8 +10,7 @@ from itsdangerous import BadSignature, URLSafeTimedSerializer
 from api_endpoints.coworker.common import coworker_bp, error, frontend_url, store, uid
 from api_endpoints.coworker.core import refresh_knowledge
 from coworker.connectors import google, slack
-from coworker.connectors.base import ConnectorError, decrypt_token, encrypt_token, workspace_for
-from coworker.store import iso
+from coworker.connectors.base import ConnectorError, decrypt_token, encrypt_token
 from middleware.auth import require_auth
 
 STATE_MAX_AGE = 600
@@ -174,12 +173,25 @@ def disconnect(provider: str) -> tuple:
 @coworker_bp.post("/sync")
 @require_auth
 def sync() -> tuple:
+    """Queue a sync and return at once; poll ``GET /sync/status`` for progress."""
+    from coworker import sync_jobs
+
     user_id = uid()
     s = store()
     coworker = s.get_coworker(user_id)
     if not coworker:
         return error("Set up your coworker first", 404, "not_found")
-    counts = workspace_for(user_id, s).sync()
-    knowledge = refresh_knowledge(user_id) if any(counts.values()) or request.args.get("rebuild") else None
-    s.update_coworker(user_id, settings={**(coworker.get("settings") or {}), "last_sync": iso()})
-    return jsonify({"synced": counts, "memory": (knowledge or {}).get("memory")}), 200
+    if coworker.get("mode") != "live":
+        knowledge = refresh_knowledge(user_id) if request.args.get("rebuild") else None
+        return jsonify({"queued": False, **sync_jobs.status(s, user_id), "memory": (knowledge or {}).get("memory")}), 200
+    job = sync_jobs.request(s, user_id, rebuild=bool(request.args.get("rebuild")))
+    sync_jobs.start(s, job)
+    return jsonify({"queued": True, **sync_jobs.status(s, user_id)}), 202
+
+
+@coworker_bp.get("/sync/status")
+@require_auth
+def sync_status() -> tuple:
+    from coworker import sync_jobs
+
+    return jsonify(sync_jobs.status(store(), uid())), 200

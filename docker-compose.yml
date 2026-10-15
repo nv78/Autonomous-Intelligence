@@ -87,6 +87,9 @@ services:
       PILOT_SLACK_WEBHOOK_URL: ${PILOT_SLACK_WEBHOOK_URL:-}
       PILOT_BOOKING_URL: ${PILOT_BOOKING_URL:-}
       PILOT_ADMIN_EMAILS: ${PILOT_ADMIN_EMAILS:-}
+      SMTP_URL: ${SMTP_URL:-}
+      SMTP_FROM: ${SMTP_FROM:-Ourogen <notifications@ourogen.ai>}
+      COWORKER_SYNC_MODE: ${COWORKER_SYNC_MODE:-thread}
     depends_on:
       db:
         condition: service_healthy

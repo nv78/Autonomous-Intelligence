@@ -317,6 +317,9 @@ def _daily_digest(store: Store, user_id: int, resp: dict[str, Any]) -> list[str]
         return []
     d = digest(store, user_id, hours=24)
     store.log(user_id, "digest", d["headline"], {"digest": d})
+    from coworker import notify
+
+    notify.send_digest(store, user_id, d)
     _finish(store, run_id, d["headline"])
     return ["Posted the daily digest"]
 
