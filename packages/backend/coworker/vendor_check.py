@@ -129,6 +129,22 @@ def check_twilio() -> dict[str, str]:
     return _result("Text messages", "ok", f"{sms.service_number()} → {sms.webhook_url()}")
 
 
+def check_chat_bots() -> dict[str, str]:
+    from coworker.connectors import gchat, teams
+
+    on = [name for name, ok in (("Teams", teams.is_configured()), ("Google Chat", gchat.is_configured())) if ok]
+    if not on:
+        return _result("Teams / Google Chat", "skipped", "not configured")
+    if bool(os.environ.get("MICROSOFT_BOT_APP_ID")) != bool(os.environ.get("MICROSOFT_BOT_APP_PASSWORD")):
+        return _result("Teams / Google Chat", "fail", "set both MICROSOFT_BOT_APP_ID and MICROSOFT_BOT_APP_PASSWORD")
+    if teams.is_configured():
+        try:
+            teams._bot_token()
+        except (teams.TeamsError, requests.RequestException) as exc:
+            return _result("Teams / Google Chat", "fail", f"Teams bot credentials rejected: {exc}")
+    return _result("Teams / Google Chat", "ok", " and ".join(on) + " configured")
+
+
 def check_worker() -> dict[str, str]:
     try:
         from coworker import ops
@@ -239,7 +255,7 @@ def check_voiceprint() -> dict[str, str]:
 
 
 CHECKS = [check_anthropic, check_elevenlabs, check_recall, check_tavus, check_google, check_microsoft, check_slack,
-          check_twilio, check_crms, check_smtp, check_s3, check_redis, check_voiceprint, check_public_url, check_worker]
+          check_twilio, check_chat_bots, check_crms, check_smtp, check_s3, check_redis, check_voiceprint, check_public_url, check_worker]
 
 
 def run_all() -> list[dict[str, str]]:

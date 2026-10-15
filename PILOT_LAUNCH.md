@@ -189,6 +189,32 @@ Owners can CC their coworker ("Dana, cc'ing my coworker to find a time") or forw
 3. Set `COWORKER_INBOUND_DOMAIN` (e.g. `coworker.ourogen.ai`) and `COWORKER_INBOUND_TOKEN` (the same token), then restart.
 4. Each owner finds their address in **Settings → Email your coworker**.
 
+## 5d. Microsoft Teams and Google Chat (optional)
+
+The same experience as the Slack bot:
+- the owner's messages are commands, with Approve / Skip buttons;
+- teammates' @mentions are questions;
+- people are matched to owners by email (account email or a connected Google / Microsoft mailbox).
+
+**Teams**
+1. In the [Azure portal](https://portal.azure.com/#create/Microsoft.AzureBot), create an **Azure Bot** (multi-tenant, or single-tenant with `MICROSOFT_BOT_TENANT`).
+2. Set the messaging endpoint to `https://chat.ourogen.ai/api/coworker/teams/messages`, and under **Channels** add **Microsoft Teams**.
+3. Copy the app ID and create a client secret. Set `MICROSOFT_BOT_APP_ID` and `MICROSOFT_BOT_APP_PASSWORD`.
+4. Generate the Teams app manifest with `docker compose exec backend python -m coworker.connectors.teams manifest > manifest.json`.
+5. Zip it with a 192×192 `color.png` and a 32×32 `outline.png`, then upload it in Teams (**Apps → Manage your apps → Upload an app**), or have an admin publish it to the organization.
+6. Each owner sends the bot one direct message. This links their Teams identity and lets the bot DM them when a teammate asks something it can't answer.
+
+**Google Chat**
+1. In [Google Cloud](https://console.cloud.google.com/apis/library/chat.googleapis.com), enable the Google Chat API.
+2. On its **Configuration** page:
+   - choose **HTTP endpoint URL** `https://chat.ourogen.ai/api/coworker/gchat/events`;
+   - set authentication audience to **Project number**;
+   - choose who can use it.
+3. Set `GOOGLE_CHAT_AUDIENCE` to the project number.
+4. People add the app in Chat. Teammates' questions it can't answer reach the owner by email.
+
+`vendor_check` reports `Teams / Google Chat ok` when the bot credentials work.
+
 ## 6. Notifications
 
 | Setting | Purpose |
