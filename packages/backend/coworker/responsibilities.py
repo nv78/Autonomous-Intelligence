@@ -174,13 +174,16 @@ def proposal_payload(text: str) -> dict[str, Any]:
 def _claim(store: Store, user_id: int, resp: dict[str, Any], key: str) -> int | None:
     try:
         return store.insert("cw_runs", {"user_id": user_id, "responsibility_id": resp["id"], "trigger_key": key,
-                                        "status": "running", "created_at": iso()})
+                                        "status": "running", "created_at": iso(), "started_at": iso()})
     except IntegrityError:
         return None
 
 
-def _finish(store: Store, run_id: int, summary: str, status: str = "done") -> None:
-    store.update("cw_runs", run_id, None, {"status": status, "summary": summary})
+def _finish(store: Store, run_id: int, summary: str, status: str = "done", error: str = "") -> None:
+    values = {"status": status, "summary": summary, "finished_at": iso()}
+    if error:
+        values["error"] = error[:2000]
+    store.update("cw_runs", run_id, None, values)
 
 
 def _since(resp: dict[str, Any]) -> str:

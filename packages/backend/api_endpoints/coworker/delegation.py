@@ -211,11 +211,22 @@ def status() -> tuple:
         "SELECT COUNT(*) AS n FROM cw_activity WHERE user_id = %s AND kind IN ('escalation', 'security') AND created_at >= %s",
         (user_id, iso(utcnow().replace(hour=0, minute=0, second=0, microsecond=0))),
     )
+    from coworker import ops
+
     return jsonify({
         "exists": True, "status": coworker["status"], "mode": coworker["mode"],
         "pending": int((pending or {}).get("n") or 0), "attention": int((attention or {}).get("n") or 0),
-        "onboarding": coworker.get("onboarding") or {},
+        "onboarding": coworker.get("onboarding") or {}, "worker": ops.worker_status(store()),
     }), 200
+
+
+@coworker_bp.get("/runs")
+@require_auth
+def list_runs() -> tuple:
+    """Recent runs of responsibilities and scheduled tasks: outcome, duration, attempts, errors."""
+    from coworker import ops
+
+    return jsonify({"runs": ops.recent_runs(store(), uid(), int(request.args.get("limit") or 50))}), 200
 
 
 @coworker_bp.post("/pause")

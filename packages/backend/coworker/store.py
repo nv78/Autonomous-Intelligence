@@ -166,7 +166,20 @@ TABLES: dict[str, str] = {
         status VARCHAR(30) NOT NULL DEFAULT 'done',
         summary {text},
         created_at VARCHAR(40) NOT NULL,
+        started_at VARCHAR(40),
+        finished_at VARCHAR(40),
+        attempts INT NOT NULL DEFAULT 1,
+        error {text},
         UNIQUE (user_id, responsibility_id, trigger_key)
+    """,
+    "cw_worker_heartbeats": """
+        id {pk},
+        worker VARCHAR(120) NOT NULL UNIQUE,
+        started_at VARCHAR(40) NOT NULL,
+        last_tick_at VARCHAR(40) NOT NULL,
+        tick_ms INT NOT NULL DEFAULT 0,
+        users INT NOT NULL DEFAULT 0,
+        errors INT NOT NULL DEFAULT 0
     """,
     "cw_actions": """
         id {pk},
@@ -348,6 +361,16 @@ INDEXES: list[tuple[str, str, str]] = [
 ]
 
 
+# Columns added to tables that already exist in production. CREATE TABLE IF NOT EXISTS
+# won't add them, so ensure_schema runs these and ignores "already there".
+ADDED_COLUMNS: list[tuple[str, str, str]] = [
+    ("cw_runs", "started_at", "VARCHAR(40)"),
+    ("cw_runs", "finished_at", "VARCHAR(40)"),
+    ("cw_runs", "attempts", "INT NOT NULL DEFAULT 1"),
+    ("cw_runs", "error", "{text}"),
+]
+
+
 def ddl(dialect: str) -> list[str]:
     pk = "INTEGER PRIMARY KEY AUTOINCREMENT" if dialect == "sqlite" else "INT AUTO_INCREMENT PRIMARY KEY"
     text = "TEXT" if dialect == "sqlite" else "MEDIUMTEXT"
@@ -360,9 +383,11 @@ def ddl(dialect: str) -> list[str]:
             statements.append(f"CREATE INDEX IF NOT EXISTS {idx} ON {table} ({cols})")
         else:
             statements.append(f"CREATE INDEX {idx} ON {table} ({cols})")
+    statements += [f"ALTER TABLE {table} ADD COLUMN {col} {kind.format(text=text)}" for table, col, kind in ADDED_COLUMNS]
     return statements
 
 
+_DUPLICATE_COLUMN_ERRNO = 1060
 _DUPLICATE_INDEX_ERRNO = 1061
 _DUPLICATE_ENTRY_ERRNO = 1062
 
@@ -422,8 +447,10 @@ class Store:
                 for stmt in ddl(self.dialect):
                     try:
                         cur.execute(stmt)
-                    except Exception as exc:  # pragma: no cover - mysql only
-                        if getattr(exc, "errno", None) != _DUPLICATE_INDEX_ERRNO:
+                    except Exception as exc:
+                        if "duplicate column" in str(exc).lower():
+                            continue  # sqlite: the column is already there
+                        if getattr(exc, "errno", None) not in (_DUPLICATE_INDEX_ERRNO, _DUPLICATE_COLUMN_ERRNO):  # pragma: no cover
                             raise
             Store._initialised.add(key)
 

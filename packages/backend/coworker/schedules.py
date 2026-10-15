@@ -33,6 +33,8 @@ from zoneinfo import ZoneInfo
 from coworker.store import Store, iso, parse_iso, utcnow
 
 GRACE = timedelta(hours=2)
+MAX_ATTEMPTS = 3
+RETRY_AFTER = (timedelta(minutes=2), timedelta(minutes=10))  # before attempts 2 and 3
 FREQS = ("daily", "weekdays", "weekly", "monthly", "hourly")
 DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 DAY_NAMES = {"monday": "mon", "tuesday": "tue", "wednesday": "wed", "thursday": "thu", "friday": "fri",
@@ -257,17 +259,58 @@ def run(store: Store, user_id: int, resp: dict[str, Any], force: bool = False) -
         return []
     if when is None:
         return []
-    run_id = responsibilities._claim(store, user_id, resp, f"{'manual' if force else 'sched'}:{iso(when)}")
+    key = f"{'manual' if force else 'sched'}:{iso(when)}"
+    run_id = responsibilities._claim(store, user_id, resp, key) or _retry(store, user_id, resp, key)
     if not run_id:
         return []
     try:
         answer = execute(store, user_id, resp)
     except Exception as exc:  # one failed run must not stop the others; it's visible in the task's history
-        responsibilities._finish(store, run_id, f"failed: {exc}"[:500], "failed")
-        store.log(user_id, "escalation", f"Scheduled task '{resp['name']}' failed: {exc}", {"responsibility_id": resp["id"]})
+        _failed(store, user_id, resp, run_id, exc)
         return []
     responsibilities._finish(store, run_id, answer["summary"][:500])
     return [f"Ran '{resp['name']}'"]
+
+
+def _retry(store: Store, user_id: int, resp: dict[str, Any], key: str) -> int | None:
+    """Take a failed occurrence back for another attempt once its backoff has passed (atomic, like a claim)."""
+    row = store.one("SELECT * FROM cw_runs WHERE user_id = %s AND responsibility_id = %s AND trigger_key = %s",
+                    (user_id, resp["id"], key))
+    if not row or row["status"] != "retry":
+        return None
+    attempts = int(row.get("attempts") or 1)
+    finished = parse_iso(row.get("finished_at") or "")
+    if attempts >= MAX_ATTEMPTS or (finished and utcnow() - finished < RETRY_AFTER[min(attempts, len(RETRY_AFTER)) - 1]):
+        return None
+    taken = store.execute("UPDATE cw_runs SET status = 'running', attempts = %s, started_at = %s, finished_at = NULL "
+                          "WHERE id = %s AND status = 'retry' AND attempts = %s", (attempts + 1, iso(), row["id"], attempts))
+    return int(row["id"]) if taken else None
+
+
+def _failed(store: Store, user_id: int, resp: dict[str, Any], run_id: int, exc: Exception) -> None:
+    from coworker import responsibilities
+
+    row = store.get("cw_runs", run_id) or {}
+    attempts = int(row.get("attempts") or 1)
+    if attempts < MAX_ATTEMPTS:
+        responsibilities._finish(store, run_id, f"attempt {attempts} failed; retrying", "retry", str(exc))
+        return
+    responsibilities._finish(store, run_id, f"failed after {attempts} attempts: {exc}"[:500], "failed", str(exc))
+    store.log(user_id, "escalation", f"Scheduled task '{resp['name']}' failed {attempts} times: {exc}",
+              {"responsibility_id": resp["id"]})
+    import observability
+    from coworker import notify, push
+
+    observability.alert(f"task_failed:{resp['id']}", "A scheduled task failed every attempt", user_id=user_id,
+                        responsibility_id=resp["id"], error=str(exc)[:300])
+    body = (f"Your scheduled task “{resp['name']}” ({describe(resp.get('trigger_spec') or {}).lower()}) failed "
+            f"{attempts} times:\n\n{exc}\n\nIt will try again at its next scheduled time. Run it now or edit it in "
+            "Coworker → Responsibilities.")
+    try:
+        notify.deliver(store, user_id, f"Scheduled task failed: {resp['name']}", body)
+        push.send(store, user_id, "A scheduled task failed", resp["name"])
+    except Exception as notify_exc:  # telling the owner must not raise from the worker loop
+        observability.capture(notify_exc, where="schedules.notify_failure")
 
 
 def execute(store: Store, user_id: int, resp: dict[str, Any]) -> dict[str, Any]:

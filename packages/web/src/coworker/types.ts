@@ -164,4 +164,5 @@ export interface CoworkerStatus {
   pending?: number;
   attention?: number;
   onboarding?: Record<string, any>;
+  worker?: { status: 'ok' | 'stale' | 'missing'; lastTickAt: string | null; workers: number };
 }

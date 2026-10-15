@@ -157,8 +157,7 @@ def test_paused_failed_and_no_self_scheduling(s):
     s.update_coworker(1, status="active")
     with patch("coworker.schedules.utcnow", return_value=nine), patch("coworker.channels.ask", side_effect=RuntimeError("boom")):
         assert schedules.run(s, 1, resp) == []
-    assert schedules.state(s, 1, resp)["runs"][0]["status"] == "failed"
-    assert any("failed: boom" in a["summary"] for a in s.activity(1, limit=10))
+    assert schedules.state(s, 1, resp)["runs"][0]["status"] == "retry"
 
     ctx = tools.ToolContext(store=s, user_id=1, responsibility=resp)
     result, _ = tools.run("propose_responsibility", {"request": "every day at 9 do it again"}, ctx)
@@ -189,3 +188,49 @@ def test_api_create_list_update_and_run_now(client, auth_headers):
     assert listed[-1]["schedule"]["runs"][0]["status"] == "done"
     with client.application.app_context():
         assert store().query("SELECT trigger_key FROM cw_runs")[-1]["trigger_key"].startswith("manual:")
+
+
+def test_failed_runs_retry_with_backoff_then_alert(s):
+    from contextlib import ExitStack
+    from datetime import timedelta
+
+    from coworker import ops
+
+    resp = _task(s, "Reply to my sales leads")
+    nine = datetime(2026, 1, 5, 14, 5, tzinfo=UTC)
+
+    def clock(minutes: int) -> ExitStack:
+        stack = ExitStack()
+        for target in ("coworker.schedules.utcnow", "coworker.store.utcnow"):
+            stack.enter_context(patch(target, return_value=nine + timedelta(minutes=minutes)))
+        return stack
+
+    with patch("coworker.channels.ask", side_effect=RuntimeError("vendor 503")), \
+            patch("coworker.notify.deliver", return_value="smtp") as mail, patch("coworker.push.send") as push, \
+            patch("observability.alert") as alert:
+        for minute, attempts in ((0, 1), (1, 1), (3, 2), (8, 2), (14, 3), (40, 3)):
+            with clock(minute):
+                schedules.run(s, 1, resp)
+            runs = s.query("SELECT * FROM cw_runs WHERE responsibility_id = %s", (resp["id"],))
+            assert len(runs) == 1 and runs[0]["attempts"] == attempts, minute
+        assert runs[0]["status"] == "failed" and runs[0]["error"] == "vendor 503"
+        assert mail.call_args.args[2] == "Scheduled task failed: Reply to my sales leads" and push.called and alert.called
+    history = ops.recent_runs(s, 1)
+    assert history[0]["attempts"] == 3 and history[0]["status"] == "failed" and history[0]["durationMs"] == 0
+
+    other = _task(s, "Tell me what's on my plate")  # fails once, then succeeds on the retry
+    outcomes = iter([RuntimeError("timeout")])
+
+    def flaky(*a, **k):
+        err = next(outcomes, None)
+        if err:
+            raise err
+        return {"text": "Done.", "summary": "Done.", "actions": [], "chat_id": 55}
+
+    with patch("coworker.channels.ask", side_effect=flaky):
+        with clock(0):
+            schedules.run(s, 1, other)
+        with clock(30):
+            assert schedules.run(s, 1, other) == ["Ran 'Tell me what's on my plate'"]
+    run = s.query("SELECT * FROM cw_runs WHERE responsibility_id = %s", (other["id"],))[0]
+    assert run["status"] == "done" and run["attempts"] == 2

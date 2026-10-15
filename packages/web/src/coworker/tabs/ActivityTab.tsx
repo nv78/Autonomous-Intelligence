@@ -22,11 +22,13 @@ export default function ActivityTab() {
   const [record, setRecord] = useState<any>(null);
   const [open, setOpen] = useState<number | null>(null);
   const [filter, setFilter] = useState('all');
+  const [runs, setRuns] = useState<any[]>([]);
 
   useEffect(() => {
     api.get('/activity', { limit: 300 }).then((d) => setRows(d.activity || []));
     api.get('/digest').then(setDigest);
     api.get('/metrics', { days: 30 }).then(setRecord).catch(() => {});
+    api.get('/runs', { limit: 20 }).then((d) => setRuns(d.runs || [])).catch(() => {});
   }, [version]);
 
   const exportCsv = async () => {
@@ -133,6 +135,23 @@ export default function ActivityTab() {
           </Card>
         )}
       </Section>
+      {runs.length > 0 && (
+        <Section title="Job runs" subtitle="Each time a responsibility or scheduled task ran: outcome, time taken, and retries.">
+          <Card className="divide-y divide-gray-100 dark:divide-gray-700/70">
+            {runs.map((r) => (
+              <div key={r.id} className="px-4 py-2.5 text-sm flex items-start gap-3">
+                <span aria-hidden>{r.status === 'failed' ? '⚠️' : r.status === 'retry' ? '🔁' : r.status === 'running' ? '⏳' : '✓'}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="truncate">{r.responsibility}: <span className="text-gray-500">{r.error && r.status !== 'done' ? r.error : r.summary}</span></p>
+                  <p className="text-xs text-gray-400">
+                    {timeAgo(r.at)}{r.durationMs != null ? ` · ${(r.durationMs / 1000).toFixed(1)}s` : ''}{r.attempts > 1 ? ` · ${r.attempts} attempts` : ''}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </Card>
+        </Section>
+      )}
     </div>
   );
 }

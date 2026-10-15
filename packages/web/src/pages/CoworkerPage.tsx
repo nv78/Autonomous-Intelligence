@@ -82,6 +82,12 @@ export default function CoworkerPage() {
           Your coworker is paused. Nothing will be sent and no responsibilities will run until you resume it.
         </div>
       )}
+      {coworker?.status === 'active' && coworker?.mode === 'live' && status.worker?.status === 'stale' && (
+        <div className="bg-amber-50 dark:bg-amber-500/10 border-b border-amber-200 dark:border-amber-500/30 text-sm text-amber-900 dark:text-amber-200 px-4 py-2 text-center">
+          Your coworker's background worker hasn't checked in recently, so scheduled tasks and responsibilities may be late.
+          Work still runs while this page is open.
+        </div>
+      )}
       <GovernanceBanner />
       <main className="max-w-4xl mx-auto px-4 py-6">{coworker ? <Active /> : <div className="h-40 animate-pulse" />}</main>
     </div>
