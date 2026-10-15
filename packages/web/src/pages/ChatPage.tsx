@@ -1,7 +1,7 @@
 import axios from 'axios';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import remarkGfm from 'remark-gfm';
 import { useAuth, useModel } from '../App';
 import DocThumbnail from '../components/DocThumbnail';
@@ -14,23 +14,24 @@ import { marker, streamCoworkerChat } from '../coworker/api';
 import CoworkerMessage from '../coworker/CoworkerMessage';
 import { useCoworker } from '../coworker/CoworkerContext';
 import HeaderControls from '../coworker/HeaderControls';
+import TodaySidebar from '../coworker/TodaySidebar';
 
 const DELEGATE_PROMPTS = [
-  { title: 'What needs a reply?', prompt: 'What needs a reply?' },
+  { title: 'Reply to my unanswered emails', prompt: 'Reply to my unanswered emails' },
+  { title: 'Take my call with Dana', prompt: 'Join my call with Dana and pitch the pilot, then send me the summary' },
+  { title: 'What did you do today?', prompt: 'What did you do today?' },
   { title: "What's going on with Acme?", prompt: "What's going on with Acme?" },
   { title: 'Prep me for my next meeting', prompt: 'Prep me for my next meeting' },
   { title: 'Handle inbound leads', prompt: 'From now on, handle first replies to inbound sales leads' },
-  { title: 'Reply to Dana', prompt: 'Reply to Dana' },
-  { title: 'Follow up with Sarah', prompt: 'Follow up with Sarah' },
 ];
 
 const LIVE_PROMPTS = [
-  { title: 'What needs a reply?', prompt: 'What needs a reply?' },
+  { title: 'Reply to my unanswered emails', prompt: 'Reply to my unanswered emails' },
+  { title: 'Join my next meeting', prompt: 'Join my next meeting, take notes, and send me the summary' },
+  { title: 'What did you do today?', prompt: 'What did you do today?' },
   { title: 'Prep me for my next meeting', prompt: 'Prep me for my next meeting' },
   { title: "What's on my calendar?", prompt: "What's on my calendar this week?" },
   { title: 'Handle inbound leads', prompt: 'From now on, handle first replies to inbound sales leads' },
-  { title: 'Nudge stalled deals', prompt: 'From now on, nudge deal threads that go quiet' },
-  { title: 'Brief me before meetings', prompt: 'From now on, prep me before every external meeting' },
 ];
 
 interface Message {
@@ -145,7 +146,7 @@ export default function ChatPage() {
   const nav = useNavigate();
   const { token } = useAuth();
   const { model } = useModel();
-  const { coworker, status: coworkerStatus, putActions, loaded: coworkerLoaded } = useCoworker();
+  const { coworker, status: coworkerStatus, putActions, loaded: coworkerLoaded, version: coworkerVersion } = useCoworker();
   const [assistantMode, setAssistantMode] = useState(() => localStorage.getItem('chat_mode') === 'assistant');
   const coworkerMode = !!coworker && !assistantMode;
   const toggleMode = () => {
@@ -157,7 +158,16 @@ export default function ChatPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
+  // Deep link with a prepared delegation, e.g. "Send my coworker" from the Today view.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const prompt = searchParams.get('prompt');
+    if (!prompt) return;
+    setInput(prompt);
+    setSearchParams({}, { replace: true });
+  }, [searchParams.get('prompt')]);
   const [streaming, setStreaming] = useState(false);
+  useEffect(() => { streamingRef.current = streaming; }, [streaming]);
   const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(
     null,
   );
@@ -237,6 +247,19 @@ export default function ChatPage() {
   useEffect(() => {
     loadSessions();
   }, [loadSessions]);
+  // The coworker posts results back into the chat that asked for them (a sent
+  // reply, a finished call). Pick those up while the chat is open.
+  const streamingRef = useRef(false);
+  useEffect(() => {
+    if (!coworkerMode || !sessionId) return;
+    const t = window.setInterval(() => {
+      if (!streamingRef.current && document.visibilityState === 'visible') loadMessages(sessionId);
+    }, 15_000);
+    return () => window.clearInterval(t);
+  }, [coworkerMode, sessionId, loadMessages]);
+  useEffect(() => {
+    if (coworkerMode && sessionId && !streamingRef.current) loadMessages(sessionId);
+  }, [coworkerVersion]);
   useEffect(() => {
     activeChatIdRef.current = sessionId ?? null;
     if (skipNextLoadRef.current) {
@@ -494,6 +517,7 @@ export default function ChatPage() {
             putActions([ev.action]);
             acc += marker({ t: 'action', id: ev.action.id });
           }
+          if (ev.type === 'card' && ev.card === 'meeting' && ev.id) acc += marker({ t: 'meeting', id: ev.id });
           if (ev.type === 'session_id' && !sessionId) {
             skipNextLoadRef.current = true;
             nav(`/app/chat/${ev.session_id}`, { replace: true });
@@ -1156,9 +1180,10 @@ export default function ChatPage() {
           </button>
         </div>
         {sidebarOpen && (
-          <div className="flex-1 overflow-y-auto px-2 space-y-0.5 flex flex-col justify-end">
+          <div className="flex-1 overflow-y-auto px-2 space-y-0.5 flex flex-col">
+            <TodaySidebar onNavigate={() => { if (window.innerWidth < 768) setSidebarOpen(false); }} />
             <p className="px-1 pb-1 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-              Chat History
+              Chats
             </p>
             {sessions.map((s) => (
               <div

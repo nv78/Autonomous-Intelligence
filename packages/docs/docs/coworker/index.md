@@ -10,6 +10,19 @@ Ourogen Coworker is an AI version of you at work. It learns from your email, Sla
 
 It always identifies itself as your AI, and nothing goes out without your approval until you decide otherwise.
 
+## Tell it in chat
+
+The chat is the control plane. Say what you want and the coworker reports back in the same chat:
+
+| You say | It does |
+|---|---|
+| "Reply to my unanswered emails" | Drafts one reply per waiting thread, each a card to approve. After sending, it posts exactly what went out. |
+| "Join my 2pm with Dana and pitch the pilot" | Joins the call (meeting bot or call studio), says it's an AI, follows your context, then posts the summary, lead score, and a drafted follow-up. |
+| "What did you do today?" | Lists calls taken, emails sent, and what's waiting for you. |
+| "From now on, handle inbound leads" | Proposes a standing responsibility for you to confirm. |
+
+The chat sidebar shows **Today**, the work your coworker did, next to your chats. **Coworker → Today** shows one day at a time, with "Send my coworker" for meetings still ahead.
+
 ## How it works
 
 | Layer | What it does | Code |

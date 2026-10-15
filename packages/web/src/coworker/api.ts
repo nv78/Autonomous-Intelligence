@@ -72,7 +72,8 @@ export type Segment =
   | { kind: 'text'; text: string }
   | { kind: 'tool'; name: string; summary: string }
   | { kind: 'action'; id: number }
-  | { kind: 'brief'; title: string };
+  | { kind: 'brief'; title: string }
+  | { kind: 'meeting'; id: number };
 
 export function parseSegments(content: string): Segment[] {
   const segments: Segment[] = [];
@@ -90,6 +91,7 @@ export function parseSegments(content: string): Segment[] {
         if (data.t === 'tool') segments.push({ kind: 'tool', name: data.name, summary: data.summary });
         else if (data.t === 'action') segments.push({ kind: 'action', id: Number(data.id) });
         else if (data.t === 'brief') segments.push({ kind: 'brief', title: data.title || '' });
+        else if (data.t === 'meeting') segments.push({ kind: 'meeting', id: Number(data.id) });
         continue;
       } catch {}
     }

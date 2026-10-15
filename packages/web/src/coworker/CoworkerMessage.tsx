@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import ActionCard from './ActionCard';
+import MeetingCard from './MeetingCard';
 import { parseSegments } from './api';
 import { useCoworker } from './CoworkerContext';
 
@@ -36,6 +37,7 @@ export default function CoworkerMessage({ content, streaming }: { content: strin
         if (seg.kind === 'text') return <ReactMarkdown key={i} remarkPlugins={[remarkGfm]}>{seg.text}</ReactMarkdown>;
         if (seg.kind === 'tool') return <ToolChip key={i} summary={seg.summary} />;
         if (seg.kind === 'action') return <ActionCard key={i} id={seg.id} />;
+        if (seg.kind === 'meeting') return <MeetingCard key={i} id={seg.id} />;
         return null;
       })}
       {streaming && <span className="animate-pulse">▋</span>}
