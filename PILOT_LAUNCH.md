@@ -144,3 +144,25 @@ Leave `COWORKER_ENFORCE_PLANS=0` to run the pilot free. To charge, create the th
 - [ ] A test email approval arrived, and approving it sent the email.
 - [ ] Pausing the coworker stopped a scheduled send.
 - [ ] They're on the Google test-user list, or their Microsoft tenant allows the app.
+
+---
+
+## Appendix: where to get each key
+
+| Setting | Where |
+|---|---|
+| `ANTHROPIC_API_KEY` | [console.anthropic.com → API keys](https://console.anthropic.com/settings/keys) |
+| `OPENAI_API_KEY`, `GEMINI_API_KEY` (optional models) | [platform.openai.com/api-keys](https://platform.openai.com/api-keys), [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey) |
+| `GOOGLE_CLIENT_ID` / `_SECRET` | [Google Cloud → Credentials](https://console.cloud.google.com/apis/credentials). Set up the consent screen and test users at [OAuth consent screen](https://console.cloud.google.com/apis/credentials/consent). Enable the [Gmail](https://console.cloud.google.com/apis/library/gmail.googleapis.com), [Calendar](https://console.cloud.google.com/apis/library/calendar-json.googleapis.com), and [Drive](https://console.cloud.google.com/apis/library/drive.googleapis.com) APIs. |
+| `MICROSOFT_CLIENT_ID` / `_SECRET` | [Azure portal → App registrations](https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade) (or [entra.microsoft.com](https://entra.microsoft.com)) |
+| `SLACK_CLIENT_ID` / `_SECRET` / `SLACK_SIGNING_SECRET` | [api.slack.com/apps](https://api.slack.com/apps). Open your app → **Basic Information** |
+| `RECALL_API_KEY` | [recall.ai](https://www.recall.ai) → dashboard → API keys. Use the API base URL for your workspace's region. |
+| `ELEVENLABS_API_KEY` | [elevenlabs.io → API keys](https://elevenlabs.io/app/settings/api-keys). Voice cloning needs a paid plan. |
+| `TAVUS_API_KEY`, `TAVUS_REPLICA_ID` (optional video avatar) | [platform.tavus.io](https://platform.tavus.io) |
+| `HUBSPOT_CLIENT_ID` / `_SECRET` (optional) | [developers.hubspot.com](https://developers.hubspot.com) → your app. Users can instead paste a private-app token from HubSpot **Settings → Integrations → Private Apps**. |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_*` (optional) | [dashboard.stripe.com/apikeys](https://dashboard.stripe.com/apikeys), [Webhooks](https://dashboard.stripe.com/webhooks), [Products](https://dashboard.stripe.com/products) |
+| `EXPO_ACCESS_TOKEN` (optional) | [expo.dev](https://expo.dev) → account settings → Access tokens |
+| `SMTP_URL` | Any SMTP relay, e.g. [Resend](https://resend.com), [Postmark](https://postmarkapp.com), [SendGrid](https://sendgrid.com). Format: `smtp://user:pass@host:587` |
+| `SENTRY_DSN` | [sentry.io](https://sentry.io) → project → Client Keys (DSN) |
+| `ALERT_SLACK_WEBHOOK_URL`, `PILOT_SLACK_WEBHOOK_URL` | [Slack incoming webhooks](https://api.slack.com/messaging/webhooks) |
+| `JWT_SECRET_KEY`, `PROVIDER_KEY_ENCRYPTION_KEY` | Generate them yourself: `python -c "import secrets; print(secrets.token_urlsafe(48))"` |
