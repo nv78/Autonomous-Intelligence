@@ -153,3 +153,29 @@ def autojoin_skip_submit(token: str) -> Response:
     if autojoin.skip(store(), user_id, event_id):
         return _page("Skipped", f"<h1>Okay, I won't join {title}.</h1>")
     return _page("Too late", f"<h1>I've already joined {title}.</h1><p>Open Calls to watch or take over.</p>", 409)
+
+
+# -- One-tap suggestions from the weekly report -----------------------------------
+
+@coworker_bp.get("/weekly/apply/<token>")
+def weekly_apply_page(token: str) -> Response:
+    from coworker import weekly
+
+    loaded = weekly.read_token(token)
+    if not loaded:
+        return _page("Link expired", "<h1>This link has expired</h1>", 410)
+    _, suggestion = loaded
+    return _page("Confirm", f"""<h1>Do this?</h1><p>{html.escape(str(suggestion.get("text") or ""))}</p>
+<form method="post"><div class="row"><button class="go" name="op" value="yes">Yes, do it</button></div></form>
+<p class="meta">You can change this any time in Settings.</p>""")
+
+
+@coworker_bp.post("/weekly/apply/<token>")
+def weekly_apply_submit(token: str) -> Response:
+    from coworker import weekly
+
+    loaded = weekly.read_token(token)
+    if not loaded:
+        return _page("Link expired", "<h1>This link has expired</h1>", 410)
+    user_id, suggestion = loaded
+    return _page("Done", f"<h1>{html.escape(weekly.apply(store(), user_id, suggestion))}</h1>")
