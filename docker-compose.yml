@@ -93,6 +93,9 @@ services:
       SMTP_URL: ${SMTP_URL:-}
       SMTP_FROM: ${SMTP_FROM:-Ourogen <notifications@ourogen.ai>}
       COWORKER_SYNC_MODE: ${COWORKER_SYNC_MODE:-thread}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      ALERT_SLACK_WEBHOOK_URL: ${ALERT_SLACK_WEBHOOK_URL:-}
+      COWORKER_RETENTION_DAYS: ${COWORKER_RETENTION_DAYS:-180}
     depends_on:
       db:
         condition: service_healthy

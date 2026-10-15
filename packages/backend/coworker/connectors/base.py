@@ -88,6 +88,11 @@ class Workspace:
             except ConnectorError as exc:
                 status = "reauth_required" if exc.code == "reauth_required" else "error"
                 self.store.upsert_connection(self.user_id, provider, status=status, error=str(exc))
+                if status == "error":  # reauth is the user's to fix; other errors are ours
+                    import observability
+
+                    observability.alert(f"sync-error:{provider}:{self.user_id}", f"{provider} sync failed",
+                                        user_id=self.user_id, error=str(exc)[:200])
         return counts
 
     # -- actions ---------------------------------------------------------

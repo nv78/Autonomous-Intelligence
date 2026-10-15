@@ -9,12 +9,19 @@ coworkers that should keep working when nobody has the app open.
 from __future__ import annotations
 
 import argparse
+import os
 import time
 
+import observability
 from app import create_app
+from coworker import retention
+
+PURGE_EVERY_SECONDS = 6 * 3600
+_last_purge = 0.0
 
 
 def run_once() -> int:
+    global _last_purge
     from api_endpoints.coworker.delegation import run_tick
     from coworker import sync_jobs
     from coworker.store import get_store
@@ -24,6 +31,15 @@ def run_once() -> int:
         sync_jobs.run_pending(store)  # syncs queued from the web app (onboarding, "Sync now")
     except Exception as exc:  # pragma: no cover - keep the loop alive
         print(f"[coworker] sync jobs failed: {exc}")
+        observability.capture(exc, where="worker.sync_jobs")
+    if time.monotonic() - _last_purge > PURGE_EVERY_SECONDS or not _last_purge:
+        try:
+            result = retention.purge(store)
+            _last_purge = time.monotonic()
+            if result["items"] or result["transcripts"]:
+                print(f"[coworker] retention: {result}")
+        except Exception as exc:  # pragma: no cover - keep the loop alive
+            observability.capture(exc, where="worker.retention")
     users = [r["user_id"] for r in store.query("SELECT user_id FROM cw_coworkers WHERE status = 'active'")]
     for user_id in users:
         try:
@@ -32,6 +48,7 @@ def run_once() -> int:
                 print(f"[coworker] user {user_id}: {result}")
         except Exception as exc:  # keep going for other users
             print(f"[coworker] user {user_id} failed: {exc}")
+            observability.capture(exc, user_id=user_id, where="worker.run_tick")
     return len(users)
 
 
@@ -40,6 +57,7 @@ def main() -> None:  # pragma: no cover - CLI entrypoint
     parser.add_argument("--once", action="store_true")
     parser.add_argument("--interval", type=int, default=60)
     args = parser.parse_args()
+    os.environ.setdefault("COWORKER_PROCESS", "worker")
     app = create_app()
     with app.app_context():
         while True:
