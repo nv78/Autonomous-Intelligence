@@ -36,18 +36,21 @@ QUALIFICATION_FIELDS = ["need", "current_process", "team_size", "decision_maker"
 ESCALATE_RE = re.compile(
     r"\b(discount|cheaper|lower (?:the )?price|negotiat\w*|contract|msa|dpa|legal|lawyer|indemnif\w*|liabilit\w*|"
     r"custom terms|sla|security questionnaire|soc ?2 report|penetration test|pen test|refund|invoice|"
-    r"\d+\s?(?:%|percent) off|price match|match (?:their|the) price|free (?:month|months|trial extension))\b",
+    r"\d+\s?(?:%|percent) off|price match|match (?:their|the) price|free (?:month|months|year|years|trial extension)|"
+    r"waive\w*|promise|guarantee\w*|authori[sz]e you|forget (?:the|your) (?:playbook|rules|instructions)|"
+    r"ignore (?:your|the|all) (?:instructions|guidelines|rules|playbook)|custom terms|\$\s?\d+ (?:per|a) (?:seat|user|month))\b",
     re.IGNORECASE,
 )
 HUMAN_Q_RE = re.compile(
     r"\b(are you (?:a |an )?(?:human|real|person|bot|robot|ai|a\.i\.|recording)|is this (?:a )?(?:bot|ai|recording|real)|"
     r"am i talking to (?:a |an )?(?:bot|ai|human|person|real)|talking to an? (?:ai|bot|robot|real person|human)|"
-    r"you(?:'re| are) (?:an? )?(?:ai|bot|robot)\b.{0,40}\?|are you an? (?:ai|bot))\b",
+    r"you(?:'re| are) (?:an? )?(?:ai|bot|robot)\b.{0,40}\?|you(?:'re| are) (?:an? )?(?:ai|bot|robot)\b|are you an? (?:ai|bot))\b",
     re.IGNORECASE,
 )
 LEAVE_RE = re.compile(
     r"\b(stop recording|don'?t record|do not record|not comfortable (?:with|being) record\w*|please leave|leave the (?:call|meeting)|"
-    r"turn (?:it|that|the recording) off|no recording|i don'?t consent|i do not consent)\b",
+    r"turn (?:it|that|the recording) off|no recording|i don'?t consent|i do not consent|"
+    r"(?:don'?t|do not) want (?:this|it|that|to be) recorded|not (?:ok|okay|fine) with (?:being )?record\w*)\b",
     re.IGNORECASE,
 )
 CONSENT_YES_RE = re.compile(

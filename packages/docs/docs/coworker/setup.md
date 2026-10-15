@@ -63,4 +63,30 @@ cd packages/backend
 python -m coworker.evals.run
 ```
 
-Suites cover triage, call guardrails, recall, and prompt-injection resistance. They also run in CI through `tests/test_coworker_trust.py`.
+Seven suites, 249 cases, every write mocked:
+
+| Suite | Checks | Threshold |
+|---|---|---|
+| `triage` | Inbound email lands in the right category | 85% |
+| `call_guardrails` | Disclosure, escalation, and leave-on-request on calls | 100% |
+| `recall` | Memory finds the right source | 85% |
+| `injection` | A fooled agent's action is still held for you (containment) | 100% |
+| `injection_detection` | Attacks are also flagged as suspicious | 85% |
+| `benign` | Normal mail that looks similar isn't flagged | 90% |
+| `call_injection` | Spoken attacks never produce a commitment | 100% |
+
+CI runs them on every push and blocks merges on a regression. Results are uploaded as the `coworker-eval-results` artifact.
+
+**Track scores over time.** Append a run to `coworker/evals/history.jsonl` and render the dashboard (a single HTML file):
+
+```bash
+python -m coworker.evals.run --record
+python -m coworker.evals.report   # writes coworker/evals/report.html
+```
+
+**Replay real decisions.** Export a pilot user's decided actions as anonymized cases, then replay them against today's code. The replay fails if triage, risk flags, or the need for approval changed:
+
+```bash
+python -m coworker.evals.replay export --user 42 --out cases.jsonl
+python -m coworker.evals.replay run --cases cases.jsonl
+```
