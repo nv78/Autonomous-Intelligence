@@ -274,6 +274,13 @@ def run_tick(user_id: int, force: bool = False, inline_sync: bool = False) -> di
             sync_jobs.start(s, job)
             synced = {"queued": int(job["id"])}
     s.update_coworker(user_id, settings=settings)
+    from coworker import governance
+
+    if coworker.get("status") == "active" and governance.org_disabled(coworker.get("owner_email") or ""):
+        executor.pause(s, user_id, "your organization turned off AI coworkers")
+        coworker = s.get_coworker(user_id) or coworker
+    if notify.handle_stop_replies(s, user_id):
+        coworker = s.get_coworker(user_id) or coworker
     results = responsibilities.run_all(s, user_id) if coworker.get("status") == "active" else []
     due = executor.run_due(s, user_id)
     notified = notify.maybe_notify_approvals(s, user_id)
@@ -409,3 +416,39 @@ def set_autonomy() -> tuple:
 @require_auth
 def onboarding_suggestions() -> tuple:
     return jsonify({"suggestions": responsibilities.suggestions(store(), uid())}), 200
+
+
+# ---------------------------------------------------------------------------
+# Governance and track record
+# ---------------------------------------------------------------------------
+
+@coworker_bp.get("/governance")
+@require_auth
+def get_governance() -> tuple:
+    from coworker import governance
+
+    return jsonify(governance.status(store(), uid())), 200
+
+
+@coworker_bp.post("/governance/employer")
+@require_auth
+def confirm_employer() -> tuple:
+    from coworker import governance
+
+    data = request.get_json(silent=True) or {}
+    if not data.get("confirm"):
+        return error("Confirm that you're allowed to use an AI coworker at work")
+    try:
+        record = governance.authorize(store(), uid(), str(data.get("basis", "")))
+    except ValueError as exc:
+        return error(str(exc))
+    return jsonify({"employerAuthorized": record, **governance.status(store(), uid())}), 200
+
+
+@coworker_bp.get("/metrics")
+@require_auth
+def get_metrics() -> tuple:
+    from coworker import metrics
+
+    days = min(max(int(request.args.get("days", 30)), 1), 365)
+    return jsonify(metrics.track_record(store(), uid(), days=days)), 200

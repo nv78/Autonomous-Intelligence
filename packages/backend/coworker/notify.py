@@ -149,13 +149,16 @@ def maybe_notify_approvals(store: Store, user_id: int) -> int:
     row_id = _record(store, user_id, "approvals", slot, subject, n)
     if row_id is None:
         return 0
-    lines = [f"• {p['title']}" for p in pending[:15]]
+    from api_endpoints.coworker.email_actions import action_url
+
+    lines = [f"• {p['title']}\n  Review and approve: {action_url(user_id, int(p['id']))}" for p in pending[:15]]
     if n > 15:
         lines.append(f"…and {n - 15} more")
     body = (f"Hi {(coworker.get('owner_name') or 'there').split(' ')[0]},\n\n"
             f"Your AI coworker has {subject.lower()}:\n\n" + "\n".join(lines) +
             f"\n\nReview them: {_app_url('/app/coworker/approvals')}\n\n"
-            "Proposals expire if nobody approves them. Turn these emails off in Settings → Notifications.\n")
+            "Proposals expire if nobody approves them. Reply STOP to pause your coworker. "
+            "Turn these emails off in Settings → Notifications.\n")
     channel = deliver(store, user_id, subject, body)
     store.update("cw_notifications", row_id, user_id, {"channel": channel or "none"})
     if channel:
@@ -181,7 +184,8 @@ def send_digest(store: Store, user_id: int, digest: dict[str, Any]) -> str:
             + section("Waiting for you", digest.get("pending") or [])
             + section("Needs your attention", digest.get("attention") or [])
             + section("Briefs", digest.get("briefs") or [])
-            + f"\nOpen your coworker: {_app_url('/app/coworker/activity')}\n")
+            + f"\nOpen your coworker: {_app_url('/app/coworker/activity')}\n"
+            + "Reply STOP to pause your coworker.\n")
     channel = deliver(store, user_id, "Your daily digest", body)
     store.update("cw_notifications", row_id, user_id, {"channel": channel or "none"})
     return channel
@@ -191,3 +195,41 @@ def history(store: Store, user_id: int, since_hours: int = 24 * 7) -> list[dict[
     since = iso(utcnow() - timedelta(hours=since_hours))
     return store.query("SELECT kind, channel, subject, item_count, sent_at FROM cw_notifications "
                        "WHERE user_id = %s AND sent_at >= %s ORDER BY id DESC", (user_id, since))
+
+
+# -- reply STOP ---------------------------------------------------------------
+
+def _first_line(body: str) -> str:
+    for line in (body or "").splitlines():
+        line = line.strip()
+        if line and not line.startswith(">"):
+            return line
+    return ""
+
+
+def handle_stop_replies(store: Store, user_id: int) -> bool:
+    """Pause the coworker when the owner replies STOP to a notification email."""
+    from coworker import executor
+
+    coworker = store.get_coworker(user_id) or {}
+    owner = (coworker.get("owner_email") or "").lower()
+    if not owner:
+        return False
+    since = iso(utcnow() - timedelta(days=3))
+    rows = store.query(
+        "SELECT id, subject, body FROM cw_items WHERE user_id = %s AND kind = 'email' AND LOWER(author_email) = %s "
+        "AND occurred_at >= %s AND subject LIKE %s ORDER BY id", (user_id, owner, since, f"%{SUBJECT_PREFIX}%"),
+    )
+    paused = False
+    for r in rows:
+        if _first_line(r["body"]).strip(" .!").upper() != "STOP":
+            continue
+        try:
+            store.insert("cw_runs", {"user_id": user_id, "responsibility_id": 0, "trigger_key": f"stop:{r['id']}",
+                                     "status": "done", "created_at": iso()})
+        except IntegrityError:
+            continue  # already handled this reply
+        if (store.get_coworker(user_id) or {}).get("status") == "active":
+            executor.pause(store, user_id, "you replied STOP to a notification email")
+            paused = True
+    return paused

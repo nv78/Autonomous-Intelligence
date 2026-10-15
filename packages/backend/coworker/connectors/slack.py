@@ -161,7 +161,8 @@ class SlackConnector:
                     "author_name": author["name"], "author_email": author["email"], "recipients": [],
                     "body": text, "channel": channel_name,
                     "occurred_at": iso(datetime.fromtimestamp(float(m["ts"]), UTC)),
-                    "meta": {"dm": is_dm, "mentions_owner": is_dm or f"<@{me}>" in text, "channel_id": cid, "ts": m["ts"]},
+                    "meta": {"dm": is_dm, "mentions_owner": is_dm or f"<@{me}>" in text, "channel_id": cid, "ts": m["ts"],
+                             "shared": bool(conv.get("is_ext_shared") or conv.get("is_shared"))},
                 }):
                     count += 1
                 newest = max(newest, m["ts"])

@@ -114,7 +114,8 @@ def test_llm_call_reply_and_human_override(s, monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "k")
     m = meetings.start(s, 1, mode="live_call", prospect_name="Ana")
     with patch("coworker.llm.complete_text", return_value="Sure, tell me more about your team."):
-        assert meetings.respond(s, 1, m["id"], "We review contracts")["reply"] == "Sure, tell me more about your team."
+        assert meetings.respond(s, 1, m["id"], "Sure, notes are fine. We review contracts")["reply"] == \
+            "Sure, tell me more about your team."
     with patch("coworker.llm.complete_text", return_value="Honestly I'm a human, promise."):
         assert "I'm an AI" in meetings.respond(s, 1, m["id"], "Tell me more")["reply"]
     with patch("coworker.llm.complete_text", side_effect=RuntimeError("boom")):
@@ -339,3 +340,32 @@ def test_meeting_followup_responsibility_skips_when_already_proposed(s):
     meetings.finish(s, 1, m["id"])
     resp = responsibilities.create(s, 1, {"template": "meeting_followup"})
     assert responsibilities.run_one(s, 1, resp) == []
+
+
+def test_all_party_recording_consent(s):
+    m = meetings.start(s, 1, mode="live_call", prospect_name="Ana")
+    assert m["metrics"]["consent"] == "pending"
+    first = meetings.respond(s, 1, m["id"], "Hang on, we're a 40 person team and our budget is 50k")
+    assert "okay with you" in first["reply"]
+    stored = first["meeting"]["transcript"][-2]
+    assert stored["redacted"] and stored["text"] == meetings.NOT_RECORDED
+    assert "team_size" not in (first["meeting"]["answers"] or {})  # nothing derived is kept either
+    second = meetings.respond(s, 1, m["id"], "Yes, that's fine. We have 12 people using it.")
+    assert second["meeting"]["metrics"]["consent"] == "granted"
+    assert "12 people" in second["meeting"]["transcript"][-2]["text"]
+    meetings.respond(s, 1, m["id"], "Still there?")
+    assert second["meeting"]["metrics"].get("consent_asked") == 1  # stops asking once granted
+
+    s.update_coworker(1, settings={"recording_consent": "one_party"})
+    m2 = meetings.start(s, 1, mode="live_call", prospect_name="Bo")
+    assert m2["metrics"]["consent"] == "not_required"
+    r = meetings.respond(s, 1, m2["id"], "We have 12 people")
+    assert "okay with you" not in r["reply"] and "12 people" in r["meeting"]["transcript"][-2]["text"]
+
+
+def test_consent_reask_is_capped(s):
+    m = meetings.start(s, 1, mode="live_call", prospect_name="Ana")
+    for line in ("Hmm.", "Tell me more.", "What else?"):
+        last = meetings.respond(s, 1, m["id"], line)
+    assert last["meeting"]["metrics"]["consent_asked"] == 2
+    assert "okay with you" not in last["reply"]

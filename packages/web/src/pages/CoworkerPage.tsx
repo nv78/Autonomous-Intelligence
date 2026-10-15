@@ -2,6 +2,7 @@ import { type ComponentType, useEffect } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import OurogenLogo from '../components/OurogenLogo';
 import { useCoworker } from '../coworker/CoworkerContext';
+import GovernanceBanner from '../coworker/GovernanceBanner';
 import HeaderControls from '../coworker/HeaderControls';
 import ActivityTab from '../coworker/tabs/ActivityTab';
 import ApprovalsTab from '../coworker/tabs/ApprovalsTab';
@@ -77,6 +78,7 @@ export default function CoworkerPage() {
           Your coworker is paused. Nothing will be sent and no responsibilities will run until you resume it.
         </div>
       )}
+      <GovernanceBanner />
       <main className="max-w-4xl mx-auto px-4 py-6">{coworker ? <Active /> : <div className="h-40 animate-pulse" />}</main>
     </div>
   );

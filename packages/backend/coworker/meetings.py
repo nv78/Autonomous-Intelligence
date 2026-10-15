@@ -17,6 +17,9 @@ Guardrails enforced in code, not left to the model:
 * Pricing comes only from the playbook and docs. Discounts, contracts,
   legal, and custom terms are escalated to the user.
 * If anyone objects to recording or asks it to leave, it stops and leaves.
+* All-party recording consent (the default, ``settings.recording_consent``):
+  nothing the other side says is stored until they agree to notes. Before
+  that, their turns are answered live but saved only as a placeholder.
 """
 from __future__ import annotations
 
@@ -47,6 +50,13 @@ LEAVE_RE = re.compile(
     r"turn (?:it|that|the recording) off|no recording|i don'?t consent|i do not consent)\b",
     re.IGNORECASE,
 )
+CONSENT_YES_RE = re.compile(
+    r"^\W*(?:yes|yeah|yep|yup|sure|ok(?:ay)?|fine|go ahead|of course|no problem|absolutely|definitely|please do|"
+    r"all good|sounds good|that'?s (?:fine|ok(?:ay)?|good)|works for me)\b|"
+    r"\b(?:that'?s|it'?s) (?:fine|ok(?:ay)?)\b|\byou can (?:record|take notes)\b|\bnotes are (?:fine|ok(?:ay)?)\b",
+    re.IGNORECASE,
+)
+NOT_RECORDED = "[not recorded: waiting for consent to take notes]"
 PRICING_RE = re.compile(r"\b(pric\w*|cost|how much|per seat|plans?|quote)\b", re.IGNORECASE)
 
 SIMULATED_PROSPECTS: dict[str, dict[str, Any]] = {
@@ -116,6 +126,11 @@ def disclosure_line(store: Store, user_id: int, prospect_name: str = "") -> str:
             f"and I'm taking notes so {first} can follow up. Is that okay with you?")
 
 
+def _all_party(store: Store, user_id: int) -> bool:
+    settings = (store.get_coworker(user_id) or {}).get("settings") or {}
+    return settings.get("recording_consent", "all_party") != "one_party"
+
+
 def start(store: Store, user_id: int, *, mode: str, title: str = "", prospect_name: str = "", company: str = "",
           prospect_email: str = "", meeting_url: str = "", persona: str = "") -> dict[str, Any]:
     if persona in SIMULATED_PROSPECTS:
@@ -128,7 +143,8 @@ def start(store: Store, user_id: int, *, mode: str, title: str = "", prospect_na
         "prospect_company": company, "status": "active",
         "transcript": [{"speaker": "coworker", "text": opener, "at": iso()}],
         "answers": {"prospect_email": prospect_email, "persona": persona},
-        "metrics": {"latencies_ms": [], "escalations": [], "disclosed": True},
+        "metrics": {"latencies_ms": [], "escalations": [], "disclosed": True,
+                    "consent": "pending" if _all_party(store, user_id) else "not_required"},
         "started_at": iso(),
     })
     store.log(user_id, "meeting", f"Started a {mode.replace('_', ' ')}: {title or prospect_name or company}", {"meeting_id": mid})
@@ -302,8 +318,16 @@ def respond(store: Store, user_id: int, meeting_id: int, text: str, speaker: str
         transcript.append({"speaker": "owner", "text": text, "at": iso()})
         store.update("cw_meetings", meeting_id, user_id, {"transcript": transcript})
         return {"reply": "", "meeting": store.get("cw_meetings", meeting_id, user_id), "ended": False}
-    transcript.append({"speaker": "prospect", "text": text, "at": iso()})
-    answers = _extract_answers(text, meeting.get("answers") or {})
+    pending = metrics.get("consent") == "pending"
+    if pending and CONSENT_YES_RE.search(text) and not LEAVE_RE.search(text):
+        metrics["consent"] = "granted"
+        metrics["consent_at"] = iso()
+        pending = False
+    recorded = not pending
+    transcript.append({"speaker": "prospect", "text": text if recorded else NOT_RECORDED, "at": iso(),
+                       **({} if recorded else {"redacted": True})})
+    prior_answers = meeting.get("answers") or {}
+    answers = _extract_answers(text, prior_answers)
     guard = _guardrail_reply(store, user_id, meeting, text)
     kind = "agent"
     if guard:
@@ -320,13 +344,17 @@ def respond(store: Store, user_id: int, meeting_id: int, text: str, speaker: str
             reply = _offline_reply(store, user_id, meeting, text, answers)
     else:
         reply = _offline_reply(store, user_id, meeting, text, answers)
+    if pending and kind != "leave" and int(metrics.get("consent_asked", 0)) < 2:
+        metrics["consent_asked"] = int(metrics.get("consent_asked", 0)) + 1
+        reply = f"{reply.rstrip()} Before I take notes, is it okay with you if I do?"
     # Hard rule: never let a reply claim to be human.
     if re.search(r"\bI(?:'m| am) (?:a )?(?:human|real person|not an ai)\b", reply, re.IGNORECASE):
         reply = "To be clear, I'm an AI coworker, not a person."
     transcript.append({"speaker": "coworker", "text": reply, "at": iso(), "kind": kind})
     latency = int((time.monotonic() - started) * 1000)
     metrics.setdefault("latencies_ms", []).append(latency)
-    values: dict[str, Any] = {"transcript": transcript, "answers": answers, "metrics": metrics}
+    # Without consent, nothing derived from their words is stored either.
+    values: dict[str, Any] = {"transcript": transcript, "answers": answers if recorded else prior_answers, "metrics": metrics}
     ended = kind == "leave"
     if ended:
         metrics["recording_stopped"] = True
