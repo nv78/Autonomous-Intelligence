@@ -268,15 +268,19 @@ def _execute(store: Store, user_id: int, action: dict[str, Any], coworker: dict[
                               payload.get("attendees") or [], payload.get("description", ""))
         return {"external_id": res.external_id, "undo": res.undo}
     if kind == "crm.update":
-        from coworker.connectors import hubspot
+        from coworker.connectors import crm
 
-        crm = hubspot.client_for(store, user_id)
-        pushed = crm.record_call(payload) if crm is not None else None  # first, so a failure records nothing
+        found = crm.client_for(store, user_id)
+        pushed = found[1].record_call(payload) if found else None  # first, so a failure records nothing
         store.insert("cw_memory", {
             "user_id": user_id, "kind": "crm", "subject": payload.get("company", ""), "title": payload.get("summary", "")[:500],
             "detail": str(payload.get("fields") or {}), "occurred_at": iso(), "created_at": iso(),
         })
-        return {"recorded": True, **({"hubspot": pushed} if pushed else {})}
+        if not found or pushed is None:
+            return {"recorded": True}
+        provider, client = found
+        return {"recorded": True, "crm": {"provider": provider, "label": client.label, **pushed},
+                **({"hubspot": pushed} if provider == "hubspot" else {})}
     if kind == "responsibility.create":
         from coworker import responsibilities
 

@@ -85,7 +85,7 @@ def delete_all() -> tuple:
     user_id = uid()
     s = store()
     from coworker import twin
-    from coworker.connectors import google, hubspot, microsoft, slack
+    from coworker.connectors import crm, google, microsoft, slack
     from coworker.connectors.base import decrypt_token
 
     for row in s.list_connections(user_id):
@@ -94,8 +94,8 @@ def delete_all() -> tuple:
             google.revoke(token)
         elif row["provider"] == "slack":
             slack.revoke(token)
-        elif row["provider"] == "hubspot":
-            hubspot.revoke(token)
+        elif row["provider"] in crm.PROVIDERS:
+            crm.revoke(row["provider"], token)
         elif row["provider"] == "microsoft":
             microsoft.revoke(token)
     twin.revoke(s, user_id)

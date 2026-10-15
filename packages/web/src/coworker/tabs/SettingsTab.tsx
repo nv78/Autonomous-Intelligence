@@ -16,12 +16,22 @@ const MAILBOXES = [
   { provider: 'microsoft', label: 'Microsoft 365: Outlook mail and calendar', icon: '📨', sendScope: 'Mail.Send', env: 'MICROSOFT_CLIENT_ID / MICROSOFT_CLIENT_SECRET' },
 ] as const;
 
+const CRMS = [
+  { provider: 'hubspot', label: 'HubSpot CRM', what: 'a note on the contact and company', tokenHint: 'a private app token (pat-…)',
+    placeholder: 'pat-…', valid: (t: string) => t.startsWith('pat-') },
+  { provider: 'salesforce', label: 'Salesforce', what: 'a completed call task on the contact and account', tokenHint: '',
+    placeholder: '', valid: () => false },
+  { provider: 'pipedrive', label: 'Pipedrive', what: 'a note on the person and organization',
+    tokenHint: 'your API token (Pipedrive → Personal preferences → API)', placeholder: 'Pipedrive API token',
+    valid: (t: string) => t.trim().length >= 20 },
+] as const;
+
 export function ConnectionsPanel({ returnTo = '/app/coworker/settings' }: { returnTo?: string }) {
   const { token } = useAuth();
   const { connections, capabilities, coworker, refresh } = useCoworker();
   const api = coworkerApi(token);
   const [slackToken, setSlackToken] = useState('');
-  const [hubspotToken, setHubspotToken] = useState('');
+  const [crmTokens, setCrmTokens] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -55,20 +65,20 @@ export function ConnectionsPanel({ returnTo = '/app/coworker/settings' }: { retu
       setBusy(false);
     }
   };
-  const connectHubspotOAuth = async () => {
+  const connectCrmOAuth = async (provider: string) => {
     try {
       localStorage.setItem('coworker_return_to', returnTo);
-      window.location.href = (await api.post('/connections/hubspot/start')).url;
+      window.location.href = (await api.post(`/connections/${provider}/start`)).url;
     } catch (e) {
       setMsg(errorMessage(e));
     }
   };
-  const saveHubspotToken = async () => {
+  const saveCrmToken = async (c: (typeof CRMS)[number]) => {
     setBusy(true);
     try {
-      const d = await api.post('/connections/hubspot/token', { token: hubspotToken });
-      setMsg(`Connected HubSpot (${d.portal}).`);
-      setHubspotToken('');
+      const d = await api.post(`/connections/${c.provider}/token`, { token: crmTokens[c.provider] || '' });
+      setMsg(`Connected ${c.label} (${d.portal || d.company || ''}).`);
+      setCrmTokens((t) => ({ ...t, [c.provider]: '' }));
       await refresh();
     } catch (e) {
       setMsg(errorMessage(e));
@@ -108,7 +118,6 @@ export function ConnectionsPanel({ returnTo = '/app/coworker/settings' }: { retu
 
   const conn = (p: string) => connections.find((c) => c.provider === p);
   const slack = conn('slack');
-  const hubspot = conn('hubspot');
 
   return (
     <div className="space-y-3">
@@ -180,31 +189,46 @@ export function ConnectionsPanel({ returnTo = '/app/coworker/settings' }: { retu
           </div>
         )}
       </Card>
-      <Card className="p-4">
-        <div className="flex items-center gap-3">
-          <span className="text-xl" aria-hidden>📇</span>
-          <div className="flex-1">
-            <p className="text-sm font-medium">HubSpot CRM</p>
-            <p className="text-xs text-gray-500">
-              {hubspot
-                ? `${hubspot.account} · ${hubspot.status}. Approved CRM updates log a note on the contact and company.`
-                : 'Approved CRM updates from calls go here. Connect with OAuth, or paste a private app token (pat-…).'}
-            </p>
-            {hubspot?.error && <p className="text-xs text-red-500 mt-1">{hubspot.error}</p>}
-          </div>
-          {hubspot ? (
-            <button className={ghostBtn} onClick={() => disconnect('hubspot')}>Disconnect</button>
-          ) : capabilities?.hubspot_oauth ? (
-            <button className={primaryBtn} onClick={connectHubspotOAuth}>Connect</button>
-          ) : null}
-        </div>
-        {!hubspot && (
-          <div className="flex gap-2 mt-3">
-            <input className={inputCls} placeholder="pat-…" value={hubspotToken} onChange={(e) => setHubspotToken(e.target.value)} />
-            <button className={ghostBtn} disabled={busy || !hubspotToken.startsWith('pat-')} onClick={saveHubspotToken}>Use token</button>
-          </div>
-        )}
-      </Card>
+      {CRMS.map((c) => {
+        const row = conn(c.provider);
+        const oauth = Boolean(capabilities?.[`${c.provider}_oauth` as 'hubspot_oauth' | 'salesforce_oauth' | 'pipedrive_oauth']);
+        const value = crmTokens[c.provider] || '';
+        return (
+          <Card key={c.provider} className="p-4">
+            <div className="flex items-center gap-3">
+              <span className="text-xl" aria-hidden>📇</span>
+              <div className="flex-1">
+                <p className="text-sm font-medium">{c.label}</p>
+                <p className="text-xs text-gray-500">
+                  {row
+                    ? `${row.account} · ${row.status}. Approved CRM updates log ${c.what}.`
+                    : `Approved CRM updates from calls go here.${c.tokenHint ? ` Connect with OAuth, or paste ${c.tokenHint}.` : ''}`}
+                </p>
+                {row?.error && <p className="text-xs text-red-500 mt-1">{row.error}</p>}
+              </div>
+              {row ? (
+                <div className="flex gap-2">
+                  {row.status === 'reauth_required' && oauth && (
+                    <button className={primaryBtn} onClick={() => connectCrmOAuth(c.provider)}>Reconnect</button>
+                  )}
+                  <button className={ghostBtn} onClick={() => disconnect(c.provider)}>Disconnect</button>
+                </div>
+              ) : oauth ? (
+                <button className={primaryBtn} onClick={() => connectCrmOAuth(c.provider)}>Connect</button>
+              ) : !c.tokenHint ? (
+                <span className="text-xs text-gray-400">Not configured on this server</span>
+              ) : null}
+            </div>
+            {!row && c.tokenHint && (
+              <div className="flex gap-2 mt-3">
+                <input className={inputCls} placeholder={c.placeholder} value={value}
+                  onChange={(e) => setCrmTokens((t) => ({ ...t, [c.provider]: e.target.value }))} />
+                <button className={ghostBtn} disabled={busy || !c.valid(value)} onClick={() => saveCrmToken(c)}>Use token</button>
+              </div>
+            )}
+          </Card>
+        );
+      })}
       {coworker?.mode === 'live' && (
         <button className={ghostBtn} disabled={busy} onClick={syncNow}>Sync now</button>
       )}
