@@ -282,7 +282,8 @@ def _joined(store: Store, user_id: int, org: dict[str, Any], email: str) -> None
 # -- single sign-on ------------------------------------------------------------------
 
 def on_sso_login(store: Store, user_id: int, email: str, managed_domain: str) -> dict[str, Any] | None:
-    """After a Google or Microsoft sign-in: join the domain's organization if it has automatic joining on.
+    """After a Google or Microsoft sign-in: accept a pending invite for this address, or join the
+    domain's organization if it has automatic joining on.
 
     ``managed_domain`` is the domain the identity provider says the company
     controls (Google Workspace ``hd``, or the Microsoft tenant's UPN domain).
@@ -291,8 +292,16 @@ def on_sso_login(store: Store, user_id: int, email: str, managed_domain: str) ->
     """
     email = email.strip().lower()
     domain = email.split("@")[-1]
-    if ("@" not in email or domain in PUBLIC_EMAIL_DOMAINS or managed_domain.strip().lower() != domain
-            or membership(store, user_id)):
+    if "@" not in email or membership(store, user_id):
+        return None
+    invited = store.one("SELECT * FROM cw_org_members WHERE email = %s AND status = 'invited' ORDER BY id LIMIT 1", (email,))
+    if invited:  # an admin (or SCIM) invited this exact, provider-verified address: signing in accepts it
+        store.update("cw_org_members", int(invited["id"]), None, {"user_id": user_id, "status": "active", "joined_at": iso()})
+        org = store.get("cw_orgs", int(invited["org_id"]))
+        assert org is not None
+        _joined(store, user_id, org, email)
+        return org
+    if domain in PUBLIC_EMAIL_DOMAINS or managed_domain.strip().lower() != domain:
         return None
     org = next((o for o in store.query("SELECT * FROM cw_orgs WHERE domain = %s ORDER BY id", (domain,))
                 if (o.get("policies") or {}).get("domain_auto_join")), None)
@@ -392,6 +401,7 @@ def overview(store: Store, user_id: int) -> dict[str, Any] | None:
     return {
         "id": org["id"], "name": org["name"], "domain": org.get("domain") or "", "role": m["role"],
         "policies": org.get("policies") or {}, "members": members, "seats": seats(store, int(org["id"])),
+        "scim": bool(org.get("scim_token_hash")),
     }
 
 

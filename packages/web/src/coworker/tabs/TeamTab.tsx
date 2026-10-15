@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../App';
 import { coworkerApi, errorMessage } from '../api';
+import { API_BASE_URL } from '../../constants/constants';
 import { Card, Empty, Pill, Section, dangerBtn, ghostBtn, inputCls, primaryBtn } from '../ui';
 
 const LEVEL_LABEL: Record<string, string> = {
@@ -23,6 +24,7 @@ export default function TeamTab() {
   const [domain, setDomain] = useState('');
   const [msg, setMsg] = useState('');
   const [link, setLink] = useState('');
+  const [scimToken, setScimToken] = useState('');
 
   const load = async () => {
     const d = await api.get('/org');
@@ -186,6 +188,24 @@ export default function TeamTab() {
                 onChange={(e) => setPolicies({ ...policies, domain_auto_join: e.target.checked })} />
               Anyone who signs in with Google or Microsoft at {domain ? `@${domain}` : 'your domain'} joins automatically
             </label>
+            {isAdmin && (
+              <div className="text-sm space-y-2 pt-1">
+                <p className="font-medium">Provisioning (SCIM) {org.scim && <span className="text-xs text-green-600 font-normal">on</span>}</p>
+                <p className="text-xs text-gray-500">
+                  Let Okta, Microsoft Entra, or another identity provider add and remove people. Base URL:{' '}
+                  <span className="font-mono">{API_BASE_URL}/api/coworker/scim/v2</span>
+                </p>
+                <div className="flex gap-2">
+                  <button className={ghostBtn} onClick={() => run(async () => setScimToken((await api.post('/org/scim-token')).token))}>
+                    {org.scim ? 'Rotate token' : 'Create token'}
+                  </button>
+                  {org.scim && <button className={ghostBtn} onClick={() => confirm('Turn off SCIM? Your identity provider will stop syncing.') && run(() => api.del('/org/scim-token'))}>Turn off</button>}
+                </div>
+                {scimToken && (
+                  <p className="text-xs break-all">Copy it now; it won't be shown again: <span className="font-mono">{scimToken}</span></p>
+                )}
+              </div>
+            )}
           </div>
           {isAdmin && <button className={primaryBtn} onClick={savePolicies}>Save rules</button>}
         </Card>
