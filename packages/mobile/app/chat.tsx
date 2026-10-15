@@ -4,7 +4,7 @@ import {
   StyleSheet, SafeAreaView, KeyboardAvoidingView, Platform,
   ActivityIndicator, Alert
 } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useAppTheme, useAppAuth } from "./_layout";
 import OurogenLogo from "../src/components/OurogenLogo";
 import { getSessions, getSession, deleteSession, getCoworkerStatus, Session, Message } from "../src/api";
@@ -35,6 +35,14 @@ export default function ChatScreen() {
   }, []);
 
   useEffect(() => { loadSessions(); }, [loadSessions]);
+  // Opened from a notification (e.g. "Joining Northwind intro at 2pm"): go straight to that chat.
+  const { session } = useLocalSearchParams<{ session?: string }>();
+  useEffect(() => {
+    if (session) {
+      setActiveSession(String(session));
+      loadMessages(String(session));
+    }
+  }, [session, loadMessages]);
   // With a coworker set up, this chat talks to it: delegate, approve, and see what it did.
   const [coworkerMode, setCoworkerMode] = useState(false);
   useEffect(() => { getCoworkerStatus().then((s) => setCoworkerMode(!!s.exists)).catch(() => {}); }, []);

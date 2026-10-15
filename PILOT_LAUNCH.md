@@ -154,7 +154,7 @@ Leave `COWORKER_ENFORCE_PLANS=0` to run the pilot free. To charge, create the th
 3. The coworker reads 90 days of history and shows what it learned: people, deals, and how they write. Correct anything wrong.
 4. Click **Allow sending** in **Settings**. Keep every autonomy level on **Ask me first** for the first week.
 5. **Twin** tab: record the consent sentence and a short voice sample, so calls can use their voice.
-6. Install the mobile app and sign in, so approvals arrive as notifications with Approve and Reject buttons.
+6. Install the mobile app from TestFlight (iOS) or Play internal testing (Android) and sign in, so approvals arrive as notifications with Approve and Reject buttons. To publish the builds, follow `packages/mobile/README.md`.
 7. Try two hand-offs in chat:
    - *"Reply to my unanswered emails from today."* It drafts the replies and asks for approval. After sending, it posts exactly what went out.
    - *"Join my next call and qualify them."*
