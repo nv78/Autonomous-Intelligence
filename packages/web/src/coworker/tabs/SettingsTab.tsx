@@ -4,6 +4,7 @@ import { coworkerApi, errorMessage, timeAgo } from '../api';
 import { useCoworker } from '../CoworkerContext';
 import { Card, Pill, Section, dangerBtn, ghostBtn, inputCls, primaryBtn } from '../ui';
 import TextMessagesCard from '../TextMessagesCard';
+import EmailAddressCard from '../EmailAddressCard';
 
 const LEVEL_HELP: Record<string, string> = {
   suggest: 'Prepare it; I send it myself',
@@ -389,6 +390,8 @@ export default function SettingsTab() {
       </Section>
 
       <TextMessagesCard />
+
+      <EmailAddressCard />
 
       <Section title="Calls" subtitle="How your coworker handles recording on calls.">
         <Card className="p-4">

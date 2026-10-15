@@ -120,8 +120,10 @@ def remember_thread(store: Store, user_id: int, channel: str, key: str, chat_id:
                       (chat_id, user_id, channel, key[:255]))
 
 
-def converse(store: Store, user_id: int, channel: str, key: str, message: str, chat_name: str) -> dict[str, Any]:
+def converse(store: Store, user_id: int, channel: str, key: str, message: str, chat_name: str,
+             show_prompt: str | None = None) -> dict[str, Any]:
     """``ask`` inside the chat that belongs to this outside conversation, so follow-ups have context."""
-    answer = ask(store, user_id, message, chat_id=thread_chat(store, user_id, channel, key), chat_name=chat_name)
+    answer = ask(store, user_id, message, chat_id=thread_chat(store, user_id, channel, key), chat_name=chat_name,
+                 show_prompt=show_prompt)
     remember_thread(store, user_id, channel, key, answer["chat_id"])
     return answer
