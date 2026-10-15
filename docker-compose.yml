@@ -43,7 +43,7 @@ services:
     restart: "no"
     ports:
       - "5000:5000"
-    environment:
+    environment: &backend_env
       APP_ENV: ${APP_ENV:-local}
       IS_PROD: ${IS_PROD:-false}
       DB_HOST: db
@@ -80,6 +80,9 @@ services:
       TAVUS_API_KEY: ${TAVUS_API_KEY:-}
       TAVUS_REPLICA_ID: ${TAVUS_REPLICA_ID:-}
       TWIN_FOLDER: /app/twin
+      TWIN_S3_BUCKET: ${TWIN_S3_BUCKET:-}
+      TWIN_S3_SSE: ${TWIN_S3_SSE:-aws:kms}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
       COWORKER_ENFORCE_PLANS: ${COWORKER_ENFORCE_PLANS:-0}
       STRIPE_PRICE_COWORKER: ${STRIPE_PRICE_COWORKER:-}
       STRIPE_PRICE_COWORKER_CALLS: ${STRIPE_PRICE_COWORKER_CALLS:-}
@@ -109,17 +112,11 @@ services:
       dockerfile: Dockerfile
     restart: "no"
     entrypoint: ["python", "-m", "coworker.worker", "--interval", "60"]
-    environment:
-      DB_HOST: db
-      DB_NAME: ${DB_NAME:-anote}
-      DB_USER: ${DB_USER:-anote}
-      DB_PASSWORD: ${DB_PASSWORD:-anote}
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-secret-change-me}
-      PROVIDER_KEY_ENCRYPTION_KEY: ${PROVIDER_KEY_ENCRYPTION_KEY:-}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      COWORKER_MODEL: ${COWORKER_MODEL:-claude-opus-5-5}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+    # Same settings as the backend: the worker sends email, posts to Slack,
+    # and reads twin files.
+    environment: *backend_env
+    volumes:
+      - twin_data:/app/twin
     depends_on:
       db:
         condition: service_healthy

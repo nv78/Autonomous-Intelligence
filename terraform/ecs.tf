@@ -52,6 +52,29 @@ resource "aws_iam_role" "ecs_task" {
   })
 }
 
+locals {
+  backend_environment = concat([
+    { name = "APP_ENV", value = var.environment },
+    { name = "DB_HOST", value = aws_db_instance.main.address },
+    { name = "DB_NAME", value = var.db_name },
+    { name = "DB_USER", value = var.db_username },
+    { name = "OLLAMA_BASE_URL", value = var.ollama_base_url },
+    { name = "STRIPE_PRICE_BASIC", value = var.stripe_price_basic },
+    { name = "STRIPE_PRICE_PRO", value = var.stripe_price_pro },
+    { name = "STRIPE_PRICE_ENTERPRISE", value = var.stripe_price_enterprise },
+    { name = "GOOGLE_CLIENT_ID", value = var.google_client_id },
+    { name = "GOOGLE_OAUTH_REDIRECT_URI", value = var.google_oauth_redirect_uri },
+    { name = "FRONTEND_URL", value = var.frontend_url },
+  ], local.coworker_environment)
+
+  backend_secrets = concat([
+    for name in [
+      "JWT_SECRET_KEY", "DB_PASSWORD", "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "STRIPE_SECRET_KEY",
+      "STRIPE_WEBHOOK_SECRET", "PROVIDER_KEY_ENCRYPTION_KEY", "GOOGLE_CLIENT_SECRET",
+    ] : { name = name, valueFrom = "${aws_secretsmanager_secret.backend.arn}:${name}::" }
+  ], local.coworker_secrets)
+}
+
 resource "aws_ecs_task_definition" "backend" {
   family                   = "${var.project_name}-backend"
   requires_compatibilities = ["FARGATE"]
@@ -71,30 +94,8 @@ resource "aws_ecs_task_definition" "backend" {
       protocol      = "tcp"
     }]
 
-    environment = [
-      { name = "APP_ENV", value = var.environment },
-      { name = "DB_HOST", value = aws_db_instance.main.address },
-      { name = "DB_NAME", value = var.db_name },
-      { name = "DB_USER", value = var.db_username },
-      { name = "OLLAMA_BASE_URL", value = var.ollama_base_url },
-      { name = "STRIPE_PRICE_BASIC", value = var.stripe_price_basic },
-      { name = "STRIPE_PRICE_PRO", value = var.stripe_price_pro },
-      { name = "STRIPE_PRICE_ENTERPRISE", value = var.stripe_price_enterprise },
-      { name = "GOOGLE_CLIENT_ID", value = var.google_client_id },
-      { name = "GOOGLE_OAUTH_REDIRECT_URI", value = var.google_oauth_redirect_uri },
-      { name = "FRONTEND_URL", value = var.frontend_url },
-    ]
-
-    secrets = [
-      { name = "JWT_SECRET_KEY", valueFrom = "${aws_secretsmanager_secret.backend.arn}:JWT_SECRET_KEY::" },
-      { name = "DB_PASSWORD", valueFrom = "${aws_secretsmanager_secret.backend.arn}:DB_PASSWORD::" },
-      { name = "ANTHROPIC_API_KEY", valueFrom = "${aws_secretsmanager_secret.backend.arn}:ANTHROPIC_API_KEY::" },
-      { name = "OPENAI_API_KEY", valueFrom = "${aws_secretsmanager_secret.backend.arn}:OPENAI_API_KEY::" },
-      { name = "STRIPE_SECRET_KEY", valueFrom = "${aws_secretsmanager_secret.backend.arn}:STRIPE_SECRET_KEY::" },
-      { name = "STRIPE_WEBHOOK_SECRET", valueFrom = "${aws_secretsmanager_secret.backend.arn}:STRIPE_WEBHOOK_SECRET::" },
-      { name = "PROVIDER_KEY_ENCRYPTION_KEY", valueFrom = "${aws_secretsmanager_secret.backend.arn}:PROVIDER_KEY_ENCRYPTION_KEY::" },
-      { name = "GOOGLE_CLIENT_SECRET", valueFrom = "${aws_secretsmanager_secret.backend.arn}:GOOGLE_CLIENT_SECRET::" },
-    ]
+    environment = local.backend_environment
+    secrets     = local.backend_secrets
 
     logConfiguration = {
       logDriver = "awslogs"
@@ -122,8 +123,8 @@ resource "aws_ecs_service" "backend" {
 
   load_balancer {
     target_group_arn = aws_lb_target_group.backend.arn
-    container_name    = "backend"
-    container_port    = var.backend_container_port
+    container_name   = "backend"
+    container_port   = var.backend_container_port
   }
 
   depends_on = [aws_lb_listener.backend_http]

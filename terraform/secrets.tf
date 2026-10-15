@@ -13,5 +13,10 @@ resource "aws_secretsmanager_secret_version" "backend" {
     STRIPE_WEBHOOK_SECRET       = var.stripe_webhook_secret
     PROVIDER_KEY_ENCRYPTION_KEY = var.provider_key_encryption_key
     GOOGLE_CLIENT_SECRET        = var.google_client_secret
+    SLACK_CLIENT_SECRET         = var.slack_client_secret
+    ELEVENLABS_API_KEY          = var.elevenlabs_api_key
+    RECALL_API_KEY              = var.recall_api_key
+    TAVUS_API_KEY               = var.tavus_api_key
+    PILOT_SLACK_WEBHOOK_URL     = var.pilot_slack_webhook_url
   })
 }
