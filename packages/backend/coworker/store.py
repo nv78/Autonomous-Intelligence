@@ -307,6 +307,12 @@ TABLES: dict[str, str] = {
         prefs {text},
         created_at VARCHAR(40) NOT NULL
     """,
+    "cw_inbound_addresses": """
+        id {pk},
+        user_id INT NOT NULL UNIQUE,
+        handle VARCHAR(64) NOT NULL UNIQUE,
+        created_at VARCHAR(40) NOT NULL
+    """,
     "cw_channel_threads": """
         id {pk},
         user_id INT NOT NULL,

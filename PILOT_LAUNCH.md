@@ -170,6 +170,20 @@ Owners can text the coworker ("what's my next meeting?", "reply to Dana that Tue
 
 Twilio signs each webhook with the full public URL. If the backend sits behind a proxy with a different public URL than `BACKEND_URL`, set `TWILIO_WEBHOOK_URL` to the exact URL configured in Twilio.
 
+## 5c. Email the coworker (natan@coworker.ourogen.ai)
+
+Owners can CC their coworker ("Dana, cc'ing my coworker to find a time") or forward it something with a note. Only mail from the owner's own address that passes SPF or DKIM is acted on.
+
+1. Pick the domain.
+   - **`coworker.ourogen.ai` (recommended)**: addresses are `natan@coworker.ourogen.ai`.
+   - **`ourogen.ai` itself**: only if nothing else receives mail there. Your inbound provider gets *all* mail for the domain, so `natan@ourogen.ai` can't also be a real inbox.
+2. In [Postmark](https://postmarkapp.com) (Servers → your server → Inbound) or [SendGrid Inbound Parse](https://app.sendgrid.com/settings/parse):
+   - add the domain;
+   - set the webhook to `https://chat.ourogen.ai/api/coworker/email/inbound?token=<a long random token>`;
+   - add the MX record they give you to the domain's DNS.
+3. Set `COWORKER_INBOUND_DOMAIN` (e.g. `coworker.ourogen.ai`) and `COWORKER_INBOUND_TOKEN` (the same token), then restart.
+4. Each owner finds their address in **Settings → Email your coworker**.
+
 ## 6. Notifications
 
 | Setting | Purpose |
