@@ -81,6 +81,31 @@ def model_name(user_id: int | None = None) -> str:
     return os.environ.get("COWORKER_MODEL", DEFAULT_MODEL)
 
 
+FAST_MODELS = {"anthropic": "claude-haiku-5-5", "openai": "gpt-4o-mini", "google": "gemini-2.5-flash"}
+
+
+def call_model(user_id: int | None = None) -> str:
+    """The model for live calls, where every second of thinking is dead air.
+
+    ``settings.call_model`` or ``COWORKER_CALL_MODEL`` if set; otherwise the
+    fast sibling of the user's chosen model from the same provider (so the
+    same API key works), or the chosen model itself.
+    """
+    if user_id is not None:
+        try:
+            from coworker.store import get_store
+
+            chosen = ((get_store().get_coworker(user_id) or {}).get("settings") or {}).get("call_model")
+            if chosen:
+                return str(chosen)
+        except Exception:  # pragma: no cover
+            pass
+    if os.environ.get("COWORKER_CALL_MODEL"):
+        return os.environ["COWORKER_CALL_MODEL"]
+    base = model_name(user_id)
+    return FAST_MODELS.get(provider_of(base), base)
+
+
 def key_for(provider: str, user_id: int | None = None) -> str:
     if provider == "ollama":
         return "ollama" if os.environ.get("OLLAMA_BASE_URL") else ""
@@ -118,9 +143,10 @@ def create_message(
     user_id: int | None = None,
     max_tokens: int = 16000,
     effort: str | None = None,
+    model: str | None = None,
 ) -> dict[str, Any]:
     """One Messages API call. Returns the response as a JSON dict."""
-    model = model_name(user_id)
+    model = model or model_name(user_id)
     provider = provider_of(model)
     if provider != "anthropic":
         translated = _openai_compatible(provider, model, system=system, messages=messages, tools=tools,
@@ -252,9 +278,9 @@ def text_of(response: dict[str, Any]) -> str:
 
 
 def complete_text(prompt: str, *, system: str = "You are a precise assistant.", user_id: int | None = None,
-                  max_tokens: int = 4000, effort: str = "low") -> str:
+                  max_tokens: int = 4000, effort: str = "low", model: str | None = None) -> str:
     response = create_message(system=system, messages=[{"role": "user", "content": prompt}],
-                              user_id=user_id, max_tokens=max_tokens, effort=effort)
+                              user_id=user_id, max_tokens=max_tokens, effort=effort, model=model)
     if response.get("stop_reason") == "refusal":
         return ""
     return text_of(response)

@@ -46,6 +46,14 @@ def _call(method: str, path: str, body: dict[str, Any] | None = None) -> dict[st
     return data
 
 
+def transcript_provider() -> dict[str, Any]:
+    """Recall's own streaming transcription in low-latency mode works on every platform with
+    no host settings; ``RECALL_TRANSCRIPT=captions`` uses the platform's captions instead."""
+    if os.environ.get("RECALL_TRANSCRIPT", "low_latency") == "captions":
+        return {"meeting_captions": {}}
+    return {"recallai_streaming": {"mode": "prioritize_low_latency", "language_code": "en"}}
+
+
 def create_bot(meeting_url: str, bot_name: str, disclosure: str, webhook_url: str) -> str:
     body = {
         "meeting_url": meeting_url,
@@ -53,7 +61,7 @@ def create_bot(meeting_url: str, bot_name: str, disclosure: str, webhook_url: st
         "chat": {"on_bot_join": {"send_to": "everyone", "message": disclosure[:500]}},
         "automatic_audio_output": {"in_call_recording": {"data": {"kind": "mp3", "b64_data": SILENT_MP3_B64}}},
         "recording_config": {
-            "transcript": {"provider": {"meeting_captions": {}}},
+            "transcript": {"provider": transcript_provider()},
             "realtime_endpoints": [{"type": "webhook", "url": webhook_url, "events": ["transcript.data"]}],
         },
     }
@@ -62,6 +70,11 @@ def create_bot(meeting_url: str, bot_name: str, disclosure: str, webhook_url: st
 
 def leave(bot_id: str) -> None:
     _call("POST", f"/bot/{bot_id}/leave_call/")
+
+
+def stop_audio(bot_id: str) -> None:
+    """Stop whatever the bot is saying (barge-in)."""
+    _call("DELETE", f"/bot/{bot_id}/output_audio/")
 
 
 def send_chat(bot_id: str, message: str) -> None:

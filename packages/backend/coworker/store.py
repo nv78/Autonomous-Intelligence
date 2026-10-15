@@ -263,6 +263,15 @@ TABLES: dict[str, str] = {
         started_at VARCHAR(40),
         finished_at VARCHAR(40)
     """,
+    "cw_turns": """
+        id {pk},
+        user_id INT NOT NULL,
+        meeting_id INT NOT NULL,
+        text {text},
+        status VARCHAR(20) NOT NULL DEFAULT 'new',
+        claimed_by INT,
+        created_at VARCHAR(40) NOT NULL
+    """,
     "cw_notifications": """
         id {pk},
         user_id INT NOT NULL,
@@ -293,6 +302,7 @@ INDEXES: list[tuple[str, str, str]] = [
     ("idx_cw_activity_user", "cw_activity", "user_id, created_at"),
     ("idx_cw_memory_user", "cw_memory", "user_id, kind"),
     ("idx_cw_sync_jobs_user", "cw_sync_jobs", "user_id, status"),
+    ("idx_cw_turns_meeting", "cw_turns", "meeting_id, status"),
 ]
 
 
