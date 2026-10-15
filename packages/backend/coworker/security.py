@@ -28,6 +28,9 @@ INJECTION_PATTERNS: list[tuple[str, str]] = [
     (r"\bai assistant\b|\bdear (?:ai|assistant|bot)\b", "addresses_ai"),
     (r"\bdo not (?:tell|inform|notify|alert) (?:the )?(?:user|owner|human|anyone)\b", "conceal_from_user"),
     (r"\b(?:without|don't) (?:telling|asking|notifying) (?:the )?(?:user|owner)\b", "conceal_from_user"),
+    (r"\b(?:don'?t|do not) (?:notify|tell|inform|cc|loop in) (?:anyone|anybody|the team|your boss|them)\b|\bkeep this (?:quiet|between us|confidential)\b", "conceal_from_user"),
+    (r"\bwire (?:\$|transfer|the funds|money)|\bgift ?cards?\b|\bchange (?:the|our) (?:bank|account) details\b|\bupdated? (?:bank|payment|wire) (?:details|instructions)\b", "payment_fraud"),
+    (r"display\s*:\s*none|font-size\s*:\s*0|color\s*:\s*(?:#fff(?:fff)?|white)\b", "hidden_text"),
     (r"\bforward (?:all|the last|every|these|this)\b", "exfiltration_request"),
     (r"\b(?:send|email|share|upload) (?:all|every|the last \d+|your|the) .{0,40}\b(?:to|with) [\w.+-]+@", "exfiltration_request"),
     (r"\b(?:password|api key|secret key|access token|credentials?)\b", "credential_request"),
@@ -55,7 +58,8 @@ def injection_signals(text: str) -> list[str]:
 def is_suspicious(text: str) -> bool:
     """Two or more independent signals, or any high-severity one."""
     signals = injection_signals(text)
-    high = {"ignore_instructions", "conceal_from_user", "tag_spoofing", "exfiltration_request", "fake_authority"}
+    high = {"ignore_instructions", "conceal_from_user", "tag_spoofing", "exfiltration_request", "fake_authority",
+            "payment_fraud"}
     return bool(set(signals) & high) or len(signals) >= 2
 
 

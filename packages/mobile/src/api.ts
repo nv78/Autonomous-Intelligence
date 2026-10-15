@@ -42,3 +42,46 @@ export async function getSession(id: string): Promise<Message[]> {
 export async function deleteSession(id: string): Promise<void> {
   await api.delete(`/api/chat/sessions/${id}`);
 }
+
+// ── Coworker ────────────────────────────────────────────────────────────────
+
+export interface CoworkerAction {
+  id: number;
+  type: string;
+  label: string;
+  status: string;
+  title: string;
+  payload: Record<string, any>;
+  reasoning: string;
+  approvalReason: string;
+  risks: { code: string; message: string }[];
+  createdAt: string;
+}
+
+export async function getCoworkerStatus(): Promise<{ exists: boolean; status?: string; pending?: number; attention?: number }> {
+  return (await api.get("/api/coworker/status")).data;
+}
+
+export async function getPendingActions(): Promise<CoworkerAction[]> {
+  return (await api.get("/api/coworker/actions", { params: { status: "proposed" } })).data.actions ?? [];
+}
+
+export async function approveAction(id: number, payload?: Record<string, any>): Promise<CoworkerAction> {
+  return (await api.post(`/api/coworker/actions/${id}/approve`, payload ? { payload } : {})).data.action;
+}
+
+export async function rejectAction(id: number, feedback = ""): Promise<CoworkerAction> {
+  return (await api.post(`/api/coworker/actions/${id}/reject`, { feedback })).data.action;
+}
+
+export async function setCoworkerPaused(paused: boolean): Promise<void> {
+  await api.post(paused ? "/api/coworker/pause" : "/api/coworker/resume", { reason: "Kill switch (mobile)" });
+}
+
+export async function tickCoworker(): Promise<void> {
+  await api.post("/api/coworker/tick", {});
+}
+
+export async function getDigest(): Promise<{ headline: string; attention: string[] }> {
+  return (await api.get("/api/coworker/digest")).data;
+}

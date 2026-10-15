@@ -8,6 +8,7 @@ from api_endpoints.coworker import (  # noqa: F401  (route registration)
     connections,
     core,
     delegation,
+    trust,
 )
 from api_endpoints.coworker.common import coworker_bp
 

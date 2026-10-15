@@ -161,6 +161,9 @@ export default function ChatScreen() {
         <Text style={[styles.headerTitle, { color: theme.text }]} numberOfLines={1}>
           {MODELS.find((m) => m === model)?.split("-").slice(0, 2).join("-") ?? "Ourogen"}
         </Text>
+        <TouchableOpacity onPress={() => router.push("/coworker")} style={styles.headerBtn} accessibilityLabel="Coworker approvals">
+          <Text style={{ fontSize: 20 }}>{"🤖"}</Text>
+        </TouchableOpacity>
         <TouchableOpacity onPress={toggle} style={styles.headerBtn}>
           <Text style={{ fontSize: 20 }}>{dark ? "☀️" : "🌙"}</Text>
         </TouchableOpacity>

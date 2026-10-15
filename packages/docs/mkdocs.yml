@@ -118,6 +118,11 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - Coworker:
+    - Overview: coworker/index.md
+    - Set Up: coworker/setup.md
+    - Trust & Safety: coworker/trust.md
+    - API: coworker/api.md
   - Getting Started:
     - Installation: getting-started/installation.md
     - Quick Start: getting-started/quickstart.md

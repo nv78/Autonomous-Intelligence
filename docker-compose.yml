@@ -75,6 +75,18 @@ services:
       SLACK_CLIENT_ID: ${SLACK_CLIENT_ID:-}
       SLACK_CLIENT_SECRET: ${SLACK_CLIENT_SECRET:-}
       SLACK_REDIRECT_URI: ${SLACK_REDIRECT_URI:-}
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
+      RECALL_API_KEY: ${RECALL_API_KEY:-}
+      TAVUS_API_KEY: ${TAVUS_API_KEY:-}
+      TAVUS_REPLICA_ID: ${TAVUS_REPLICA_ID:-}
+      TWIN_FOLDER: /app/twin
+      COWORKER_ENFORCE_PLANS: ${COWORKER_ENFORCE_PLANS:-0}
+      STRIPE_PRICE_COWORKER: ${STRIPE_PRICE_COWORKER:-}
+      STRIPE_PRICE_COWORKER_CALLS: ${STRIPE_PRICE_COWORKER_CALLS:-}
+      STRIPE_PRICE_COWORKER_TEAM: ${STRIPE_PRICE_COWORKER_TEAM:-}
+      PILOT_SLACK_WEBHOOK_URL: ${PILOT_SLACK_WEBHOOK_URL:-}
+      PILOT_BOOKING_URL: ${PILOT_BOOKING_URL:-}
+      PILOT_ADMIN_EMAILS: ${PILOT_ADMIN_EMAILS:-}
     depends_on:
       db:
         condition: service_healthy
@@ -84,6 +96,30 @@ services:
         condition: service_started
     volumes:
       - backend_uploads:/app/uploads
+      - twin_data:/app/twin
+
+  # Runs every user's coworker loop (responsibilities, scheduled sends) even
+  # when nobody has the web app open.
+  coworker-worker:
+    build:
+      context: ./packages/backend
+      dockerfile: Dockerfile
+    restart: "no"
+    entrypoint: ["python", "-m", "coworker.worker", "--interval", "60"]
+    environment:
+      DB_HOST: db
+      DB_NAME: ${DB_NAME:-anote}
+      DB_USER: ${DB_USER:-anote}
+      DB_PASSWORD: ${DB_PASSWORD:-anote}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-secret-change-me}
+      PROVIDER_KEY_ENCRYPTION_KEY: ${PROVIDER_KEY_ENCRYPTION_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      COWORKER_MODEL: ${COWORKER_MODEL:-claude-opus-5-5}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+    depends_on:
+      db:
+        condition: service_healthy
 
   web:
     build:
@@ -100,3 +136,4 @@ services:
 volumes:
   mysql_data:
   backend_uploads:
+  twin_data:

@@ -178,6 +178,21 @@ export default function SettingsTab() {
   const setLevel = async (type: string, level: string) => {
     setAutonomy(await api.put('/autonomy', { [type]: level }));
   };
+  const exportData = async () => {
+    const data = await api.get('/export');
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'ourogen-coworker-export.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  const deleteAll = async () => {
+    if (!confirm('Delete your coworker? This revokes Google and Slack access and deletes every email, memory, action, call, and twin file it stored. This cannot be undone.')) return;
+    await api.del('/data');
+    await refresh();
+    window.location.href = '/app';
+  };
   const resetDemo = async () => {
     if (!confirm('Reset the demo workspace? This clears actions, activity, and memory and reseeds the demo data.')) return;
     await api.post('/demo/reset');
@@ -236,11 +251,64 @@ export default function SettingsTab() {
         </Card>
       </Section>}
 
+      <PlanSection />
+
+      <Section title="Your data" subtitle="Download everything your coworker stored, or delete it all.">
+        <div className="flex flex-wrap gap-2">
+          <button className={ghostBtn} onClick={exportData}>Download my data (JSON)</button>
+          <button className={dangerBtn} onClick={deleteAll}>Delete my coworker and all its data</button>
+        </div>
+      </Section>
+
       {coworker.mode === 'demo' && (
         <Section title="Demo workspace">
           <button className={dangerBtn} onClick={resetDemo}>Reset demo data</button>
         </Section>
       )}
     </div>
+  );
+}
+
+function PlanSection() {
+  const { token } = useAuth();
+  const api = coworkerApi(token);
+  const [b, setB] = useState<any>(null);
+  const [msg, setMsg] = useState('');
+  useEffect(() => {
+    api.get('/billing').then(setB).catch(() => {});
+  }, []);
+  if (!b) return null;
+  const upgrade = async (plan: string) => {
+    try {
+      window.location.href = (await api.post('/billing/checkout', { plan })).url;
+    } catch (e) {
+      setMsg(errorMessage(e));
+    }
+  };
+  return (
+    <Section title="Plan & usage" subtitle="Prices are early hypotheses. Pilot users are free.">
+      <Card className="p-4 mb-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+        <div><p className="text-lg font-semibold">{b.planName}</p><p className="text-xs text-gray-500">current plan</p></div>
+        <div>
+          <p className={`text-lg font-semibold tabular-nums ${b.warn ? 'text-amber-600' : ''}`}>{b.callMinutes}{b.callMinutesIncluded ? ` / ${b.callMinutesIncluded}` : ''}</p>
+          <p className="text-xs text-gray-500">call minutes this month</p>
+        </div>
+        <div><p className="text-lg font-semibold tabular-nums">{b.actionsExecuted}</p><p className="text-xs text-gray-500">actions completed</p></div>
+        <div><p className="text-lg font-semibold tabular-nums">${b.estimatedCostUsd}</p><p className="text-xs text-gray-500">est. cost to serve</p></div>
+      </Card>
+      <div className="grid gap-3 sm:grid-cols-3">
+        {b.plans.filter((p: any) => p.id !== 'pilot').map((p: any) => (
+          <Card key={p.id} className="p-4 flex flex-col">
+            <p className="text-sm font-medium">{p.name}</p>
+            <p className="text-xl font-semibold mt-1">${p.priceUsd}<span className="text-xs font-normal text-gray-500">/mo</span></p>
+            <p className="text-xs text-gray-500 mt-1 flex-1">{p.features.join(', ').replace(/_/g, ' ')}</p>
+            <button className={`${ghostBtn} mt-3`} disabled={!p.available || b.plan === p.id} onClick={() => upgrade(p.id)}>
+              {b.plan === p.id ? 'Current' : p.available ? 'Upgrade' : 'Coming soon'}
+            </button>
+          </Card>
+        ))}
+      </div>
+      {msg && <p className="text-sm text-red-500 mt-2">{msg}</p>}
+    </Section>
   );
 }
