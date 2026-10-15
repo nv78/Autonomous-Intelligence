@@ -368,6 +368,15 @@ def create_responsibility() -> tuple:
                     "results": results}), 201
 
 
+@coworker_bp.get("/recipes")
+@require_auth
+def list_recipes() -> tuple:
+    """One-click scheduled tasks, with a reason to try each when the user's data suggests it."""
+    from coworker import schedules
+
+    return jsonify({"recipes": schedules.recipes(store(), uid())}), 200
+
+
 @coworker_bp.patch("/responsibilities/<int:resp_id>")
 @require_auth
 def update_responsibility(resp_id: int) -> tuple:

@@ -86,7 +86,8 @@ export default function TeamTab() {
                 {m.usage && (
                   <p className="text-xs text-gray-500">
                     {m.usage.status} · {m.usage.executed} done · {m.usage.acceptance != null ? `${Math.round(m.usage.acceptance * 100)}% approved unedited · ` : ''}
-                    ~{m.usage.hoursSaved}h saved · {m.usage.callMinutes} call min (30 days)
+                    ~{m.usage.hoursSaved}h saved · {m.usage.callMinutes} call min
+                    {m.usage.taskSpendUsd ? ` · $${m.usage.taskSpendUsd.toFixed(2)} scheduled-task AI` : ''} (30 days)
                   </p>
                 )}
               </div>

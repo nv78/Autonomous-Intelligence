@@ -19,10 +19,24 @@ effort level and server-side refusal fallbacks. Override the model with
 """
 from __future__ import annotations
 
+import contextvars
+import json
 import os
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Any
 
 DEFAULT_MODEL = "claude-opus-5-5"
+# USD per million tokens: (input, output, cache read). Anthropic list prices; other providers are
+# unpriced (tokens are still counted) unless COWORKER_MODEL_PRICES='{"gpt-4o": [2.5, 10]}' sets them.
+PRICES_PER_MTOK: dict[str, tuple[float, float, float]] = {
+    "claude-fable-5-1": (10.0, 50.0, 0.25),
+    "claude-opus-5-5": (4.0, 20.0, 0.20),
+    "claude-opus-5": (5.0, 25.0, 0.50),
+    "claude-sonnet-5-5": (2.0, 10.0, 0.20),
+    "claude-haiku-5-5": (0.10, 0.50, 0.01),  # prompts up to 100K tokens
+}
+_usage_scope: contextvars.ContextVar[dict[str, Any] | None] = contextvars.ContextVar("coworker_usage", default=None)
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
 
 
@@ -191,8 +205,50 @@ def create_message(
     return data
 
 
+def price_for(model: str) -> tuple[float, float, float] | None:
+    try:
+        custom = json.loads(os.environ.get("COWORKER_MODEL_PRICES") or "{}")
+    except ValueError:
+        custom = {}
+    if isinstance(custom.get(model), list) and len(custom[model]) >= 2:
+        p = [float(x) for x in custom[model]]
+        return p[0], p[1], p[2] if len(p) > 2 else p[0] / 10
+    return PRICES_PER_MTOK.get(model)
+
+
+@contextmanager
+def metering() -> Iterator[dict[str, Any]]:
+    """Add up tokens and cost for every model call inside the block (one scheduled run, say).
+
+    ``cost_usd`` is None when any call used a model without a known price.
+    """
+    totals: dict[str, Any] = {"input_tokens": 0, "output_tokens": 0, "calls": 0, "cost_usd": 0.0}
+    token = _usage_scope.set(totals)
+    try:
+        yield totals
+    finally:
+        _usage_scope.reset(token)
+
+
+def _add_to_scope(model: str, usage: dict[str, Any]) -> None:
+    totals = _usage_scope.get()
+    if totals is None:
+        return
+    fresh, cached = int(usage.get("input_tokens") or 0), int(usage.get("cache_read_input_tokens") or 0)
+    written, out = int(usage.get("cache_creation_input_tokens") or 0), int(usage.get("output_tokens") or 0)
+    totals["input_tokens"] += fresh + cached + written
+    totals["output_tokens"] += out
+    totals["calls"] += 1
+    price = price_for(model)
+    if price is None or totals["cost_usd"] is None:
+        totals["cost_usd"] = None
+        return
+    totals["cost_usd"] += ((fresh + written * 1.25) * price[0] + cached * price[2] + out * price[1]) / 1_000_000
+
+
 def _meter(user_id: int | None, model: str, data: dict[str, Any]) -> None:
     usage = data.get("usage") or {}
+    _add_to_scope(model, usage)
     try:
         from services.usage import record_usage
 

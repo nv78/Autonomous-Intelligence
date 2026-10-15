@@ -30,14 +30,32 @@ Times are in your time zone (**Settings → Identity & preferences**). 9 AM stay
 
 ## Recipes
 
+**Coworker → Responsibilities → Scheduled tasks** has a gallery of ready-made tasks. Each shows when it runs and an example of what you'd get. Recipes your data suggests come first, with the reason (for example, "7 emails are waiting on you right now"). **Turn on** creates the task, and you can edit its schedule afterwards.
+
 | Recipe | When | What it does |
 |---|---|---|
 | Morning briefing | Weekdays 8:00 | Meetings with prep notes, emails waiting on you, anything overdue |
 | Inbox sweep | Weekdays 10:00 | Drafts replies to emails waiting on you |
+| End-of-day wrap | Weekdays 17:30 | What got done, what's still waiting, what's first tomorrow |
 | Weekly pipeline report | Monday 9:00 | What moved, what's stuck, who to follow up with |
-| Friday status update | Friday 16:00 | Drafts your weekly update to your team |
 | Follow-up check | Thursday 14:00 | People you haven't followed up with, plus a draft nudge each |
-| Month-start review | 1st 9:00 | Last month: meetings, deals, emails handled, time saved |
+| Meeting notes digest | Friday 15:00 | Decisions, action items with owners, follow-ups still unsent |
+| Friday status update | Friday 16:00 | Drafts your weekly update to your team |
+| Month-start review | 1st, 9:00 | Last month: meetings, deals, emails handled, time saved |
+| Investor update draft | 2nd, 10:00 | Highlights, metrics, lowlights, and asks from last month |
+| Overdue invoice reminders | 1st, 10:00 | Polite reminders to clients with overdue invoices |
+
+## What each task costs and saves
+
+Each scheduled task's card shows its last 30 days:
+- runs;
+- AI usage in dollars;
+- actions sent;
+- estimated hours saved: about 5 minutes per report, plus time per email or invite sent.
+
+Team admins see each member's scheduled-task AI spend in **Team**.
+
+Costs use list prices for Claude models. For other providers the card shows usage without a dollar amount, unless your operator sets prices with `COWORKER_MODEL_PRICES`.
 
 ## What happens on each run
 

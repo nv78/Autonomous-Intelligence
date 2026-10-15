@@ -179,8 +179,12 @@ def _claim(store: Store, user_id: int, resp: dict[str, Any], key: str) -> int | 
         return None
 
 
-def _finish(store: Store, run_id: int, summary: str, status: str = "done", error: str = "") -> None:
-    values = {"status": status, "summary": summary, "finished_at": iso()}
+def _finish(store: Store, run_id: int, summary: str, status: str = "done", error: str = "",
+            usage: dict[str, Any] | None = None) -> None:
+    values: dict[str, Any] = {"status": status, "summary": summary, "finished_at": iso()}
+    if usage:
+        values["tokens"] = int(usage.get("input_tokens", 0)) + int(usage.get("output_tokens", 0))
+        values["cost_micros"] = None if usage.get("cost_usd") is None else int(round(usage["cost_usd"] * 1_000_000))
     if error:
         values["error"] = error[:2000]
     store.update("cw_runs", run_id, None, values)

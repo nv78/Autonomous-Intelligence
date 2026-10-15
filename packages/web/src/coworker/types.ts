@@ -102,6 +102,7 @@ export interface TaskSchedule {
   deliver: string[];
   chatId: number | null;
   runs: { at: string; status: string; summary: string }[];
+  usage?: { days: number; runs: number; failed: number; tokens: number; costUsd: number | null; actions: number; executed: number; hoursSaved: number };
 }
 
 export interface Suggestion {
