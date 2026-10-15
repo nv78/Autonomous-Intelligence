@@ -87,11 +87,18 @@ def _scenarios() -> list[dict[str, str]]:
 
 
 def _serialize_connection(c: dict[str, Any]) -> dict[str, Any]:
-    return {
+    out = {
         "provider": c["provider"], "account": c.get("account_label") or "", "status": c["status"],
         "error": c.get("error") or "", "lastSyncedAt": c.get("last_synced_at"),
         "scopes": c.get("scopes") or "",
     }
+    if c["provider"] == "slack":
+        from coworker import slackbot
+        from coworker.connectors.base import decrypt_token
+
+        out["bot"] = bool(decrypt_token(c.get("token_enc")).get("bot_token"))
+        out["botAvailable"] = slackbot.enabled()
+    return out
 
 
 @coworker_bp.post("")

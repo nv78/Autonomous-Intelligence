@@ -53,7 +53,13 @@ def redirect_uri() -> str:
 
 
 def auth_url(state: str) -> str:
-    return f"{AUTH_URL}?{urlencode({'client_id': os.environ.get('SLACK_CLIENT_ID', ''), 'user_scope': ','.join(USER_SCOPES), 'redirect_uri': redirect_uri(), 'state': state})}"
+    from coworker import slackbot
+
+    params = {"client_id": os.environ.get("SLACK_CLIENT_ID", ""), "user_scope": ",".join(USER_SCOPES),
+              "redirect_uri": redirect_uri(), "state": state}
+    if slackbot.enabled():  # also install the @mentionable bot
+        params["scope"] = ",".join(slackbot.BOT_SCOPES)
+    return f"{AUTH_URL}?{urlencode(params)}"
 
 
 def _call(method: str, token: str, http: str = "GET", **params: Any) -> dict[str, Any]:
@@ -84,11 +90,14 @@ def exchange_code(code: str) -> dict[str, Any]:
     if not data.get("ok"):
         raise ConnectorError(f"Slack OAuth failed: {data.get('error', 'unknown')}", "oauth_failed")
     user = data.get("authed_user") or {}
-    return {
+    token = {
         "access_token": user.get("access_token", ""), "scope": user.get("scope", ""),
         "user_id": user.get("id", ""), "team": (data.get("team") or {}).get("name", ""),
         "team_id": (data.get("team") or {}).get("id", ""),
     }
+    if data.get("token_type") == "bot" and data.get("access_token"):
+        token.update(bot_token=data["access_token"], bot_user_id=data.get("bot_user_id", ""))
+    return token
 
 
 def verify_token(token: str) -> dict[str, Any]:
@@ -131,6 +140,11 @@ def message_item(me: str, cid: str, channel_name: str, is_dm: bool, shared: bool
 
 
 def revoke(token: dict[str, Any]) -> None:
+    if token.get("bot_token"):
+        try:
+            _call("auth.revoke", token["bot_token"])
+        except ConnectorError:
+            pass
     if token.get("access_token"):
         try:
             _call("auth.revoke", token["access_token"])

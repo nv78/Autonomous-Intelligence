@@ -170,11 +170,19 @@ export function ConnectionsPanel({ returnTo = '/app/coworker/settings' }: { retu
             <p className="text-xs text-gray-500">
               {slack ? `${slack.account} · ${slack.status}` : 'Connect with OAuth, or paste a user token (xoxp-…) from a Slack app you installed.'}
             </p>
+            {slack?.bot && (
+              <p className="text-xs text-gray-500 mt-1">
+                Bot is on: @mention it in any channel or DM it. Your messages to it are commands; teammates' are questions it answers for you.
+              </p>
+            )}
           </div>
           {slack ? (
             <div className="flex gap-2">
               {slack.status === 'reauth_required' && capabilities?.slack_oauth && (
                 <button className={primaryBtn} onClick={connectSlackOAuth}>Reconnect</button>
+              )}
+              {slack.status !== 'reauth_required' && slack.botAvailable && !slack.bot && capabilities?.slack_oauth && (
+                <button className={primaryBtn} onClick={connectSlackOAuth} title="Reconnect once to add the @mentionable bot">Add the bot</button>
               )}
               <button className={ghostBtn} onClick={() => disconnect('slack')}>Disconnect</button>
             </div>
