@@ -19,5 +19,7 @@ resource "aws_secretsmanager_secret_version" "backend" {
     TAVUS_API_KEY               = var.tavus_api_key
     PILOT_SLACK_WEBHOOK_URL     = var.pilot_slack_webhook_url
     SMTP_URL                    = var.smtp_url
+    SENTRY_DSN                  = var.sentry_dsn
+    ALERT_SLACK_WEBHOOK_URL     = var.alert_slack_webhook_url
   })
 }

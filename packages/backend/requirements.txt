@@ -28,6 +28,8 @@ mysql-connector-python==8.4.0
 bcrypt==4.2.0
 cryptography==43.0.3
 boto3==1.35.54
+redis==5.2.0
+sentry-sdk[flask]==2.18.0
 google-auth==2.35.0
 
 # Payments
@@ -43,6 +45,7 @@ scikit-learn==1.5.2
 # Dev / test
 pytest==8.3.3
 moto[s3]==5.0.18
+fakeredis==2.26.1
 pytest-cov==5.0.0
 pytest-mock==3.14.0
 

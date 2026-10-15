@@ -263,6 +263,10 @@ def run_due(store: Store, user_id: int) -> dict[str, int]:
             code = getattr(exc, "code", "error")
             store.update("cw_actions", action["id"], user_id, {"status": "failed", "error": f"{code}: {exc}"})
             store.log(user_id, "failed", f"Failed: {action['title']} ({exc})", {"code": code}, action_id=action["id"])
+            import observability
+
+            observability.alert(f"action-failed:{user_id}:{code}", "An approved coworker action failed",
+                                user_id=user_id, action_id=action["id"], code=code)
             failed += 1
             continue
         store.update("cw_actions", action["id"], user_id, {"status": "executed", "executed_at": iso(), "result": result})

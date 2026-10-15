@@ -13,6 +13,7 @@ from coworker import billing, blobstore, meetings, twin, voice
 from coworker.connectors import recall, tavus
 from coworker.connectors.base import ConnectorError
 from middleware.auth import require_auth
+from middleware.rate_limit import RateLimiter
 
 PLAYBOOK_KEYS = {"company", "pitch", "icp", "goals", "pricing_notes", "escalate", "self_demo"}
 
@@ -153,15 +154,24 @@ def end_meeting(meeting_id: int) -> tuple:
     return jsonify({"meeting": meetings.serialize(meetings.finish(store(), user_id, meeting_id))}), 200
 
 
+_webhook_ip_limiter = RateLimiter(max_calls=600, period=60, name="recall-ip")
+_webhook_meeting_limiter = RateLimiter(max_calls=120, period=60, name="recall-meeting")
+
+
 @coworker_bp.post("/meetings/recall/webhook")
 def recall_webhook() -> tuple:
     """Real-time transcript from the meeting bot: reply by voice or chat."""
+    ip = request.headers.get("X-Forwarded-For", request.remote_addr or "").split(",")[0].strip()
+    if not _webhook_ip_limiter.is_allowed(ip):
+        return error("rate limited", 429, "rate_limited")
     secret = str(current_app.config.get("JWT_SECRET_KEY") or "dev")
     try:
         token = URLSafeSerializer(secret, salt="recall-webhook").loads(request.args.get("token", ""))
     except BadSignature:
         return error("bad token", 403, "forbidden")
     user_id, meeting_id = int(token["u"]), int(token["m"])
+    if not _webhook_meeting_limiter.is_allowed(f"{user_id}:{meeting_id}"):
+        return error("rate limited", 429, "rate_limited")  # bounds model spend per call
     parsed = recall.parse_transcript_event(request.get_json(silent=True) or {})
     if not parsed or parsed[2]:
         return jsonify({"ok": True}), 200

@@ -46,6 +46,9 @@ def create_app(config: dict[str, object] | None = None) -> Flask:
         from coworker.config import enforce
 
         enforce()
+        import observability
+
+        observability.init("worker" if os.environ.get("COWORKER_PROCESS") == "worker" else "web")
 
     CORS(app, resources={r"/*": {"origins": "*"}})
     JWTManager(app)

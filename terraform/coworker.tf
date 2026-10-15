@@ -101,6 +101,23 @@ variable "smtp_url" {
   default     = ""
 }
 
+variable "sentry_dsn" {
+  type      = string
+  sensitive = true
+  default   = ""
+}
+
+variable "alert_slack_webhook_url" {
+  type      = string
+  sensitive = true
+  default   = ""
+}
+
+variable "coworker_retention_days" {
+  type    = number
+  default = 180
+}
+
 variable "pilot_slack_webhook_url" {
   type      = string
   sensitive = true
@@ -126,10 +143,12 @@ locals {
     { name = "TWIN_S3_SSE", value = "aws:kms" },
     { name = "AWS_REGION", value = var.aws_region },
     { name = "SMTP_FROM", value = var.smtp_from },
+    { name = "COWORKER_RETENTION_DAYS", value = tostring(var.coworker_retention_days) },
   ]
 
   coworker_secrets = [
-    for name in ["SLACK_CLIENT_SECRET", "ELEVENLABS_API_KEY", "RECALL_API_KEY", "TAVUS_API_KEY", "PILOT_SLACK_WEBHOOK_URL", "SMTP_URL"] :
+    for name in ["SLACK_CLIENT_SECRET", "ELEVENLABS_API_KEY", "RECALL_API_KEY", "TAVUS_API_KEY", "PILOT_SLACK_WEBHOOK_URL", "SMTP_URL", "SENTRY_DSN",
+    "ALERT_SLACK_WEBHOOK_URL"] :
     { name = name, valueFrom = "${aws_secretsmanager_secret.backend.arn}:${name}::" }
   ]
 }

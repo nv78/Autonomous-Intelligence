@@ -81,6 +81,9 @@ def run(store: Store, job: dict[str, Any]) -> dict[str, Any]:
     except Exception as exc:  # report, don't crash the worker or thread
         log.exception("sync job %s failed", job["id"])
         _set(store, job["id"], status="error", phase="error", error=str(exc)[:500], finished_at=iso())
+        import observability
+
+        observability.capture(exc, user_id=user_id, job_id=job["id"], where="sync")
         return {"status": "error", "error": str(exc)}
 
 

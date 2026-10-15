@@ -53,6 +53,7 @@ Email, Slack, and call content is wrapped in `<untrusted_content>` before any mo
 
 - OAuth tokens are encrypted at rest (`PROVIDER_KEY_ENCRYPTION_KEY`).
 - Disconnecting revokes the token with the provider and deletes everything synced from it.
+- Synced email, Slack, calendar, and docs are deleted after 180 days, and raw call transcripts after 180 days (call summaries are kept). The activity log is kept for two years as an audit trail.
 - **Download my data** exports everything stored. **Delete my coworker** removes it all.
 - Customer data is not used to train models.
 

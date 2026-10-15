@@ -14,7 +14,7 @@ from coworker.store import iso
 from middleware.auth import require_auth
 from middleware.rate_limit import RateLimiter
 
-_pilot_limiter = RateLimiter(max_calls=5, period=3600)
+_pilot_limiter = RateLimiter(max_calls=5, period=3600, name="pilot")
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 PILOT_FIELDS = ("teamSize", "emailsPerDay", "meetingsPerWeek", "handOff", "tools", "notes", "utm")
 
