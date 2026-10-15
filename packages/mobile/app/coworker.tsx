@@ -165,7 +165,10 @@ export default function CoworkerScreen() {
             <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
               <Text style={[styles.cardTitle, { color: theme.text }]}>{ICON[a.type] || "⚙️"} {a.title}</Text>
               {a.type === "email.send" && (
-                <Text style={{ color: theme.textMuted, fontSize: 12, marginTop: 2 }}>To {(a.payload.to || []).join(", ")}</Text>
+                <Text style={{ color: theme.textMuted, fontSize: 12, marginTop: 2 }}>
+                  To {(a.payload.to || []).join(", ")}
+                  {(a.payload.attachments || []).length ? ` · 📎 ${a.payload.attachments.map((f: any) => f.name).join(", ")}` : ""}
+                </Text>
               )}
               {editing === a.id ? (
                 <TextInput

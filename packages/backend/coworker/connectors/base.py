@@ -128,15 +128,16 @@ class Workspace:
     # -- actions ---------------------------------------------------------
 
     def send_email(self, to: list[str], subject: str, body: str, thread_id: str = "",
-                   cc: list[str] | None = None) -> SendResult:
+                   cc: list[str] | None = None, files: list[Any] | None = None) -> SendResult:
         result: SendResult = self._for_email().send_email(
-            self.store, self.user_id, to=to, subject=subject, body=body, thread_id=thread_id, cc=cc or []
+            self.store, self.user_id, to=to, subject=subject, body=body, thread_id=thread_id, cc=cc or [], files=files or []
         )
         return result
 
-    def create_draft(self, to: list[str], subject: str, body: str, thread_id: str = "") -> SendResult:
+    def create_draft(self, to: list[str], subject: str, body: str, thread_id: str = "",
+                     files: list[Any] | None = None) -> SendResult:
         result: SendResult = self._for_email().create_draft(
-            self.store, self.user_id, to=to, subject=subject, body=body, thread_id=thread_id
+            self.store, self.user_id, to=to, subject=subject, body=body, thread_id=thread_id, files=files or []
         )
         return result
 

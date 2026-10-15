@@ -147,6 +147,11 @@ def edit(store: Store, user_id: int, action_id: int, payload_changes: dict[str, 
                "instruction", "autonomy", "name"}
     before = action.get("payload") or {}
     payload = {**before, **{k: v for k, v in payload_changes.items() if k in allowed}}
+    if "attachments" in payload_changes:  # files can be removed when editing, never added
+        from coworker.attachments import ref_id
+
+        keep = {ref_id(a) for a in payload_changes.get("attachments") or []} - {None}
+        payload["attachments"] = [a for a in before.get("attachments") or [] if ref_id(a) in keep]
     store.update("cw_actions", action_id, user_id, {"payload": payload, "edited": 1})
     old_text = str(before.get("body") or before.get("text") or "")
     new_text = str(payload.get("body") or payload.get("text") or "")
@@ -245,11 +250,15 @@ def _execute(store: Store, user_id: int, action: dict[str, Any], coworker: dict[
         body = payload.get("body", "")
         if footer_needed and disclosure(coworker) not in body:
             body = f"{body.rstrip()}\n\n--\n{disclosure(coworker)}"
+        from coworker import attachments
+
+        files = attachments.files_for(store, user_id, payload.get("attachments") or [])
         if action["autonomy"] == "suggest":
-            res = ws.create_draft(payload.get("to") or [], payload.get("subject", ""), body, payload.get("thread_id", ""))
+            res = ws.create_draft(payload.get("to") or [], payload.get("subject", ""), body, payload.get("thread_id", ""),
+                                  files)
             return {"external_id": res.external_id, "draft": True, "undo": res.undo}
         res = ws.send_email(payload.get("to") or [], payload.get("subject", ""), body, payload.get("thread_id", ""),
-                            payload.get("cc") or [])
+                            payload.get("cc") or [], files)
         return {"external_id": res.external_id, "thread_id": res.thread_id, "undo": res.undo}
     if kind == "slack.post":
         res = ws.post_slack(payload.get("channel", ""), payload.get("text", ""))
