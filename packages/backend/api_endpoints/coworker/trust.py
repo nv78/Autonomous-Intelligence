@@ -31,25 +31,33 @@ def get_billing() -> tuple:
 @coworker_bp.post("/billing/checkout")
 @require_auth
 def coworker_checkout() -> tuple:
-    user_id = uid()
-    plan = (request.get_json(silent=True) or {}).get("plan", "")
-    spec = billing.PLANS.get(plan)
-    if not spec or not spec["price_env"]:
-        return error("Unknown or non-purchasable plan")
-    price_id = os.environ.get(spec["price_env"], "")
-    if not price_id or not os.environ.get("STRIPE_SECRET_KEY"):
-        return error("Billing for this plan isn't configured yet. Pilot users are free.", 501, "not_configured")
-    import stripe
+    """Kept for older clients: same as changing plan."""
+    return change_plan()
 
-    stripe.api_key = os.environ["STRIPE_SECRET_KEY"]
-    session = stripe.checkout.Session.create(
-        mode="subscription",
-        line_items=[{"price": price_id, "quantity": 1}],
-        success_url=f"{frontend_url()}/app/coworker/settings?checkout=success",
-        cancel_url=f"{frontend_url()}/app/coworker/settings?checkout=cancel",
-        metadata={"kind": "coworker_plan", "plan": plan, "user_id": str(user_id)},
-    )
-    return jsonify({"url": session.url}), 200
+
+@coworker_bp.post("/billing/change")
+@require_auth
+def change_plan() -> tuple:
+    """Upgrade, downgrade, or cancel. Returns a Checkout URL when there's no subscription yet."""
+    plan = str((request.get_json(silent=True) or {}).get("plan", ""))
+    if plan == "pilot":
+        return error("The founder pilot is by invitation")
+    try:
+        result = billing.change_plan(store(), uid(), plan)
+    except billing.PlanError as exc:
+        code = 501 if "isn't configured" in str(exc) else 400
+        return error(str(exc), code, "not_configured" if code == 501 else "bad_request")
+    return jsonify({**result, "billing": billing.summary(store(), uid())}), 200
+
+
+@coworker_bp.post("/billing/portal")
+@require_auth
+def billing_portal() -> tuple:
+    try:
+        url = billing.portal_url(store(), uid(), f"{frontend_url()}/app/coworker/settings")
+    except billing.PlanError as exc:
+        return error(str(exc))
+    return jsonify({"url": url}), 200
 
 
 @coworker_bp.get("/export")
