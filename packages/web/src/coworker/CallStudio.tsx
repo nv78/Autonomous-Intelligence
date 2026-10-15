@@ -235,6 +235,14 @@ export default function CallStudio({ meeting: initial, onClose }: { meeting: Mee
 
           <div className="space-y-4">
             <Card className="p-4">
+              {meeting.metrics?.consent === 'pending' && (
+                <p className="mb-3 rounded-lg bg-[#F7F7F8] dark:bg-[#2F2F2F] px-3 py-2 text-xs text-gray-600 dark:text-gray-300">
+                  Notes are off until they agree to them. Their words aren't saved until then.
+                </p>
+              )}
+              {meeting.metrics?.consent === 'granted' && (
+                <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">✓ They agreed to notes.</p>
+              )}
               <div className="space-y-3 max-h-[55vh] overflow-y-auto pr-1">
                 {meeting.transcript.map((t, i) => (
                   <div key={i} className={`flex ${t.speaker === 'coworker' ? '' : 'justify-end'}`}>
@@ -245,7 +253,7 @@ export default function CallStudio({ meeting: initial, onClose }: { meeting: Mee
                         {t.speaker === 'coworker' ? name : meeting.prospectName || 'Them'}
                         {t.kind && t.kind !== 'agent' ? ` · ${t.kind}` : ''}
                       </p>
-                      {t.text}
+                      {(t as any).redacted ? <span className="italic opacity-70">Not recorded (no consent yet)</span> : t.text}
                     </div>
                   </div>
                 ))}

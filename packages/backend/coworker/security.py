@@ -174,6 +174,7 @@ def assess_outbound(
     other_threads_text: str = "",
     owner_email: str = "",
     requested_in_chat: bool = False,
+    external_channel: bool = False,
 ) -> list[dict[str, str]]:
     """Return risk flags for an outbound action. Empty list means low risk.
 
@@ -206,6 +207,10 @@ def assess_outbound(
     leaked_emails = (_emails(content) & _emails(other_threads_text)) - _emails(thread_text) - set(recipients)
     if (leaked or leaked_emails) and not requested_in_chat:
         risks.append({"code": "cross_thread_data", "message": "Includes details from a different conversation."})
+
+    if external_channel:
+        risks.append({"code": "external_channel",
+                      "message": "Posts in a Slack Connect channel shared with another company."})
 
     if action_type.endswith(".delete"):
         risks.append({"code": "destructive", "message": "Deletes data."})

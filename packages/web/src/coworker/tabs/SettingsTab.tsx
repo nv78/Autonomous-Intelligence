@@ -338,6 +338,28 @@ export default function SettingsTab() {
         </Card>
       </Section>
 
+      <Section title="Calls" subtitle="How your coworker handles recording on calls.">
+        <Card className="p-4">
+          <label className="text-sm block">
+            Recording consent
+            <select
+              className={`${inputCls} mt-1`}
+              value={(coworker.settings || {}).recording_consent || 'all_party'}
+              onChange={async (e) => {
+                await api.patch('', { settings: { recording_consent: e.target.value } });
+                await refresh();
+              }}
+            >
+              <option value="all_party">Everyone must agree before I take notes (recommended)</option>
+              <option value="one_party">Disclose and take notes unless someone objects</option>
+            </select>
+          </label>
+          <p className="mt-2 text-xs text-gray-500">
+            California, Illinois, and the EU, among others, require everyone's consent. I always say I'm an AI and leave if asked.
+          </p>
+        </Card>
+      </Section>
+
       <PlanSection />
 
       <Section title="Your data" subtitle="Download everything your coworker stored, or delete it all.">

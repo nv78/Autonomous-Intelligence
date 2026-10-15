@@ -22,12 +22,15 @@ An AI that emails people and joins calls on your behalf has to be trustworthy by
 - Autonomy per action type: `suggest`, `approve` (default), `notify`, `silent`.
 - **Hard floors** force approval whatever the setting: first contact with someone new, pricing/discounts/contracts/payments, details from another conversation, more than 5 recipients, anything triggered by a suspicious message, and deletion (`policy.decide`, `security.assess_outbound`).
 - Changing responsibilities always needs a yes.
+- Posting in a Slack Connect channel (shared with another company) always needs approval.
+- Approval emails link to a confirmation page for each action. Opening the link changes nothing; only pressing Approve or Reject does, so mail scanners can't approve on your behalf. Links expire after 72 hours.
+- If you reply in an email thread yourself, the coworker drops its pending draft for that thread instead of sending a second reply.
 - The coworker only ever *suggests* more autonomy after 20 unedited approvals.
 
 ## 3. You can see and stop everything
 
 - Every proposal, approval, send, failure, and escalation is in the activity log, exportable as CSV.
-- The kill switch pauses all responsibilities and cancels queued sends (`executor.pause`).
+- The kill switch pauses all responsibilities and cancels queued sends (`executor.pause`). Replying **STOP** to any notification or digest email does the same.
 - Emails wait out an undo window (`send_delay_seconds`, 20s by default when live).
 - Incident response: `python -m coworker.admin revoke-all --user <id>` revokes every token.
 
@@ -39,7 +42,7 @@ Email, Slack, and call content is wrapped in `<untrusted_content>` before any mo
 
 - The coworker announces it's taking notes and asks if that's okay.
 - If anyone objects or asks it to leave, it stops recording and leaves (`LEAVE_RE`).
-- Default to all-party consent. Don't send the bot to calls in jurisdictions or contexts where you can't get consent.
+- All-party consent is the default (`recording_consent`). Until the other side agrees, the coworker answers them live but stores only a placeholder for what they said, and nothing derived from it. It asks at most twice. You can switch to one-party consent in Settings where the law allows.
 - Discounts, contracts, legal terms, and security questionnaires are escalated to you, never decided on the call.
 
 ## 6. Your likeness is yours
@@ -59,4 +62,6 @@ Email, Slack, and call content is wrapped in `<untrusted_content>` before any mo
 
 ## 8. At work
 
-If you deploy a coworker for your job, confirm your employer allows it. Enterprise admin controls (SSO, disabling coworkers org-wide) are on the roadmap.
+On a work account (a company email domain), the coworker asks you to confirm that you own the company or your employer allows it. Until you do, it reads and drafts but sends nothing (`governance.needs_employer_ok`).
+
+An employer can ask us to turn coworkers off for their whole domain. We add it to `COWORKER_DISABLED_DOMAINS`, which blocks new coworkers on that domain, pauses existing ones, and refuses approvals. SSO and a self-serve admin console are on the roadmap.

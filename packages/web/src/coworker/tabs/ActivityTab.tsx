@@ -10,7 +10,7 @@ import { Card, Empty, Section, ghostBtn } from '../ui';
 const ICON: Record<string, string> = {
   executed: '✅', proposed: '📝', approved: '👍', rejected: '✋', auto_approved: '⚡', failed: '⚠️', brief: '📋',
   security: '🛡️', escalation: '🙋', digest: '🗞️', paused: '⏸️', resumed: '▶️', setup: '🚀', connection: '🔌',
-  simulation: '🧪', responsibility: '📌', undone: '↩️', autonomy: '🎚️', meeting: '🎙️', twin: '🪞',
+  simulation: '🧪', responsibility: '📌', undone: '↩️', autonomy: '🎚️', meeting: '🎙️', twin: '🪞', edited: '✏️', superseded: '⏭️', notification: '📬', governance: '🏢',
 };
 
 export default function ActivityTab() {
@@ -19,12 +19,14 @@ export default function ActivityTab() {
   const api = coworkerApi(token);
   const [rows, setRows] = useState<ActivityRow[]>([]);
   const [digest, setDigest] = useState<any>(null);
+  const [record, setRecord] = useState<any>(null);
   const [open, setOpen] = useState<number | null>(null);
   const [filter, setFilter] = useState('all');
 
   useEffect(() => {
     api.get('/activity', { limit: 300 }).then((d) => setRows(d.activity || []));
     api.get('/digest').then(setDigest);
+    api.get('/metrics', { days: 30 }).then(setRecord).catch(() => {});
   }, [version]);
 
   const exportCsv = async () => {
@@ -43,8 +45,34 @@ export default function ActivityTab() {
   };
   const shown = filter === 'all' ? rows : rows.filter((r) => groups[filter].includes(r.kind));
 
+  const pct = (v: number | null | undefined) => (v === null || v === undefined ? '—' : `${Math.round(v * 100)}%`);
+
   return (
     <div>
+      {record && record.decided + record.executed + record.calls.count > 0 && (
+        <Card className="p-4 mb-4">
+          <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">Track record · last 30 days</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {[
+              [`~${record.hoursSaved}h`, 'saved', record.hoursSavedNote],
+              [pct(record.acceptance), 'approved without edits', 'Of everything you decided on'],
+              [String(record.executed), 'actions done', `${record.pending} waiting for you`],
+              [String(record.calls.count), 'calls run', `${record.calls.escalations} escalated to you`],
+            ].map(([big, label, hint]) => (
+              <div key={label} title={hint}>
+                <p className="text-2xl font-semibold tabular-nums">{big}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
+              </div>
+            ))}
+          </div>
+          {record.edits.count > 0 && (
+            <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+              When you edit a draft you change about {pct(record.edits.avgChanged)} of it.
+              {record.rejections.recentReasons.length > 0 && ` Recent feedback: “${record.rejections.recentReasons[0]}”.`}
+            </p>
+          )}
+        </Card>
+      )}
       {digest && (
         <Card className="p-4 mb-6">
           <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Last 24 hours</p>
