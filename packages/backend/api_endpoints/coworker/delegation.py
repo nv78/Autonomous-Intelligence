@@ -457,3 +457,15 @@ def get_metrics() -> tuple:
 
     days = min(max(int(request.args.get("days", 30)), 1), 365)
     return jsonify(metrics.track_record(store(), uid(), days=days)), 200
+
+
+@coworker_bp.get("/day")
+@require_auth
+def get_day() -> tuple:
+    """Everything the coworker did on one day (YYYY-MM-DD, default today)."""
+    from coworker import delegate
+
+    date = request.args.get("date") or None
+    if date and not __import__("re").match(r"^\d{4}-\d{2}-\d{2}$", date):
+        return error("date must be YYYY-MM-DD")
+    return jsonify(delegate.day(store(), uid(), date)), 200

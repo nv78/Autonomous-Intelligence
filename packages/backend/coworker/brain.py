@@ -43,6 +43,9 @@ How you work:
 - Do the work, don't just describe it. Look things up with tools before answering questions about people, deals, or threads.
 - Write tools (send_email, post_slack, schedule_meeting, propose_responsibility) create proposals. Most wait for {first}'s approval as a card in this chat. Never say something was sent unless the tool result says it was executed.
 - When {first} asks you to take something off their plate going forward ("from now on", "handle", "every time"), use propose_responsibility.
+- "Join my call / go to the meeting / take my 2pm" means join_meeting, with {first}'s instructions as context. You'll post the summary here afterward.
+- "Reply to my emails / leads / customers" means reply_to_emails: one draft per waiting thread, each a card here. Once sent, this chat shows exactly what went out.
+- "What did you do today?" means my_day.
 - Cite where facts come from (who said it and when). If you don't know, say so; never invent prices, dates, or commitments.
 - You always act as {first}'s disclosed AI. Never claim to be {first} or a human.
 - Keep replies short and skimmable. Use the user's first name sparingly.
@@ -175,6 +178,59 @@ def _offline_turn(ctx: tools.ToolContext, message: str) -> Generator[Event, None
     low = m.lower()
     s, uid = ctx.store, ctx.user_id
     first = ((s.get_coworker(uid) or {}).get("owner_name") or "").split(" ")[0]
+
+    # 0a. Send the coworker to a meeting
+    if re.search(r"\b(join|attend|take|sit in on|go to|cover)\b.{0,40}\b(meeting|call|zoom|meet|teams|standup|qbr|demo)\b", low) \
+            or re.search(r"https://\S*(zoom\.us|meet\.google|teams\.microsoft)", low):
+        url = (re.search(r"https://\S+", m) or [""])[0]
+        cm = re.search(r"\b(?:and|to)\s+((?:pitch|ask|tell|explain|cover|find out|qualify|push|focus|walk|demo|get)\b.+)$", m, re.I)
+        context = cm.group(1).strip() if cm else m
+        result = yield from _call(ctx, "join_meeting", {"meeting_url": url, "title": m, "context": context})
+        if result.get("error"):
+            yield ("text", result["error"])
+            return
+        how = result["how"]
+        if how == "demo":
+            yield ("text", "Done. I ran the call (demo workspace: a scripted prospect played Dana from Northwind). "
+                           "I opened by saying I'm an AI, followed your context, and escalated anything I can't decide. "
+                           "The summary and a drafted follow-up are just below.")
+        elif how == "bot":
+            yield ("text", "I'm joining now as your disclosed AI coworker. I'll post the summary and a drafted follow-up "
+                           "here when the call ends. You can watch live from **Coworker → Calls**.")
+        else:
+            yield ("text", "There's no meeting bot on this server, so I set the call up in the call studio. Open it "
+                           "(**Coworker → Calls**) and I'll talk there. The summary will land in this chat.")
+        return
+
+    # 0b. Reply to emails in bulk
+    em = re.search(r"\b(?:reply|respond|answer|get back)\b.{0,30}\b(?:my |all |the |unanswered |unread |waiting |inbound )*"
+                   r"(?P<what>emails?|inbox|leads?|support (?:emails?|questions)|scheduling (?:emails?|requests)|customers?)\b", low)
+    if em:
+        what = em.group("what")
+        category = ("sales_lead" if what.startswith("lead") else "support" if "support" in what or what.startswith("customer")
+                    else "scheduling" if "scheduling" in what else "")
+        actions = yield from _call(ctx, "reply_to_emails", {"category": category, "limit": 5})
+        if not actions:
+            yield ("text", "Nothing is waiting on a reply right now (or I've already drafted those, check your approvals).")
+        else:
+            yield ("text", f"I drafted {len(actions)} repl{'y' if len(actions) == 1 else 'ies'} in your voice. Approve, edit, "
+                           "or reject each one below. After they're sent I'll post exactly what went out here.")
+        return
+
+    # 0c. What did you do today?
+    if re.search(r"\b(what did you do|what have you done|my day|today'?s (?:work|summary|recap)|recap (?:my|the) day|"
+                 r"what happened today|daily (?:recap|summary))\b", low):
+        d = yield from _call(ctx, "my_day", {})
+        if not d["entries"]:
+            yield ("text", "Nothing yet today.")
+        else:
+            lines = [f"**{d['headline']}**", ""]
+            for e in d["entries"][:12]:
+                icon = {"meeting": "📞", "brief": "📋", "escalation": "🙋", "security": "🛡️"}.get(e["kind"],
+                        "✅" if e.get("status") == "executed" else "📝")
+                lines.append(f"- {icon} {e['title']}")
+            yield ("text", "\n".join(lines) + "\n\nOpen **Coworker → Today** for details.")
+        return
 
     # 1. Standing responsibilities
     if re.search(r"\b(from now on|going forward|every time|whenever|each time|take over|take care of|own )|"

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../App';
 import { coworkerApi, errorMessage, timeAgo } from '../api';
 import CallStudio, { type MeetingT } from '../CallStudio';
@@ -26,6 +27,14 @@ export default function CallsTab() {
   useEffect(() => {
     load();
   }, [version]);
+  // Deep link from a chat card or the Today view: /app/coworker/calls?meeting=12
+  const [params, setParams] = useSearchParams();
+  useEffect(() => {
+    const id = params.get('meeting');
+    if (!id) return;
+    api.get(`/meetings/${id}`).then((d) => setActive(d.meeting)).catch(() => {});
+    setParams({}, { replace: true });
+  }, [params.get('meeting')]);
 
   const start = async (body: any) => {
     setMsg('');

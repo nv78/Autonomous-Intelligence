@@ -332,6 +332,10 @@ def run_due(store: Store, user_id: int) -> dict[str, int]:
         store.update("cw_actions", action["id"], user_id, {"status": "executed", "executed_at": iso(), "result": result})
         verb = "Saved draft" if result.get("draft") else "Done"
         store.log(user_id, "executed", f"{verb}: {action['title']}", action_id=action["id"], chat_id=action.get("chat_id"))
+        if action.get("chat_id") and action["type"] != "responsibility.create":
+            from coworker import reports
+
+            reports.post(user_id, action["chat_id"], reports.action_done(action, result))
         executed += 1
     return {"executed": executed, "failed": failed, "expired": expired}
 

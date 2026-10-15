@@ -70,6 +70,16 @@ DEFINITIONS: list[dict[str, Any]] = [
      "input_schema": _obj({}, [])},
     {"name": "pending_approvals", "description": "Actions waiting for the user's approval.",
      "input_schema": _obj({}, [])},
+    {"name": "join_meeting", "description": "Send the coworker to a meeting on the user's behalf. It discloses it is an AI, "
+     "follows the user's context, and posts a summary and drafted follow-up in this chat when the call ends. Give a "
+     "meeting_url, or describe the calendar event (e.g. 'Globex QBR' or 'my 2pm with Dana') in title.",
+     "input_schema": _obj({"meeting_url": S, "title": S, "context": S, "prospect_name": S, "company": S}, [])},
+    {"name": "reply_to_emails", "description": "Draft replies to email threads waiting on the user (optionally one category, "
+     "or one person) and propose sending each. Every draft appears in this chat for approval; once sent, the chat shows "
+     "exactly what went out.",
+     "input_schema": _obj({"category": S, "who": S, "instruction": S, "limit": INT}, [])},
+    {"name": "my_day", "description": "What the coworker did on a day (default today): calls, emails sent, briefs, and what's waiting.",
+     "input_schema": _obj({"date": S}, [])},
     {"name": "remember_preference", "description": "Save a writing or working preference the user just stated (e.g. 'never use exclamation points').",
      "input_schema": _obj({"rule": S}, ["rule"])},
 ]
@@ -141,6 +151,41 @@ def run(name: str, args: dict[str, Any], ctx: ToolContext) -> tuple[Any, str]:
         slots = scheduling.free_slots(s, uid, int(args.get("duration_minutes") or 30), int(args.get("days_ahead") or 7),
                                       int(args.get("count") or 3))
         return slots, f"Found {len(slots)} open slots"
+    if name == "join_meeting":
+        from coworker import delegate
+
+        coworker = s.get_coworker(uid) or {}
+        try:
+            if coworker.get("mode") == "demo" and not args.get("meeting_url"):
+                joined = delegate.run_demo_call(s, uid, chat_id=ctx.chat_id, context=args.get("context", ""))
+            else:
+                joined = delegate.join_meeting(s, uid, chat_id=ctx.chat_id, meeting_url=args.get("meeting_url", ""),
+                                            context=args.get("context", ""), title=args.get("title", ""),
+                                            prospect_name=args.get("prospect_name", ""), company=args.get("company", ""))
+        except delegate.DelegateError as exc:
+            return {"error": str(exc)}, str(exc)
+        except Exception as exc:  # e.g. the meeting bot vendor refused
+            return {"error": f"Couldn't join: {exc}"}, "Couldn't join the meeting"
+        m = joined["meeting"]
+        ctx.cards.append({"type": "meeting", "id": m["id"]})
+        note = {"bot": "The bot is joining now; the summary will be posted in this chat when the call ends.",
+                "studio": "No meeting bot is configured, so the call runs in the call studio. Open it to start talking.",
+                "demo": "Demo call finished; the summary and follow-up draft are in this chat."}[joined["how"]]
+        return {"meeting_id": m["id"], "status": m["status"], "how": joined["how"], "note": note}, f"Joined: {m['title']}"
+    if name == "reply_to_emails":
+        from coworker import delegate
+
+        actions = delegate.reply_to_emails(s, uid, chat_id=ctx.chat_id, category=args.get("category", ""),
+                                           who=args.get("who", ""), instruction=args.get("instruction", ""),
+                                           limit=int(args.get("limit") or 5))
+        for a in actions:
+            _card(ctx, a)
+        return [_action_result(a) for a in actions], f"Drafted {len(actions)} repl{'y' if len(actions) == 1 else 'ies'}"
+    if name == "my_day":
+        from coworker import delegate
+
+        d = delegate.day(s, uid, args.get("date") or None)
+        return d, f"Checked {d['date']}"
     if name == "draft_reply":
         thread = s.thread(uid, args.get("thread_id", ""))
         if not thread:
