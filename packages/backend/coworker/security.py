@@ -19,24 +19,91 @@ import re
 from typing import Any
 
 INJECTION_PATTERNS: list[tuple[str, str]] = [
-    (r"ignore (?:all |any |the )?(?:previous|prior|above|earlier) (?:instructions|prompts|rules)", "ignore_instructions"),
+    # Attempts to override the coworker's instructions
+    (r"ignore (?:all |any |the |your )?(?:previous|prior|above|earlier)? ?(?:instructions|prompts|rules|guidelines)", "ignore_instructions"),
+    (r"ignore everything (?:above|before|prior)", "ignore_instructions"),
     (r"disregard (?:all |any |the )?(?:previous|prior|above|your) (?:instructions|rules|guidelines)", "ignore_instructions"),
+    (r"forget (?:all |your |the )?(?:previous |prior )?(?:instructions|rules|guidelines|playbook|training)", "ignore_instructions"),
+    (r"\boverride (?:safety|security|your (?:rules|instructions)|the rules)\b|\bdisable (?:approvals?|safety|guardrails)\b", "ignore_instructions"),
+    (r"\bignora (?:las|todas las) instrucciones|\bignorez (?:les|toutes les) instructions|\bignoriere (?:die|alle) .{0,15}anweisungen|"
+     r"\bignorare (?:le|tutte le) istruzioni|\bignore as instru[cç][oõ]es", "ignore_instructions"),
+    # Pretending to be the system, an admin, the user, or a tool
     (r"\b(?:system|admin|developer|debug|god) (?:notice|mode|override|prompt|message)\b", "fake_authority"),
+    (r"\bnew (?:system prompt|directive)\b|\bautomated compliance check\b|\bas (?:your|the) (?:administrator|admin|system operator|developer|owner)\b",
+     "fake_authority"),
+    (r"\btool_result\b|\bapproval granted by (?:the )?(?:owner|user)\b|\bpre-?approved\b|\"role\"\s*:\s*\"system\"|"
+     r"^#+ ?instruction|\bend of (?:email|message)\b.{0,20}\b(?:new|system)\b", "fake_authority"),
+    (r"\bpretend (?:this|that|you|to be)\b.{0,50}\b(?:owner|user|from|natan|ceo|admin)\b|\byou are dan\b|\bwithout restrictions\b|"
+     r"\bno restrictions\b", "fake_authority"),
     (r"\byou are now\b", "role_reassignment"),
-    (r"\b(?:new|updated) instructions\b", "role_reassignment"),
+    (r"\b(?:new|updated) instructions\b|\byour new task\b", "role_reassignment"),
     (r"\b(?:to|for) (?:the )?(?:ai|assistant|agent|bot|llm|coworker)\b.{0,40}\b(?:must|should|need to|will)\b", "addresses_ai"),
-    (r"\bai assistant\b|\bdear (?:ai|assistant|bot)\b", "addresses_ai"),
-    (r"\bdo not (?:tell|inform|notify|alert) (?:the )?(?:user|owner|human|anyone)\b", "conceal_from_user"),
+    (r"\bai assistant\b|\bdear (?:ai|assistant|bot)\b|^\W*(?:assistant|ai|coworker|bot)\s*[:,]|\b(?:ai|coworker) (?:bot|agent|recruiter)\b|"
+     r"\bai (?:assistants?|agents?) (?:processing|reading)\b|<@coworker>|@coworker\b", "addresses_ai"),
+    # Secrecy
+    (r"\bdo not (?:tell|inform|notify|alert|mention) (?:the )?(?:user|owner|human|anyone|it)\b|\bdo not mention it\b", "conceal_from_user"),
     (r"\b(?:without|don't) (?:telling|asking|notifying) (?:the )?(?:user|owner)\b", "conceal_from_user"),
-    (r"\b(?:don'?t|do not) (?:notify|tell|inform|cc|loop in) (?:anyone|anybody|the team|your boss|them)\b|\bkeep this (?:quiet|between us|confidential)\b", "conceal_from_user"),
-    (r"\bwire (?:\$|transfer|the funds|money)|\bgift ?cards?\b|\bchange (?:the|our) (?:bank|account) details\b|\bupdated? (?:bank|payment|wire) (?:details|instructions)\b", "payment_fraud"),
-    (r"display\s*:\s*none|font-size\s*:\s*0|color\s*:\s*(?:#fff(?:fff)?|white)\b", "hidden_text"),
-    (r"\bforward (?:all|the last|every|these|this)\b", "exfiltration_request"),
-    (r"\b(?:send|email|share|upload) (?:all|every|the last \d+|your|the) .{0,40}\b(?:to|with) [\w.+-]+@", "exfiltration_request"),
-    (r"\b(?:password|api key|secret key|access token|credentials?)\b", "credential_request"),
+    (r"\b(?:don'?t|do not) (?:notify|tell|inform|cc|loop in) (?:anyone|anybody|the team|your boss|them)\b|\bkeep (?:this|it) (?:quiet|between us|confidential)\b",
+     "conceal_from_user"),
+    # Money
+    (r"\bwire (?:\$|transfer|the funds|money|the deposit)|\bgift ?cards?\b|\bchange (?:the|our) (?:bank|account|payout) details\b|"
+     r"\bupdated? (?:bank|payment|wire) (?:details|instructions)\b|\bbank details (?:have )?changed\b|\brouting number\b|\biban\b|"
+     r"\bpayout details\b|\bpayroll account\b|\bnew (?:bank )?account below\b|\boverdue\b.{0,80}\bpay\b|\bpay \$[\d,]+ (?:today|now|immediately)",
+     "payment_fraud"),
+    # Hidden content
+    (r"display\s*:\s*none|font-size\s*:\s*0|color\s*:\s*(?:#fff(?:fff)?|white)\b|<!--.{0,200}\b(?:ai|agent|assistant)\b|\[//\]: #",
+     "hidden_text"),
+    # Asking for data to go somewhere it shouldn't
+    (r"\bforward (?:all|the last|every|these|this(?: thread)?|.{0,30}\bemails?\b)", "exfiltration_request"),
+    (r"\b(?:send|email|share|upload|export|dm|post|paste|transfer) (?:me )?(?:all|every|the last \d+|your|the full) .{0,40}\b(?:to|with) [\w.+-]+@",
+     "exfiltration_request"),
+    (r"\b(?:send|email|share|transfer|forward) (?:the|all) .{0,40}\b(?:contracts?|invoices?|deck|database|spreadsheet|data room|"
+     r"cap table|customer list|contacts|resumes|pdf|pricing doc)\b.{0,20}\bto [\w.+-]+@", "exfiltration_request"),
+    (r"\bexport all (?:contacts|customers|data|emails)\b|\bfull text of (?:the )?last \d+\b|\bbcc [\w.+-]+@|"
+     r"\b(?:names?|emails?|list) (?:and emails )?of (?:all )?(?:your )?other customers\b|\bother customers pay\b|"
+     r"\binternal (?:slack|discussion|notes)\b|\bsystem prompt\b|\b(?:its|your) (?:instructions|prompt)\b.{0,20}\breply\b|"
+     r"\bchannel history\b|\b(?:latest|last) message\b.{0,30}\bso (?:i|we) can see\b|\baccount number\b|"
+     r"\beveryone'?s (?:phone numbers|emails|contact)\b|\badd [\w.+-]+@[\w.-]+ to the thread\b",
+     "exfiltration_request"),
+    (r"\b(?:send|email|share|forward|transfer)\b.{0,60}\b(?:to|with) [\w.+-]+@[\w-]+\.", "outbound_request"),
+    (r"(?:^|[\s\u200b])system\s*:\s*(?:send|forward|share|email|you|ignore|new)", "fake_authority"),
+    (r"\b(?:password|api keys?|secret key|access token|credentials?)\b", "credential_request"),
+    (r"\bconfirm your .{0,20}password\b|\b(?:dm|send|email) me (?:the )?api keys?\b|\ball api keys\b", "credential_phishing"),
     (r"</?untrusted_content|</?system>|<\|im_start\|>|\[INST\]", "tag_spoofing"),
-    (r"[​-‏⁠﻿]", "hidden_characters"),
+    (r"[\u200b-\u200f\u2060\ufeff]", "hidden_characters"),
+    # Committing the user on a call
+    (r"\bconfirm (?:a |the )?\d+ ?(?:%|percent)|\bpromise (?:us )?a free\b", "commitment_request"),
 ]
+
+HIGH_SEVERITY = {"ignore_instructions", "conceal_from_user", "tag_spoofing", "exfiltration_request", "fake_authority",
+                 "payment_fraud", "credential_phishing", "hidden_text", "commitment_request"}
+
+
+def _normalize(text: str) -> str:
+    """Undo common obfuscation before matching: styled Unicode letters,
+    zero-width characters, and s.p.a.c.e.d letters."""
+    import unicodedata
+
+    t = unicodedata.normalize("NFKC", text or "")
+    t = re.sub(r"[\u200b-\u200f\u2060\ufeff]", "", t)
+    return re.sub(r"\b(?:\w\.){2,}\w\b", lambda m: m.group(0).replace(".", ""), t)
+
+
+def _decoded_payloads(text: str) -> list[str]:
+    """Base64 blobs decoded to text, so encoded instructions get scanned too."""
+    import base64
+    import binascii
+
+    out = []
+    for blob in re.findall(r"[A-Za-z0-9+/]{16,}={0,2}", text or ""):
+        try:
+            decoded = base64.b64decode(blob + "=" * (-len(blob) % 4), validate=True).decode("utf-8")
+        except (binascii.Error, UnicodeDecodeError, ValueError):
+            continue
+        if decoded.isprintable():
+            out.append(decoded)
+    return out
+
 
 MONEY_RE = re.compile(
     r"(\$\s?\d[\d,]*(?:\.\d+)?\s?(?:k|m)?\b|\b\d+\s?%\s?(?:off|discount)|\bdiscount\b|\bcontract\b|\bterms\b|"
@@ -49,8 +116,10 @@ MAX_RECIPIENTS = 5
 
 def injection_signals(text: str) -> list[str]:
     found: list[str] = []
+    raw = text or ""
+    variants = [raw, _normalize(raw), *_decoded_payloads(raw)]
     for pattern, name in INJECTION_PATTERNS:
-        if re.search(pattern, text or "", re.IGNORECASE) and name not in found:
+        if name not in found and any(re.search(pattern, v, re.IGNORECASE | re.MULTILINE) for v in variants):
             found.append(name)
     return found
 
@@ -58,9 +127,7 @@ def injection_signals(text: str) -> list[str]:
 def is_suspicious(text: str) -> bool:
     """Two or more independent signals, or any high-severity one."""
     signals = injection_signals(text)
-    high = {"ignore_instructions", "conceal_from_user", "tag_spoofing", "exfiltration_request", "fake_authority",
-            "payment_fraud"}
-    return bool(set(signals) & high) or len(signals) >= 2
+    return bool(set(signals) & HIGH_SEVERITY) or len(signals) >= 2
 
 
 def wrap_untrusted(text: str, source: str) -> str:
