@@ -5,11 +5,11 @@ import base64
 import os
 from typing import Any
 
-from flask import Response, current_app, jsonify, request, send_file
+from flask import Response, current_app, jsonify, request
 from itsdangerous import BadSignature, URLSafeSerializer
 
 from api_endpoints.coworker.common import coworker_bp, error, store, uid
-from coworker import billing, meetings, twin, voice
+from coworker import billing, blobstore, meetings, twin, voice
 from coworker.connectors import recall, tavus
 from coworker.connectors.base import ConnectorError
 from middleware.auth import require_auth
@@ -235,9 +235,10 @@ def upload_asset() -> tuple:
 @require_auth
 def asset_file(asset_id: int) -> Any:
     row = store().get("cw_twin_assets", asset_id, uid())
-    if not row or not os.path.exists(row["path"]):
+    if not row or not blobstore.exists(row["path"]):
         return error("Not found", 404, "not_found")
-    return send_file(row["path"], mimetype=row["mime"])
+    return Response(blobstore.get(row["path"]), mimetype=row["mime"],
+                    headers={"Cache-Control": "private, no-store"})
 
 
 @coworker_bp.delete("/twin/assets/<int:asset_id>")
