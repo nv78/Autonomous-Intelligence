@@ -273,7 +273,12 @@ def _fulfill_checkout_session(session_id: str, obj: dict, already_claimed: bool)
                 return
         metadata = obj.get("metadata") or {}
         try:
-            if metadata.get("kind") == "credit_pack":
+            if metadata.get("kind") == "coworker_plan":
+                from coworker.billing import apply_checkout
+                from coworker.store import get_store
+
+                apply_checkout(get_store(), metadata)
+            elif metadata.get("kind") == "credit_pack":
                 user_id = int(metadata["user_id"])
                 credits = int(metadata["credits"])
                 add_purchased_credits(cnx, user_id, credits)

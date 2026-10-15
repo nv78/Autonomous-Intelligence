@@ -1,0 +1,138 @@
+"""Billing, pilot applications, and data-export routes."""
+from __future__ import annotations
+
+import os
+import re
+from typing import Any
+
+import requests
+from flask import jsonify, request
+
+from api_endpoints.coworker.common import coworker_bp, error, frontend_url, store, uid
+from coworker import billing
+from coworker.store import iso
+from middleware.auth import require_auth
+from middleware.rate_limit import RateLimiter
+
+_pilot_limiter = RateLimiter(max_calls=5, period=3600)
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+PILOT_FIELDS = ("teamSize", "emailsPerDay", "meetingsPerWeek", "handOff", "tools", "notes", "utm")
+
+
+@coworker_bp.get("/billing")
+@require_auth
+def get_billing() -> tuple:
+    user_id = uid()
+    if not store().get_coworker(user_id):
+        return error("Set up your coworker first", 404, "not_found")
+    return jsonify(billing.summary(store(), user_id)), 200
+
+
+@coworker_bp.post("/billing/checkout")
+@require_auth
+def coworker_checkout() -> tuple:
+    user_id = uid()
+    plan = (request.get_json(silent=True) or {}).get("plan", "")
+    spec = billing.PLANS.get(plan)
+    if not spec or not spec["price_env"]:
+        return error("Unknown or non-purchasable plan")
+    price_id = os.environ.get(spec["price_env"], "")
+    if not price_id or not os.environ.get("STRIPE_SECRET_KEY"):
+        return error("Billing for this plan isn't configured yet. Pilot users are free.", 501, "not_configured")
+    import stripe
+
+    stripe.api_key = os.environ["STRIPE_SECRET_KEY"]
+    session = stripe.checkout.Session.create(
+        mode="subscription",
+        line_items=[{"price": price_id, "quantity": 1}],
+        success_url=f"{frontend_url()}/app/coworker/settings?checkout=success",
+        cancel_url=f"{frontend_url()}/app/coworker/settings?checkout=cancel",
+        metadata={"kind": "coworker_plan", "plan": plan, "user_id": str(user_id)},
+    )
+    return jsonify({"url": session.url}), 200
+
+
+@coworker_bp.get("/export")
+@require_auth
+def export_data() -> tuple:
+    """Everything the coworker stored about the user (data portability)."""
+    user_id = uid()
+    s = store()
+    tables = ("cw_coworkers", "cw_connections", "cw_people", "cw_memory", "cw_responsibilities", "cw_actions",
+              "cw_activity", "cw_meetings", "cw_consents", "cw_usage")
+    out: dict[str, Any] = {}
+    for t in tables:
+        rows = s.query(f"SELECT * FROM {t} WHERE user_id = %s", (user_id,))
+        for r in rows:
+            r.pop("token_enc", None)
+        out[t] = rows
+    out["cw_items_count"] = len(s.items(user_id, limit=100000))
+    return jsonify(out), 200
+
+
+@coworker_bp.delete("/data")
+@require_auth
+def delete_all() -> tuple:
+    """Delete the coworker and everything it stored (connections revoked first)."""
+    user_id = uid()
+    s = store()
+    from coworker import twin
+    from coworker.connectors import google, slack
+    from coworker.connectors.base import decrypt_token
+
+    for row in s.list_connections(user_id):
+        token = decrypt_token(row.get("token_enc"))
+        if row["provider"] == "google":
+            google.revoke(token)
+        elif row["provider"] == "slack":
+            slack.revoke(token)
+    twin.revoke(s, user_id)
+    for t in ("cw_items", "cw_people", "cw_memory", "cw_responsibilities", "cw_runs", "cw_actions", "cw_activity",
+              "cw_meetings", "cw_consents", "cw_twin_assets", "cw_usage", "cw_connections", "cw_coworkers"):
+        s.execute(f"DELETE FROM {t} WHERE user_id = %s", (user_id,))
+    return jsonify({"deleted": True}), 200
+
+
+# ---------------------------------------------------------------------------
+# Founder pilot applications (public; posted by the ourogen.ai landing page)
+# ---------------------------------------------------------------------------
+
+@coworker_bp.post("/pilot/applications")
+def pilot_application() -> tuple:
+    data = request.get_json(silent=True) or {}
+    if data.get("website"):  # honeypot field, invisible to people
+        return jsonify({"ok": True}), 201
+    ip = request.headers.get("X-Forwarded-For", request.remote_addr or "").split(",")[0].strip()
+    if not _pilot_limiter.is_allowed(ip):
+        return error("Too many submissions. Try again later.", 429, "rate_limited")
+    email = str(data.get("email", "")).strip().lower()
+    if not EMAIL_RE.match(email):
+        return error("A valid work email is required")
+    answers = {k: data.get(k) for k in PILOT_FIELDS if data.get(k) not in (None, "", [])}
+    app_id = store().insert("cw_pilot_applications", {
+        "name": str(data.get("name", ""))[:255], "email": email[:255], "company": str(data.get("company", ""))[:255],
+        "role": str(data.get("role", ""))[:255], "answers": answers, "source": str(data.get("source", "landing"))[:255],
+        "created_at": iso(),
+    })
+    hook = os.environ.get("PILOT_SLACK_WEBHOOK_URL")
+    if hook:
+        try:
+            requests.post(hook, json={"text": (
+                f":rocket: New pilot application: *{data.get('name', '')}* ({email}), {data.get('role', '')} at "
+                f"{data.get('company', '')}. Hand off first: {', '.join(answers.get('handOff') or []) or 'n/a'}."
+            )}, timeout=5)
+        except requests.RequestException:
+            pass
+    return jsonify({"ok": True, "id": app_id, "bookingUrl": os.environ.get("PILOT_BOOKING_URL", "")}), 201
+
+
+@coworker_bp.get("/pilot/applications")
+@require_auth
+def list_pilot_applications() -> tuple:
+    """Internal: only users listed in PILOT_ADMIN_EMAILS can read applications."""
+    admins = {e.strip().lower() for e in os.environ.get("PILOT_ADMIN_EMAILS", "").split(",") if e.strip()}
+    coworker = store().get_coworker(uid()) or {}
+    if (coworker.get("owner_email") or "").lower() not in admins:
+        return error("Not allowed", 403, "forbidden")
+    rows = store().query("SELECT * FROM cw_pilot_applications ORDER BY id DESC LIMIT 500")
+    return jsonify({"applications": rows}), 200

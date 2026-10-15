@@ -9,7 +9,7 @@ from flask import Response, current_app, jsonify, request, send_file
 from itsdangerous import BadSignature, URLSafeSerializer
 
 from api_endpoints.coworker.common import coworker_bp, error, store, uid
-from coworker import meetings, twin, voice
+from coworker import billing, meetings, twin, voice
 from coworker.connectors import recall, tavus
 from coworker.connectors.base import ConnectorError
 from middleware.auth import require_auth
@@ -79,6 +79,11 @@ def create_meeting() -> tuple:
         return error("mode must be live_call, simulated, or bot")
     if mode == "simulated" and data.get("persona") not in meetings.SIMULATED_PROSPECTS:
         return error("Pick a simulated prospect")
+    if mode != "simulated":
+        try:
+            billing.require(store(), user_id, "calls")
+        except billing.PlanError as exc:
+            return error(str(exc), 402, "plan_required")
     if mode == "bot":
         url = str(data.get("meetingUrl", ""))
         if not url.startswith("https://"):
@@ -273,6 +278,10 @@ def consent_verify() -> tuple:
 @coworker_bp.post("/twin/voice")
 @require_auth
 def create_voice() -> tuple:
+    try:
+        billing.require(store(), uid(), "twin")
+    except billing.PlanError as exc:
+        return error(str(exc), 402, "plan_required")
     try:
         voice_id = twin.create_voice(store(), uid())
     except PermissionError as exc:

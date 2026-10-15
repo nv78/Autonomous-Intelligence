@@ -118,7 +118,7 @@ def classify(item: dict[str, Any], ctx: dict[str, str]) -> str:
     if ctx.get("domain") and sender_domain == ctx["domain"]:
         return "internal"
     text = f"{item.get('subject', '')}\n{item.get('body', '')}".lower()
-    if re.search(r"\b(reschedul\w*|move (?:the|our) (?:call|meeting)|find (?:\d+|thirty) ?min|"
+    if re.search(r"\b(reschedul\w*|move (?:the|our) (?:call|meeting)|find (?:\d+|thirty) ?min\w*|"
                  r"(?:a|any) \d+[- ]minute slot|availability|what times? work|calendar invite|book a time)\b", text):
         if not re.search(r"\b(pricing|seats|demo)\b", text):
             return "scheduling"
