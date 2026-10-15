@@ -25,16 +25,25 @@ On your phone (the Expo app in `packages/mobile`), the same chat delegates to yo
 
 The chat sidebar shows **Today**, the work your coworker did, next to your chats. **Coworker → Today** shows one day at a time, with "Send my coworker" for meetings still ahead.
 
+## Reach it anywhere, let it work on a schedule
+
+- **Scheduled tasks**: "every weekday at 8:30 tell me what's on my plate", "every Friday at 4 draft my status update". See [Scheduled tasks](guide/scheduled-tasks.md).
+- **Slack**: @mention the bot in any channel, or DM it.
+- **Text messages**: text it, and approve with `YES 12`. See [Ways to reach your coworker](guide/channels.md).
+- **Unattended**: a background worker keeps it working when nobody has the app open, with retries and alerts when something fails.
+
 ## How it works
 
 | Layer | What it does | Code |
 |---|---|---|
-| Connectors | Gmail, Calendar, Drive, Slack, or a fictional demo workspace | `coworker/connectors/` |
+| Connectors | Gmail, Calendar, Drive, Outlook, Slack, HubSpot, Salesforce, Pipedrive, or a fictional demo workspace | `coworker/connectors/` |
 | Memory | People graph, timeline, decision log, recall with citations | `coworker/memory.py` |
 | Style | Learns your greeting, sign-off, length, and phrasing | `coworker/style.py` |
 | Agent | Claude tool-use loop; offline planner without a key | `coworker/brain.py`, `coworker/tools.py` |
 | Approvals | Autonomy levels, hard floors, send delay, undo, kill switch | `coworker/policy.py`, `coworker/executor.py` |
-| Responsibilities | Standing jobs triggered by new mail, Slack, calendar, schedules | `coworker/responsibilities.py` |
+| Responsibilities | Standing jobs triggered by new mail, Slack, calendar, schedules | `coworker/responsibilities.py`, `coworker/schedules.py` |
+| Channels | Slack bot, text messages, and scheduled runs share one entry point | `coworker/channels.py`, `coworker/slackbot.py`, `coworker/sms.py` |
+| Operations | Worker heartbeat, run history, retries | `coworker/worker.py`, `coworker/ops.py` |
 | Calls | Voice agent, sales playbook, meeting bot, summaries | `coworker/meetings.py` |
 | Twin | Voice and likeness, only with verified consent | `coworker/twin.py`, `coworker/voice.py` |
 
@@ -42,6 +51,10 @@ The web app's chat stays the control plane. You delegate in chat, approve cards 
 
 ## Next
 
+- [Your first 10 minutes](guide/getting-started.md)
+- [Team admin guide](admin/team.md)
+- [Operator runbook](operations/runbook.md)
+- [Roadmap](roadmap.md)
 - [Set it up](setup.md)
 - [Trust, consent, and safety](trust.md)
 - [API reference](api.md)
