@@ -118,3 +118,38 @@ def email_action_submit(token: str) -> Response:
     except ActionError as exc:
         return _page("Couldn't do that", f"<h1>Couldn't do that</h1><p>{html.escape(str(exc))}</p>", 409)
     return _page("Done", f"<h1>{html.escape(msg)}</h1>{_preview(action)}")
+
+
+# -- Skip an auto-joined meeting -------------------------------------------------
+
+def _autojoin_event(user_id: int, event_id: str) -> dict[str, Any]:
+    return store().one("SELECT subject, occurred_at FROM cw_items WHERE user_id = %s AND kind = 'event' AND external_id = %s",
+                       (user_id, event_id)) or {}
+
+
+@coworker_bp.get("/autojoin/skip/<token>")
+def autojoin_skip_page(token: str) -> Response:
+    from coworker import autojoin
+
+    loaded = autojoin.read_skip_token(token)
+    if not loaded:
+        return _page("Link expired", "<h1>This link has expired</h1>", 410)
+    event = _autojoin_event(*loaded)
+    title = html.escape(event.get("subject") or "this meeting")
+    return _page("Skip meeting", f"""<h1>Skip {title}?</h1>
+<p class="meta">Your coworker won't join. You'll still have the prep brief.</p>
+<form method="post"><div class="row"><button class="go" name="op" value="skip">Don't join this one</button></div></form>""")
+
+
+@coworker_bp.post("/autojoin/skip/<token>")
+def autojoin_skip_submit(token: str) -> Response:
+    from coworker import autojoin
+
+    loaded = autojoin.read_skip_token(token)
+    if not loaded:
+        return _page("Link expired", "<h1>This link has expired</h1>", 410)
+    user_id, event_id = loaded
+    title = html.escape(_autojoin_event(user_id, event_id).get("subject") or "this meeting")
+    if autojoin.skip(store(), user_id, event_id):
+        return _page("Skipped", f"<h1>Okay, I won't join {title}.</h1>")
+    return _page("Too late", f"<h1>I've already joined {title}.</h1><p>Open Calls to watch or take over.</p>", 409)

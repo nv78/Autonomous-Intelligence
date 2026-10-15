@@ -134,6 +134,7 @@ Leave `COWORKER_ENFORCE_PLANS=0` to run the pilot free. To charge, create the th
 7. Try two hand-offs in chat:
    - *"Reply to my unanswered emails from today."* It drafts the replies and asks for approval. After sending, it posts exactly what went out.
    - *"Join my next call and qualify them."*
+   - Once they trust it: *"Join all my external intro calls from now on."* Before each matching call, it posts a brief with a Skip link.
 
 **What they can always do:** pause everything from the header or the phone, reply STOP to any email the coworker sends, and disconnect a source. Disconnecting deletes everything synced from it.
 

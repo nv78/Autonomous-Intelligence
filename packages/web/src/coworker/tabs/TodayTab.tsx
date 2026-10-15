@@ -20,6 +20,10 @@ function time(at: string) {
 }
 
 /** One day of your coworker's work: calls it took, what it sent, what's waiting. */
+const AUTOJOIN_PILL: Record<string, [string, 'green' | 'gray' | 'amber' | 'blue']> = {
+  scheduled: ['Joining', 'blue'], joined: ['Joined', 'green'], skipped: ['Skipped', 'gray'], failed: ["Couldn't join", 'amber'],
+};
+
 export default function TodayTab() {
   const { token } = useAuth();
   const { version } = useCoworker();
@@ -39,6 +43,13 @@ export default function TodayTab() {
     else if (e.kind === 'meeting') nav(`/app/coworker/calls?meeting=${e.id}`);
     else if (e.kind === 'action' && e.status === 'proposed') nav('/app/coworker/approvals');
     else setOpen(open === `${e.kind}-${e.id}` ? null : `${e.kind}-${e.id}`);
+  };
+  const skip = async (e: any) => {
+    try {
+      await api.post(`/autojoin/${encodeURIComponent(e.autojoin.eventId)}/skip`);
+    } finally {
+      setDay(await api.get('/day', { date }).catch(() => day));
+    }
   };
   const delegate = (prompt: string) => nav(`/app?prompt=${encodeURIComponent(prompt)}`);
   const label = date === today ? 'Today' : date === shift(today, -1) ? 'Yesterday'
@@ -106,8 +117,17 @@ export default function TodayTab() {
                     </span>
                     {e.kind === 'meeting' && e.score != null && <Pill tone={e.hot ? 'green' : 'gray'}>{e.score}/100</Pill>}
                     {e.status === 'proposed' && <Pill tone="amber">Needs you</Pill>}
+                    {e.autojoin && AUTOJOIN_PILL[e.autojoin.state] && (
+                      <Pill tone={AUTOJOIN_PILL[e.autojoin.state][1]}>{AUTOJOIN_PILL[e.autojoin.state][0]}</Pill>
+                    )}
                     {e.chatId && <span className="text-xs text-gray-400" title="Opens the chat where you asked for this">💬</span>}
                   </button>
+                  {e.autojoin?.state === 'scheduled' && (
+                    <div className="px-4 pb-3 pl-[6.5rem] flex items-center gap-2 text-xs text-gray-500">
+                      I'll join when it starts and post the summary in its chat.
+                      <button className={ghostBtn} onClick={() => skip(e)}>Skip this one</button>
+                    </div>
+                  )}
                   {open === key && e.detail && (
                     <p className="px-4 pb-3 pl-[6.5rem] text-sm whitespace-pre-wrap text-gray-600 dark:text-gray-300">{e.detail}</p>
                   )}

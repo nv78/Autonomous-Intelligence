@@ -74,7 +74,12 @@ def chat_stream() -> Any:
             yield sse_event("session_id", {"session_id": chat_id})
         parts: list[str] = []
         try:
-            for kind, payload in brain.run_turn(store(), user_id, chat_id, message, history):
+            from coworker import autojoin
+
+            pending = autojoin.pending_for_chat(store(), user_id, chat_id) if session_raw else None
+            turn = (autojoin.chat_turn(store(), user_id, pending, message) if pending
+                    else brain.run_turn(store(), user_id, chat_id, message, history))
+            for kind, payload in turn:
                 if kind == "text":
                     parts.append(payload)
                     yield sse_event("text", {"text": payload})
@@ -379,6 +384,19 @@ def run_responsibility(resp_id: int) -> tuple:
 # ---------------------------------------------------------------------------
 # Autonomy
 # ---------------------------------------------------------------------------
+
+@coworker_bp.post("/autojoin/<event_id>/skip")
+@require_auth
+def autojoin_skip(event_id: str) -> tuple:
+    from coworker import autojoin
+
+    user_id = uid()
+    if not autojoin.responsibility(store(), user_id):
+        return error("Auto-join isn't on", 404, "not_found")
+    if not autojoin.skip(store(), user_id, event_id):
+        return error("Your coworker already joined this meeting", 409, "already_joined")
+    return jsonify({"skipped": True}), 200
+
 
 @coworker_bp.get("/autonomy")
 @require_auth
