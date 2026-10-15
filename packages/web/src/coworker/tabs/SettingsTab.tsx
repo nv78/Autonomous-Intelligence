@@ -16,6 +16,7 @@ export function ConnectionsPanel({ returnTo = '/app/coworker/settings' }: { retu
   const { connections, capabilities, coworker, refresh } = useCoworker();
   const api = coworkerApi(token);
   const [slackToken, setSlackToken] = useState('');
+  const [hubspotToken, setHubspotToken] = useState('');
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -42,6 +43,27 @@ export function ConnectionsPanel({ returnTo = '/app/coworker/settings' }: { retu
       const d = await api.post('/connections/slack/token', { token: slackToken });
       setMsg(`Connected Slack (${d.team}).`);
       setSlackToken('');
+      await refresh();
+    } catch (e) {
+      setMsg(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const connectHubspotOAuth = async () => {
+    try {
+      localStorage.setItem('coworker_return_to', returnTo);
+      window.location.href = (await api.post('/connections/hubspot/start')).url;
+    } catch (e) {
+      setMsg(errorMessage(e));
+    }
+  };
+  const saveHubspotToken = async () => {
+    setBusy(true);
+    try {
+      const d = await api.post('/connections/hubspot/token', { token: hubspotToken });
+      setMsg(`Connected HubSpot (${d.portal}).`);
+      setHubspotToken('');
       await refresh();
     } catch (e) {
       setMsg(errorMessage(e));
@@ -82,6 +104,7 @@ export function ConnectionsPanel({ returnTo = '/app/coworker/settings' }: { retu
   const conn = (p: string) => connections.find((c) => c.provider === p);
   const google = conn('google');
   const slack = conn('slack');
+  const hubspot = conn('hubspot');
   const canSend = google?.scopes?.includes('gmail.send');
 
   return (
@@ -138,6 +161,31 @@ export function ConnectionsPanel({ returnTo = '/app/coworker/settings' }: { retu
           <div className="flex gap-2 mt-3">
             <input className={inputCls} placeholder="xoxp-…" value={slackToken} onChange={(e) => setSlackToken(e.target.value)} />
             <button className={ghostBtn} disabled={busy || !slackToken.startsWith('xoxp-')} onClick={saveSlackToken}>Use token</button>
+          </div>
+        )}
+      </Card>
+      <Card className="p-4">
+        <div className="flex items-center gap-3">
+          <span className="text-xl" aria-hidden>📇</span>
+          <div className="flex-1">
+            <p className="text-sm font-medium">HubSpot CRM</p>
+            <p className="text-xs text-gray-500">
+              {hubspot
+                ? `${hubspot.account} · ${hubspot.status}. Approved CRM updates log a note on the contact and company.`
+                : 'Approved CRM updates from calls go here. Connect with OAuth, or paste a private app token (pat-…).'}
+            </p>
+            {hubspot?.error && <p className="text-xs text-red-500 mt-1">{hubspot.error}</p>}
+          </div>
+          {hubspot ? (
+            <button className={ghostBtn} onClick={() => disconnect('hubspot')}>Disconnect</button>
+          ) : capabilities?.hubspot_oauth ? (
+            <button className={primaryBtn} onClick={connectHubspotOAuth}>Connect</button>
+          ) : null}
+        </div>
+        {!hubspot && (
+          <div className="flex gap-2 mt-3">
+            <input className={inputCls} placeholder="pat-…" value={hubspotToken} onChange={(e) => setHubspotToken(e.target.value)} />
+            <button className={ghostBtn} disabled={busy || !hubspotToken.startsWith('pat-')} onClick={saveHubspotToken}>Use token</button>
           </div>
         )}
       </Card>

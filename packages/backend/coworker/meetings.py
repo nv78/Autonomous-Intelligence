@@ -430,6 +430,7 @@ def finish(store: Store, user_id: int, meeting_id: int) -> dict[str, Any]:
     if meeting.get("prospect_company") or meeting.get("prospect_name"):
         executor.propose(store, user_id, "crm.update", {
             "company": meeting.get("prospect_company") or meeting.get("prospect_name"),
+            "name": meeting.get("prospect_name") or "", "email": prospect_email or "",
             "summary": f"Call {iso()[:10]}: score {score}/100. " + "; ".join(action_items),
             "fields": summary["qualification"],
         }, title=f"Update CRM: {meeting.get('prospect_company') or meeting['prospect_name']}",

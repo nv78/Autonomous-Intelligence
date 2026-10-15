@@ -25,6 +25,7 @@ Open `http://localhost:3000`, create an account, and you land in coworker onboar
 | `PILOT_SLACK_WEBHOOK_URL`, `PILOT_BOOKING_URL`, `PILOT_ADMIN_EMAILS` | Founder pilot applications from ourogen.ai |
 | `SMTP_URL`, `SMTP_FROM` | Relay for approval and digest emails when the user's Gmail can't send (`smtp://user:pass@host:587` or `smtps://…:465`) |
 | `NOTIFY_BATCH_SECONDS`, `NOTIFY_MIN_INTERVAL_SECONDS` | Approval email batching (default 300s) and rate limit (default 1800s) |
+| `HUBSPOT_CLIENT_ID`, `HUBSPOT_CLIENT_SECRET` | HubSpot OAuth. Approved CRM updates from calls upsert the company and contact and log a note. Without OAuth, users can paste a private app token (`pat-…`) with contact and company scopes. |
 | `SENTRY_DSN`, `ALERT_SLACK_WEBHOOK_URL` | Error tracking for the backend and worker; Slack alerts when an approved action fails or a sync errors (throttled to one per problem per 15 minutes) |
 | `COWORKER_RETENTION_DAYS`, `COWORKER_TRANSCRIPT_RETENTION_DAYS`, `COWORKER_ACTIVITY_RETENTION_DAYS` | Delete synced content after 180 days, raw call transcripts after 180 (summaries are kept), and the activity log after 730. The worker applies them every 6 hours. |
 | `REDIS_URL` | Shared rate limits for public endpoints (pilot form, meeting webhook). Without Redis, limits are per process. |

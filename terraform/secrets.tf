@@ -21,5 +21,6 @@ resource "aws_secretsmanager_secret_version" "backend" {
     SMTP_URL                    = var.smtp_url
     SENTRY_DSN                  = var.sentry_dsn
     ALERT_SLACK_WEBHOOK_URL     = var.alert_slack_webhook_url
+    HUBSPOT_CLIENT_SECRET       = var.hubspot_client_secret
   })
 }

@@ -40,6 +40,7 @@ export interface Capabilities {
   llm: boolean;
   google: boolean;
   slack_oauth: boolean;
+  hubspot_oauth?: boolean;
   voice?: boolean;
   avatar?: boolean;
   meeting_bot?: boolean;
