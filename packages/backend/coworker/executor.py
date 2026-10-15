@@ -114,6 +114,12 @@ def propose(
     else:
         store.log(user_id, "proposed", f"Needs approval: {title}", {"reason": decision["reason"]}, action_id=action_id,
                   chat_id=chat_id)
+        if not requested_in_chat:  # the user is looking at the chat already
+            from coworker import push
+
+            fresh = store.get("cw_actions", action_id, user_id)
+            if fresh:
+                push.approval_needed(store, user_id, fresh)
     action = store.get("cw_actions", action_id, user_id)
     assert action is not None
     return action

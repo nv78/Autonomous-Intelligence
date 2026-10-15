@@ -29,6 +29,7 @@ Open `http://localhost:3000`, create an account, and you land in coworker onboar
 | `SENTRY_DSN`, `ALERT_SLACK_WEBHOOK_URL` | Error tracking for the backend and worker; Slack alerts when an approved action fails or a sync errors (throttled to one per problem per 15 minutes) |
 | `COWORKER_RETENTION_DAYS`, `COWORKER_TRANSCRIPT_RETENTION_DAYS`, `COWORKER_ACTIVITY_RETENTION_DAYS` | Delete synced content after 180 days, raw call transcripts after 180 (summaries are kept), and the activity log after 730. The worker applies them every 6 hours. |
 | `REDIS_URL` | Shared rate limits for public endpoints (pilot form, meeting webhook). Without Redis, limits are per process. |
+| `EXPO_ACCESS_TOKEN`, `COWORKER_PUSH` | Mobile push through Expo (the token is optional, for enhanced push security). `COWORKER_PUSH=0` turns pushes off. |
 | `VOICEPRINT_BACKEND`, `VOICEPRINT_REQUIRED` | Voice match before cloning: `local` (default, needs ffmpeg) or `resemblyzer`. `VOICEPRINT_REQUIRED=0` disables the check (development only). |
 | `COWORKER_SYNC_MODE` | `thread` (default) syncs on a background thread in the web process; `worker` leaves sync to `coworker-worker` |
 

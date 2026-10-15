@@ -11,11 +11,24 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "ai.anote.app"
+      "bundleIdentifier": "ai.anote.app",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
+      }
     },
     "android": {
       "package": "ai.anote.app"
     },
-    "scheme": "anote"
+    "scheme": "anote",
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "color": "#111111"
+        }
+      ]
+    ]
   }
 }
