@@ -189,6 +189,11 @@ def assess_outbound(
         risks.append({"code": "suspicious_trigger",
                       "message": "The message that triggered this looks like a prompt-injection or phishing attempt."})
 
+    files = [a.get("name", "") for a in payload.get("attachments") or [] if isinstance(a, dict)]
+    if files:
+        risks.append({"code": "attachment", "message": f"Sends {'a file' if len(files) == 1 else f'{len(files)} files'}: "
+                                                        f"{', '.join(files)}."})
+
     new = [r for r in recipients if r not in known_emails and r not in thread_participants and r != owner_email.lower()]
     if new:
         risks.append({"code": "new_recipient", "message": f"First contact with {', '.join(new)}."})

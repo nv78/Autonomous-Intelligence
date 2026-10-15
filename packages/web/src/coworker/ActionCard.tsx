@@ -139,6 +139,21 @@ export default function ActionCard({ id, action: initial, compact = false }: { i
               <Field label="Subject">
                 {editing ? <input className={input} value={p.subject || ''} onChange={(e) => set('subject', e.target.value)} /> : p.subject}
               </Field>
+              {(p.attachments || []).length > 0 && (
+                <Field label="Files">
+                  <span className="flex flex-wrap gap-1.5">
+                    {(p.attachments as { id: number; name: string }[]).map((f) => (
+                      <span key={f.id} className="inline-flex items-center gap-1 text-xs rounded-md border border-gray-200 dark:border-gray-700 px-2 py-0.5">
+                        📎 {f.name}
+                        {editing && (
+                          <button aria-label={`Remove ${f.name}`} className="text-gray-400 hover:text-red-500"
+                            onClick={() => set('attachments', (p.attachments || []).filter((x: any) => x.id !== f.id))}>×</button>
+                        )}
+                      </span>
+                    ))}
+                  </span>
+                </Field>
+              )}
               <div className="pt-1">
                 {editing ? (
                   <textarea className={`${input} min-h-[180px] font-sans`} value={p.body || ''} onChange={(e) => set('body', e.target.value)} />

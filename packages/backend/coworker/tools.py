@@ -57,7 +57,10 @@ DEFINITIONS: list[dict[str, Any]] = [
     {"name": "draft_reply", "description": "Draft a reply to the latest message in a thread, in the user's voice, grounded in memory and docs. Returns text only; use send_email to propose sending.",
      "input_schema": _obj({"thread_id": S, "instruction": S}, ["thread_id"])},
     {"name": "send_email", "description": "Propose sending an email. It goes to the user's approval inbox unless their autonomy settings allow it. Include thread_id when replying.",
-     "input_schema": _obj({"to": SL, "subject": S, "body": S, "thread_id": S, "cc": SL}, ["to", "subject", "body"])},
+     "input_schema": _obj({"to": SL, "subject": S, "body": S, "thread_id": S, "cc": SL,
+                           "attachments": {"type": "array", "items": {"type": "integer"},
+                                           "description": "ids of attachment documents from search results to attach"}},
+                          ["to", "subject", "body"])},
     {"name": "post_slack", "description": "Propose posting a Slack message (channel name like 'sales' or a DM like 'dm-maya').",
      "input_schema": _obj({"channel": S, "text": S}, ["channel", "text"])},
     {"name": "schedule_meeting", "description": "Propose sending a calendar invite. start is ISO-8601 UTC.",
@@ -196,6 +199,10 @@ def run(name: str, args: dict[str, Any], ctx: ToolContext) -> tuple[Any, str]:
         return draft, f"Drafted a reply to {last_in['author_name']}"
     if name == "send_email":
         payload = {k: args[k] for k in ("to", "cc", "subject", "body", "thread_id") if args.get(k)}
+        if args.get("attachments"):
+            from coworker import attachments
+
+            payload["attachments"] = attachments.describe(s, uid, list(args["attachments"]))
         source = None
         if payload.get("thread_id"):
             thread = s.thread(uid, payload["thread_id"])

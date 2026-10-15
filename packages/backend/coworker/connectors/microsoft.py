@@ -36,7 +36,7 @@ BACKFILL_DAYS = int(os.environ.get("COWORKER_BACKFILL_DAYS", "90"))
 MAX_MESSAGES_PER_SYNC = int(os.environ.get("COWORKER_MAX_MESSAGES_PER_SYNC", "300"))
 TIMEOUT = 20
 MESSAGE_FIELDS = ("id,conversationId,internetMessageId,subject,body,from,toRecipients,ccRecipients,"
-                  "receivedDateTime,sentDateTime,isDraft,parentFolderId,internetMessageHeaders")
+                  "receivedDateTime,sentDateTime,isDraft,parentFolderId,internetMessageHeaders,hasAttachments")
 
 
 def _tenant() -> str:
@@ -259,11 +259,48 @@ class MicrosoftConnector:
             for msg in data.get("value", []):
                 seen += 1
                 newest = max(newest, msg.get("receivedDateTime") or newest)
-                if store.add_item(user_id, parse_message(msg, self.account_email, sent_folder)):
+                item = parse_message(msg, self.account_email, sent_folder)
+                if store.add_item(user_id, item):
                     count += 1
+                    if msg.get("hasAttachments"):
+                        self._ingest_attachments(store, user_id, item)
             url, params = data.get("@odata.nextLink"), None  # the next link carries the query
         self.cursor["mail_since"] = newest
         return count
+
+    def _ingest_attachments(self, store: Store, user_id: int, item: dict[str, Any]) -> None:
+        from coworker import attachments
+
+        try:
+            listed = self._request("GET", f"/me/messages/{item['external_id']}/attachments",
+                                   params={"$select": "id,name,contentType,size,isInline"}).get("value", [])
+        except ConnectorError:
+            return
+        files = [a for a in listed if a.get("@odata.type", "").endswith("fileAttachment") and not a.get("isInline")]
+        for a in files[:attachments.MAX_PER_MESSAGE]:
+            att = {"id": a["id"], "filename": a.get("name", ""), "mime": a.get("contentType", ""), "size": int(a.get("size") or 0)}
+            if not attachments.supported(att["filename"], att["size"]):
+                continue
+            try:
+                data = self.attachment_bytes(item["external_id"], att["id"])
+            except ConnectorError:
+                continue
+            attachments.ingest(store, user_id, item, att, data)
+
+    def attachment_bytes(self, message_id: str, attachment_id: str) -> bytes:
+        from coworker.attachments import b64decode_any
+
+        data = self._request("GET", f"/me/messages/{message_id}/attachments/{attachment_id}")
+        return b64decode_any(str(data.get("contentBytes") or ""))
+
+    def _attach(self, draft_id: str, files: list[Any] | None) -> None:
+        import base64
+
+        for f in files or []:
+            self._request("POST", f"/me/messages/{draft_id}/attachments", json={
+                "@odata.type": "#microsoft.graph.fileAttachment", "name": f.name,
+                "contentType": f.mime, "contentBytes": base64.b64encode(f.data).decode(),
+            })
 
     def _sync_calendar(self, store: Store, user_id: int) -> int:
         now = datetime.now(UTC)
@@ -329,17 +366,19 @@ class MicrosoftConnector:
         return self._request("POST", "/me/messages", json=fields)
 
     def send_email(self, store: Store, user_id: int, *, to: list[str], subject: str, body: str,
-                   thread_id: str = "", cc: list[str] | None = None) -> SendResult:
+                   thread_id: str = "", cc: list[str] | None = None, files: list[Any] | None = None) -> SendResult:
         if not self.has_scope("Mail.Send"):
             raise ConnectorError("Ourogen needs permission to send email. Reconnect Outlook with send access.",
                                  "needs_scope")
         draft = self._compose(store, user_id, to, subject, body, thread_id, cc)
+        self._attach(draft["id"], files)
         self._request("POST", f"/me/messages/{draft['id']}/send")
         return SendResult(external_id=draft.get("id", ""), thread_id=draft.get("conversationId") or thread_id)
 
     def create_draft(self, store: Store, user_id: int, *, to: list[str], subject: str, body: str,
-                     thread_id: str = "") -> SendResult:
+                     thread_id: str = "", files: list[Any] | None = None) -> SendResult:
         draft = self._compose(store, user_id, to, subject, body, thread_id, None)
+        self._attach(draft["id"], files)
         return SendResult(external_id=draft.get("id", ""), thread_id=thread_id, undo={"draft_id": draft.get("id", "")})
 
     def create_event(self, store: Store, user_id: int, *, title: str, start: str, end: str,

@@ -154,6 +154,22 @@ def _strip_quoted(body: str) -> str:
     return "\n".join(lines).strip() or body
 
 
+def attachments_of(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    """File parts of a Gmail message: [{id, filename, mime, size}]."""
+    found: list[dict[str, Any]] = []
+
+    def walk(part: dict[str, Any]) -> None:
+        body = part.get("body") or {}
+        if part.get("filename") and body.get("attachmentId"):
+            found.append({"id": body["attachmentId"], "filename": part["filename"], "mime": part.get("mimeType", ""),
+                          "size": int(body.get("size") or 0)})
+        for child in part.get("parts", []) or []:
+            walk(child)
+
+    walk(payload)
+    return found
+
+
 def parse_message(msg: dict[str, Any], account_email: str) -> dict[str, Any]:
     headers = {h["name"].lower(): h["value"] for h in (msg.get("payload") or {}).get("headers", [])}
     from_name, from_email = parseaddr(headers.get("from", ""))
@@ -181,12 +197,13 @@ def parse_message(msg: dict[str, Any], account_email: str) -> dict[str, Any]:
             "message_id": headers.get("message-id", ""),
             "references": headers.get("references", ""),
             "list_unsubscribe": bool(headers.get("list-unsubscribe")),
+            "attachments": attachments_of(msg.get("payload") or {}),
         },
     }
 
 
 def build_mime(sender: str, to: list[str], subject: str, body: str, cc: list[str] | None = None,
-               in_reply_to: str = "", references: str = "") -> str:
+               in_reply_to: str = "", references: str = "", files: list[Any] | None = None) -> str:
     msg = EmailMessage()
     msg["To"] = ", ".join(to)
     if cc:
@@ -198,6 +215,9 @@ def build_mime(sender: str, to: list[str], subject: str, body: str, cc: list[str
         msg["In-Reply-To"] = in_reply_to
         msg["References"] = f"{references} {in_reply_to}".strip()
     msg.set_content(body)
+    for f in files or []:
+        maintype, _, subtype = (f.mime or "application/octet-stream").partition("/")
+        msg.add_attachment(f.data, maintype=maintype or "application", subtype=subtype or "octet-stream", filename=f.name)
     return base64.urlsafe_b64encode(msg.as_bytes()).decode()
 
 
@@ -336,10 +356,30 @@ class GoogleConnector:
                          (user_id, mid)):
                 continue
             msg = self._request("GET", f"{GMAIL}/messages/{mid}", params={"format": "full"})
-            if store.add_item(user_id, parse_message(msg, self.account_email)):
+            item = parse_message(msg, self.account_email)
+            if store.add_item(user_id, item):
                 count += 1
+                self._ingest_attachments(store, user_id, item)
         self.cursor["gmail_history_id"] = profile.get("historyId", history_id)
         return count
+
+    def _ingest_attachments(self, store: Store, user_id: int, item: dict[str, Any]) -> None:
+        from coworker import attachments
+
+        for att in (item.get("meta") or {}).get("attachments", [])[:attachments.MAX_PER_MESSAGE]:
+            if not attachments.supported(att["filename"], att.get("size", 0)):
+                continue
+            try:
+                data = self.attachment_bytes(item["external_id"], att["id"])
+            except ConnectorError:
+                continue
+            attachments.ingest(store, user_id, item, att, data)
+
+    def attachment_bytes(self, message_id: str, attachment_id: str) -> bytes:
+        from coworker.attachments import b64decode_any
+
+        data = self._request("GET", f"{GMAIL}/messages/{message_id}/attachments/{attachment_id}")
+        return b64decode_any(str(data.get("data") or ""))
 
     def _sync_calendar(self, store: Store, user_id: int) -> int:
         now = datetime.now(UTC)
@@ -415,12 +455,12 @@ class GoogleConnector:
         return meta.get("message_id", ""), meta.get("references", ""), last.get("thread_id", "")
 
     def send_email(self, store: Store, user_id: int, *, to: list[str], subject: str, body: str,
-                   thread_id: str = "", cc: list[str] | None = None) -> SendResult:
+                   thread_id: str = "", cc: list[str] | None = None, files: list[Any] | None = None) -> SendResult:
         if not self.has_scope("gmail.send"):
             raise ConnectorError("Ourogen needs permission to send email. Reconnect Google with send access.",
                                  "needs_scope")
         in_reply_to, references, gmail_thread = self._reply_headers(store, user_id, thread_id)
-        raw = build_mime(self.account_email, to, subject, body, cc, in_reply_to, references)
+        raw = build_mime(self.account_email, to, subject, body, cc, in_reply_to, references, files)
         payload: dict[str, Any] = {"raw": raw}
         if gmail_thread:
             payload["threadId"] = gmail_thread
@@ -428,9 +468,10 @@ class GoogleConnector:
         return SendResult(external_id=sent.get("id", ""), thread_id=sent.get("threadId", thread_id))
 
     def create_draft(self, store: Store, user_id: int, *, to: list[str], subject: str, body: str,
-                     thread_id: str = "") -> SendResult:
+                     thread_id: str = "", files: list[Any] | None = None) -> SendResult:
         in_reply_to, references, gmail_thread = self._reply_headers(store, user_id, thread_id)
-        message: dict[str, Any] = {"raw": build_mime(self.account_email, to, subject, body, None, in_reply_to, references)}
+        message: dict[str, Any] = {"raw": build_mime(self.account_email, to, subject, body, None, in_reply_to, references,
+                                                     files)}
         if gmail_thread:
             message["threadId"] = gmail_thread
         draft = self._request("POST", f"{GMAIL}/drafts", json={"message": message})

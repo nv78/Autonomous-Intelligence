@@ -242,10 +242,10 @@ def disconnect(provider: str) -> tuple:
     token = decrypt_token(row.get("token_enc"))
     if provider == "google":
         google.revoke(token)
-        purged = sum(s.delete_items(user_id, p) for p in ("gmail", "gcal", "drive"))
+        purged = sum(s.delete_items(user_id, p) for p in ("gmail", "gmail_att", "gcal", "drive"))
     elif provider == "microsoft":
         microsoft.revoke(token)
-        purged = sum(s.delete_items(user_id, p) for p in ("outlook", "outlook_cal"))
+        purged = sum(s.delete_items(user_id, p) for p in ("outlook", "outlook_att", "outlook_cal"))
     elif provider == "slack":
         slack.revoke(token)
         purged = s.delete_items(user_id, "slack")

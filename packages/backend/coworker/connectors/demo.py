@@ -52,7 +52,7 @@ class DemoConnector:
         return {"name": coworker.get("owner_name", ""), "email": coworker.get("owner_email", "")}
 
     def send_email(self, store: Store, user_id: int, *, to: list[str], subject: str, body: str,
-                   thread_id: str = "", cc: list[str] | None = None) -> SendResult:
+                   thread_id: str = "", cc: list[str] | None = None, files: list[Any] | None = None) -> SendResult:
         owner = self._owner(store, user_id)
         ext = f"demo-out-{uuid.uuid4().hex[:10]}"
         thread = thread_id or f"t-{uuid.uuid4().hex[:8]}"
@@ -61,12 +61,13 @@ class DemoConnector:
             "provider": "gmail", "external_id": ext, "thread_id": thread, "kind": "email",
             "direction": "outbound", "author_name": owner["name"], "author_email": owner["email"],
             "recipients": recipients, "subject": subject, "body": body, "occurred_at": iso(),
-            "meta": {"labels": ["SENT"], "sent_by": "coworker", "demo": True},
+            "meta": {"labels": ["SENT"], "sent_by": "coworker", "demo": True,
+                     "attachments": [{"filename": f.name, "size": len(f.data)} for f in files or []]},
         })
         return SendResult(external_id=ext, thread_id=thread, undo={"item_id": item_id})
 
     def create_draft(self, store: Store, user_id: int, *, to: list[str], subject: str, body: str,
-                     thread_id: str = "") -> SendResult:
+                     thread_id: str = "", files: list[Any] | None = None) -> SendResult:
         owner = self._owner(store, user_id)
         ext = f"demo-draft-{uuid.uuid4().hex[:10]}"
         item_id = store.add_item(user_id, {
