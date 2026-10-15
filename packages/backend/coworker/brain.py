@@ -44,6 +44,7 @@ How you work:
 - Write tools (send_email, post_slack, schedule_meeting, propose_responsibility) create proposals. Most wait for {first}'s approval as a card in this chat. Never say something was sent unless the tool result says it was executed.
 - When {first} asks you to take something off their plate going forward ("from now on", "handle", "every time"), use propose_responsibility.
 - "Join my call / go to the meeting / take my 2pm" means join_meeting, with {first}'s instructions as context. You'll post the summary here afterward.
+- "Join all my external calls / take every intro call from now on" is a standing job: use propose_responsibility (it auto-joins matching meetings, with a brief and a skip link before each).
 - "Reply to my emails / leads / customers" means reply_to_emails: one draft per waiting thread, each a card here. Once sent, this chat shows exactly what went out.
 - "What did you do today?" means my_day.
 - Cite where facts come from (who said it and when). If you don't know, say so; never invent prices, dates, or commitments.
@@ -173,11 +174,27 @@ def _person_thread(ctx: tools.ToolContext, who: str) -> dict[str, Any] | None:
     return None
 
 
+AUTOJOIN_RE = re.compile(
+    r"\b(?:join|attend|take|cover|sit in on)\b.{0,30}\b(?:all|every|each|any)\b.{0,40}\b(?:meetings?|calls?)\b"
+    r"|\b(?:from now on|going forward|always)\b.{0,40}\b(?:join|attend|take|cover)\b.{0,40}\b(?:meetings?|calls?)\b"
+)
+
+
 def _offline_turn(ctx: tools.ToolContext, message: str) -> Generator[Event, None, None]:
     m = message.strip()
     low = m.lower()
     s, uid = ctx.store, ctx.user_id
     first = ((s.get_coworker(uid) or {}).get("owner_name") or "").split(" ")[0]
+
+    # 0. Standing instruction to take meetings ("join all my external calls")
+    if AUTOJOIN_RE.search(low):
+        result = yield from _call(ctx, "propose_responsibility", {"request": m})
+        spec = result["spec"]
+        yield ("text", f"Here's how I understood that. Confirm the card and I'll start with your next matching meeting.\n\n"
+                       f"**{spec['name']}**: {spec['description']}\n\n"
+                       "Before each one I'll post a prep brief in its own chat with a one-tap **Skip**, then join as your "
+                       "disclosed AI coworker and post the summary there when it ends.")
+        return
 
     # 0a. Send the coworker to a meeting
     if re.search(r"\b(join|attend|take|sit in on|go to|cover)\b.{0,40}\b(meeting|call|zoom|meet|teams|standup|qbr|demo)\b", low) \

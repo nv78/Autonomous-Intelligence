@@ -38,6 +38,23 @@ def post(user_id: int, chat_id: int | None, content: str) -> bool:
         return False
 
 
+def new_chat(user_id: int, name: str, content: str) -> int | None:
+    """Open a chat in the user's sidebar that starts with a message from the coworker."""
+    try:
+        from database.db import create_chat, create_message, get_connection
+
+        cnx = get_connection()
+        try:
+            chat_id = create_chat(cnx, user_id, name[:255] or "Coworker")
+            create_message(cnx, chat_id, "assistant", content, "coworker")
+        finally:
+            cnx.close()
+        return int(chat_id)
+    except Exception as exc:  # the brief is also in Activity; a missing chat must not block the meeting
+        log.warning("couldn't open a chat for user %s: %s", user_id, exc)
+        return None
+
+
 def _quote(text: str, limit: int = 1200) -> str:
     text = (text or "").strip()
     if len(text) > limit:

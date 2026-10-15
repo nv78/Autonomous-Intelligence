@@ -172,8 +172,15 @@ def day(store: Store, user_id: int, date: str | None = None) -> dict[str, Any]:
                         "detail": (p.get("body") or p.get("text") or "")[:400], "chatId": a.get("chat_id")})
     for row in store.query("SELECT * FROM cw_activity WHERE user_id = %s AND created_at >= %s AND created_at < %s AND kind IN "
                            "('brief','escalation','security','digest')", (user_id, lo, hi)):
-        entries.append({"kind": row["kind"], "id": row["id"], "at": row["created_at"], "title": row["summary"],
-                        "status": "", "detail": "", "chatId": row.get("chat_id")})
+        entry = {"kind": row["kind"], "id": row["id"], "at": row["created_at"], "title": row["summary"],
+                 "status": "", "detail": "", "chatId": row.get("chat_id")}
+        aj = (row.get("detail") or {}).get("autojoin")
+        if aj:
+            from coworker import autojoin
+
+            entry["autojoin"] = {"eventId": aj["event_id"],
+                                 "state": autojoin.state(store, user_id, aj["event_id"], bool(aj.get("will_join")))}
+        entries.append(entry)
     entries.sort(key=lambda e: e["at"] or "", reverse=True)
     sent = [e for e in entries if e["kind"] == "action" and e["status"] == "executed"]
     pending = [e for e in entries if e["kind"] == "action" and e["status"] == "proposed"]

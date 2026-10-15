@@ -92,6 +92,11 @@ The chat sidebar now has a **Today** section with the work your coworker did nex
    - Use **Whisper to your coworker** to steer it mid-call. Only the coworker sees it.
    - The panel shows think time and time to first audio for each turn.
 4. Edit the **Call playbook** (pitch, pricing it may state, topics to escalate) and run another call.
+5. **Hand off your calls for good:** in chat, say *"Join all my external intro calls from now on."* Confirm the card. For each matching meeting with a video link:
+   - About 30 minutes before, it opens a chat named after the meeting with a prep brief, and sends a push and an email with **Skip this one**.
+   - Write notes for the call in that chat ("push for a 3-month pilot"). It takes them into the call. Reply "skip" and it won't join.
+   - At the start, the meeting bot joins (it needs `RECALL_API_KEY`), and the summary and follow-up land in that same chat.
+   - **Today** shows each one as *Joining*, *Joined*, or *Skipped*.
 
 ## 6. Set up your twin (3 minutes)
 

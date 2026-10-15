@@ -38,6 +38,15 @@ TEMPLATES: dict[str, dict[str, Any]] = {
         "trigger": {"type": "email", "category": "support"},
         "autonomy": "approve",
     },
+    "auto_join": {
+        "name": "Join my external meetings",
+        "description": "Before each external video call: a prep brief in its own chat with a Skip link. Then it joins as "
+                       "your disclosed AI coworker and posts the summary and follow-up there.",
+        "instruction": "Join my external meetings for me. Introduce yourself as my AI coworker, find out what they need "
+                       "and their timeline, and escalate pricing, contracts, or anything you're unsure about to me.",
+        "trigger": {"type": "calendar_join", "minutes_before": 30, "external_only": True, "keywords": []},
+        "autonomy": "notify",
+    },
     "meeting_prep": {
         "name": "Prep me for every meeting",
         "description": "Before each meeting with someone outside the company, post a brief: who, history, open items, agenda.",
@@ -79,6 +88,8 @@ TEMPLATES: dict[str, dict[str, Any]] = {
 def match_template(text: str) -> str:
     t = text.lower()
     rules = [
+        ("auto_join", r"\b(?:join|attend|take|cover|sit in on)\b.{0,30}\b(?:all|every|each|any)\b.{0,40}\b(?:meetings?|calls?)\b"
+                      r"|\b(?:from now on|going forward|always)\b.{0,40}\b(?:join|attend|take|cover)\b.{0,40}\b(?:meetings?|calls?)\b"),
         ("daily_digest", r"digest|end of (?:the )?day|daily summary|summari[sz]e (?:my|the) day"),
         ("meeting_followup", r"after (?:each |every |my )?(?:meeting|call)s?|follow[- ]?up after|recap"),
         ("meeting_prep", r"\bprep|brief me|before (?:each |every |my )?(?:meeting|call)"),
@@ -124,11 +135,16 @@ def proposal_payload(text: str) -> dict[str, Any]:
     """Turn a chat request into a responsibility spec for the user to confirm."""
     template = match_template(text)
     base = TEMPLATES.get(template, {})
+    trigger = base.get("trigger") or {"type": "email", "keywords": _keywords(text)}
+    if template == "auto_join":
+        low = text.lower()
+        kinds = [k for k in ("intro", "demo", "discovery", "sales", "qbr", "interview", "onboarding", "kickoff") if k in low]
+        trigger = {**trigger, "keywords": kinds, "external_only": "internal" not in low and "all my meetings" not in low}
     return {
         "template": template,
         "name": base.get("name") or text.strip().rstrip(".")[:80],
         "instruction": base.get("instruction") or text.strip(),
-        "trigger": base.get("trigger") or {"type": "email", "keywords": _keywords(text)},
+        "trigger": trigger,
         "autonomy": base.get("autonomy", "approve"),
         "escalation": "Escalate to me when you're unsure, when money or contracts are involved, or when someone asks for a human.",
         "description": base.get("description") or "Custom responsibility. I'll flag matching messages for you.",
@@ -324,10 +340,17 @@ def _daily_digest(store: Store, user_id: int, resp: dict[str, Any]) -> list[str]
     return ["Posted the daily digest"]
 
 
+def _auto_join(store: Store, user_id: int, resp: dict[str, Any]) -> list[str]:
+    from coworker import autojoin
+
+    return autojoin.run(store, user_id, resp)
+
+
 HANDLERS = {
     "inbound_leads": lambda s, u, r: _email_responsibility(s, u, r, "sales_lead"),
     "scheduling": lambda s, u, r: _email_responsibility(s, u, r, "scheduling"),
     "support": lambda s, u, r: _email_responsibility(s, u, r, "support"),
+    "auto_join": _auto_join,
     "meeting_prep": _meeting_prep,
     "stale_deals": _stale_deals,
     "slack_answers": _slack_answers,
@@ -404,8 +427,15 @@ def suggestions(store: Store, user_id: int) -> list[dict[str, Any]]:
     add("scheduling", f"{counts.get('scheduling', 0)} people are waiting on a time to meet.", counts.get("scheduling", 0))
     add("meeting_prep", f"You have {len(meetings)} external meetings in the next 3 days.", len(meetings))
     add("support", f"{counts.get('support', 0)} customers asked product questions.", counts.get("support", 0))
+    from coworker import autojoin
+    from coworker.connectors import recall
+
+    if recall.is_configured():
+        joinable = [e for e in meetings if autojoin.meeting_url(e)]
+        add("auto_join", f"{len(joinable)} external video calls in the next 3 days I could take for you.", len(joinable))
     add("slack_answers", f"{len(dms)} teammates asked you questions on Slack.", len(dms))
     # Lead with jobs that produce a draft to approve: that's the fastest "first win".
-    priority = {"inbound_leads": 0, "scheduling": 1, "support": 2, "stale_deals": 3, "slack_answers": 4, "meeting_prep": 5}
+    priority = {"inbound_leads": 0, "scheduling": 1, "support": 2, "stale_deals": 3, "slack_answers": 4, "auto_join": 5,
+                "meeting_prep": 6}
     out.sort(key=lambda s: (priority.get(s["template"], 9), -s["count"]))
     return out
