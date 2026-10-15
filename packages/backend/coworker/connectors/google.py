@@ -280,6 +280,9 @@ class GoogleConnector:
         count = self._sync_gmail(store, user_id)
         count += self._sync_calendar(store, user_id)
         count += self._sync_drive(store, user_id)
+        from coworker import mail_push
+
+        mail_push.ensure_gmail_watch(self)
         import json
 
         store.upsert_connection(user_id, "google", sync_cursor=json.dumps(self.cursor))

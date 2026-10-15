@@ -75,6 +75,23 @@ It prints `OK: safe to start in production` or the exact settings to fix, and ex
 
 > If the pilot user's company blocks user consent for unverified apps, their IT admin must approve the app once. They can grant admin consent from the app's **API permissions** page. Completing **Publisher verification** (it needs a Microsoft Partner Network ID) removes the "unverified" warning for everyone.
 
+## 3b. Real-time email (recommended)
+
+Without this step, the worker checks mail every minute. With it, a new email gets a draft in seconds.
+
+- **Outlook** needs nothing extra. Once `BACKEND_URL` is public HTTPS, each Outlook connection subscribes to inbox notifications at `/api/coworker/microsoft/notify` and renews the subscription itself.
+- **Gmail** uses Google Cloud Pub/Sub, in the same project as your OAuth client:
+  1. Create a topic, e.g. `gmail-push`. On its **Permissions** tab, give `gmail-api-push@system.gserviceaccount.com` the **Pub/Sub Publisher** role.
+  2. Create a **push** subscription on the topic. Set its endpoint to `https://chat.ourogen.ai/api/coworker/google/push?token=<a long random string>`.
+  3. Set two variables:
+     - `GMAIL_PUBSUB_TOPIC=projects/<project-id>/topics/gmail-push`
+     - `GMAIL_PUSH_TOKEN=<that same string>`
+
+     To use signed OIDC tokens instead of the `token` in the URL, turn on authentication on the subscription and set `GMAIL_PUSH_AUDIENCE` (and optionally `GMAIL_PUSH_SERVICE_ACCOUNT`).
+  4. Each Gmail connection starts its watch on the next sync and renews it before the 7-day expiry.
+
+If a watch or subscription can't be created, the coworker keeps polling and retries an hour later.
+
 ## 4. Slack (real time)
 
 1. Create a Slack app at https://api.slack.com/apps.
