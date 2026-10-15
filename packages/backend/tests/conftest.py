@@ -11,8 +11,9 @@ from app import create_app  # noqa: E402
 
 
 @pytest.fixture
-def app():
+def app(tmp_path):
     return create_app({
+        "COWORKER_DB_URL": f"sqlite:///{tmp_path}/coworker.db",
         "TESTING": True,
         "JWT_SECRET_KEY": "test-secret",
         "DB_HOST": "localhost",

@@ -9,6 +9,7 @@ from flask_jwt_extended import JWTManager
 
 from api_endpoints.auth.handler import auth_bp, google_oauth_callback
 from api_endpoints.chat.handler import chat_bp
+from api_endpoints.coworker import coworker_bp
 from api_endpoints.documents.handler import documents_bp
 from api_endpoints.folders.handler import folders_bp
 from api_endpoints.payments.handler import payments_bp
@@ -37,6 +38,7 @@ def create_app(config: dict[str, object] | None = None) -> Flask:
         GEMINI_API_KEY=os.environ.get("GEMINI_API_KEY", ""),
         STRIPE_SECRET_KEY=os.environ.get("STRIPE_SECRET_KEY", ""),
         UPLOAD_FOLDER=os.environ.get("UPLOAD_FOLDER", "/tmp/anote_uploads"),
+        COWORKER_DB_URL=os.environ.get("COWORKER_DB_URL", ""),
     )
     if config:
         app.config.update(config)
@@ -52,6 +54,7 @@ def create_app(config: dict[str, object] | None = None) -> Flask:
     app.register_blueprint(user_bp)
     app.register_blueprint(payments_bp)
     app.register_blueprint(workspaces_bp)
+    app.register_blueprint(coworker_bp)
 
     app.add_url_rule("/callback", "google_oauth_callback", google_oauth_callback, methods=["GET"])
 
