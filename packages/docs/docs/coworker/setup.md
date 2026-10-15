@@ -17,7 +17,9 @@ Open `http://localhost:3000`, create an account, and you land in coworker onboar
 |---|---|
 | `ANTHROPIC_API_KEY` | Claude for chat, drafting, and calls (default model `claude-opus-5-5`; override with `COWORKER_MODEL`). Without it, an offline planner handles the common requests. |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_COWORKER_REDIRECT_URI` | Your real Gmail, Calendar, and Drive |
+| `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `MICROSOFT_TENANT`, `MICROSOFT_REDIRECT_URI` | Your real Outlook mail and calendar (Microsoft 365 or a personal account), from an Entra ID app registration |
 | `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET` | Slack OAuth. You can also paste a user token (`xoxp-…`) in Settings. |
+| `SLACK_SIGNING_SECRET` | Real-time Slack: Slack pushes each message to `/api/coworker/slack/events` instead of a one-minute poll |
 | `ELEVENLABS_API_KEY` | Server voice and voice cloning for your twin |
 | `RECALL_API_KEY` | Meeting bot for Zoom, Meet, and Teams |
 | `TAVUS_API_KEY`, `TAVUS_REPLICA_ID` | Real-time video avatar |

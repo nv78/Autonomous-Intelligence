@@ -11,6 +11,11 @@ const LEVEL_HELP: Record<string, string> = {
   silent: 'Just do it',
 };
 
+const MAILBOXES = [
+  { provider: 'google', label: 'Google: Gmail, Calendar, Drive', icon: '📧', sendScope: 'gmail.send', env: 'GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET' },
+  { provider: 'microsoft', label: 'Microsoft 365: Outlook mail and calendar', icon: '📨', sendScope: 'Mail.Send', env: 'MICROSOFT_CLIENT_ID / MICROSOFT_CLIENT_SECRET' },
+] as const;
+
 export function ConnectionsPanel({ returnTo = '/app/coworker/settings' }: { returnTo?: string }) {
   const { token } = useAuth();
   const { connections, capabilities, coworker, refresh } = useCoworker();
@@ -20,10 +25,10 @@ export function ConnectionsPanel({ returnTo = '/app/coworker/settings' }: { retu
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const connectGoogle = async (level: 'read' | 'act') => {
+  const connectMailbox = async (provider: 'google' | 'microsoft', level: 'read' | 'act') => {
     try {
       localStorage.setItem('coworker_return_to', returnTo);
-      const d = await api.post('/connections/google/start', { level });
+      const d = await api.post(`/connections/${provider}/start`, { level });
       window.location.href = d.url;
     } catch (e) {
       setMsg(errorMessage(e));
@@ -102,10 +107,8 @@ export function ConnectionsPanel({ returnTo = '/app/coworker/settings' }: { retu
   };
 
   const conn = (p: string) => connections.find((c) => c.provider === p);
-  const google = conn('google');
   const slack = conn('slack');
   const hubspot = conn('hubspot');
-  const canSend = google?.scopes?.includes('gmail.send');
 
   return (
     <div className="space-y-3">
@@ -119,29 +122,37 @@ export function ConnectionsPanel({ returnTo = '/app/coworker/settings' }: { retu
           <Pill tone="blue">Demo</Pill>
         </Card>
       )}
-      <Card className="p-4">
-        <div className="flex items-center gap-3">
-          <span className="text-xl" aria-hidden>📧</span>
-          <div className="flex-1">
-            <p className="text-sm font-medium">Google: Gmail, Calendar, Drive</p>
-            <p className="text-xs text-gray-500">
-              {google
-                ? `${google.account || 'Connected'} · ${google.status}${google.lastSyncedAt ? ` · synced ${timeAgo(google.lastSyncedAt)}` : ''}`
-                : capabilities?.google ? 'Read access first. I ask for send access when a responsibility needs it.' : 'Not configured on this server (set GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET).'}
-            </p>
-            {google?.error && <p className="text-xs text-red-500 mt-1">{google.error}</p>}
-          </div>
-          {google ? (
-            <div className="flex gap-2">
-              {!canSend && <button className={ghostBtn} onClick={() => connectGoogle('act')}>Allow sending</button>}
-              {google.status === 'reauth_required' && <button className={primaryBtn} onClick={() => connectGoogle('read')}>Reconnect</button>}
-              <button className={ghostBtn} onClick={() => disconnect('google')}>Disconnect</button>
+      {MAILBOXES.map((box) => {
+        const c = conn(box.provider);
+        const configured = capabilities?.[box.provider];
+        const canSend = c?.scopes?.includes(box.sendScope);
+        return (
+          <Card key={box.provider} className="p-4">
+            <div className="flex items-center gap-3">
+              <span className="text-xl" aria-hidden>{box.icon}</span>
+              <div className="flex-1">
+                <p className="text-sm font-medium">{box.label}</p>
+                <p className="text-xs text-gray-500">
+                  {c
+                    ? `${c.account || 'Connected'} · ${c.status === 'reauth_required' ? 'needs reconnecting' : c.status}${c.lastSyncedAt ? ` · synced ${timeAgo(c.lastSyncedAt)}` : ''}`
+                    : configured ? 'Read access first. I ask for send access when a responsibility needs it.' : `Not configured on this server (set ${box.env}).`}
+                </p>
+                {c?.error && <p className="text-xs text-red-500 mt-1">{c.error}</p>}
+              </div>
+              {c ? (
+                <div className="flex gap-2">
+                  {c.status === 'reauth_required'
+                    ? <button className={primaryBtn} onClick={() => connectMailbox(box.provider, canSend ? 'act' : 'read')}>Reconnect</button>
+                    : !canSend && <button className={ghostBtn} onClick={() => connectMailbox(box.provider, 'act')}>Allow sending</button>}
+                  <button className={ghostBtn} onClick={() => disconnect(box.provider)}>Disconnect</button>
+                </div>
+              ) : (
+                <button className={primaryBtn} disabled={!configured} onClick={() => connectMailbox(box.provider, 'read')}>Connect</button>
+              )}
             </div>
-          ) : (
-            <button className={primaryBtn} disabled={!capabilities?.google} onClick={() => connectGoogle('read')}>Connect</button>
-          )}
-        </div>
-      </Card>
+          </Card>
+        );
+      })}
       <Card className="p-4">
         <div className="flex items-center gap-3">
           <span className="text-xl" aria-hidden>💬</span>
@@ -152,7 +163,12 @@ export function ConnectionsPanel({ returnTo = '/app/coworker/settings' }: { retu
             </p>
           </div>
           {slack ? (
-            <button className={ghostBtn} onClick={() => disconnect('slack')}>Disconnect</button>
+            <div className="flex gap-2">
+              {slack.status === 'reauth_required' && capabilities?.slack_oauth && (
+                <button className={primaryBtn} onClick={connectSlackOAuth}>Reconnect</button>
+              )}
+              <button className={ghostBtn} onClick={() => disconnect('slack')}>Disconnect</button>
+            </div>
           ) : capabilities?.slack_oauth ? (
             <button className={primaryBtn} onClick={connectSlackOAuth}>Connect</button>
           ) : null}

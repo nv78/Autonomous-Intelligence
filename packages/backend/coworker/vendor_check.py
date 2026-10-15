@@ -101,7 +101,34 @@ def check_slack() -> dict[str, str]:
         return _result("Slack OAuth", "skipped", "not configured (users can paste a token)")
     if not (cid and secret):
         return _result("Slack OAuth", "fail", "set both SLACK_CLIENT_ID and SLACK_CLIENT_SECRET")
-    return _result("Slack OAuth", "ok", "client configured")
+    events = "real-time events on" if os.environ.get("SLACK_SIGNING_SECRET") else "polling every minute (set SLACK_SIGNING_SECRET for real-time)"
+    return _result("Slack OAuth", "ok", f"client configured; {events}")
+
+
+def check_microsoft() -> dict[str, str]:
+    cid, secret = os.environ.get("MICROSOFT_CLIENT_ID"), os.environ.get("MICROSOFT_CLIENT_SECRET")
+    if not cid and not secret:
+        return _result("Outlook (Microsoft 365)", "skipped", "not configured (Gmail only)")
+    if not (cid and secret):
+        return _result("Outlook (Microsoft 365)", "fail", "set both MICROSOFT_CLIENT_ID and MICROSOFT_CLIENT_SECRET")
+    from coworker.connectors import microsoft
+
+    redirect = microsoft.redirect_uri()
+    if os.environ.get("APP_ENV") == "production" and not redirect.startswith("https://"):
+        return _result("Outlook (Microsoft 365)", "fail", "MICROSOFT_REDIRECT_URI must be https in production")
+    return _result("Outlook (Microsoft 365)", "ok", f"client configured (tenant {os.environ.get('MICROSOFT_TENANT', 'common')}); redirect {redirect}")
+
+
+def check_public_url() -> dict[str, str]:
+    """Recall transcripts and Slack events are pushed to BACKEND_URL, so it must be reachable from the internet."""
+    url = os.environ.get("BACKEND_URL", "")
+    host = urlparse(url).hostname or ""
+    if not url or host in ("localhost", "127.0.0.1", "0.0.0.0") or host.endswith(".local"):
+        status = "fail" if os.environ.get("APP_ENV") == "production" else "skipped"
+        return _result("Public backend URL", status, f"BACKEND_URL={url or '(unset)'}: meeting bots and Slack events can't reach it")
+    if not url.startswith("https://"):
+        return _result("Public backend URL", "fail", "BACKEND_URL must be https for webhooks")
+    return _result("Public backend URL", "ok", url)
 
 
 def check_smtp() -> dict[str, str]:
@@ -162,8 +189,8 @@ def check_voiceprint() -> dict[str, str]:
     return _result("Voice match", "ok", f"{voiceprint.backend()} backend, ffmpeg available")
 
 
-CHECKS = [check_anthropic, check_elevenlabs, check_recall, check_tavus, check_google, check_slack, check_smtp,
-          check_s3, check_redis, check_voiceprint]
+CHECKS = [check_anthropic, check_elevenlabs, check_recall, check_tavus, check_google, check_microsoft, check_slack,
+          check_smtp, check_s3, check_redis, check_voiceprint, check_public_url]
 
 
 def run_all() -> list[dict[str, str]]:

@@ -22,5 +22,8 @@ resource "aws_secretsmanager_secret_version" "backend" {
     SENTRY_DSN                  = var.sentry_dsn
     ALERT_SLACK_WEBHOOK_URL     = var.alert_slack_webhook_url
     HUBSPOT_CLIENT_SECRET       = var.hubspot_client_secret
+    MICROSOFT_CLIENT_SECRET     = var.microsoft_client_secret
+    SLACK_SIGNING_SECRET        = var.slack_signing_secret
+    EXPO_ACCESS_TOKEN           = var.expo_access_token
   })
 }

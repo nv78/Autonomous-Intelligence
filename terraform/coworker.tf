@@ -65,6 +65,37 @@ variable "pilot_admin_emails" {
   default     = ""
 }
 
+variable "microsoft_client_id" {
+  description = "Entra ID app registration for Outlook mail + calendar"
+  type        = string
+  default     = ""
+}
+
+variable "microsoft_client_secret" {
+  type      = string
+  sensitive = true
+  default   = ""
+}
+
+variable "slack_signing_secret" {
+  description = "Verifies Slack Events API pushes (real-time Slack)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "expo_access_token" {
+  description = "Optional: Expo push security token for mobile approval notifications"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "microsoft_tenant" {
+  type    = string
+  default = "common"
+}
+
 variable "slack_client_secret" {
   type      = string
   sensitive = true
@@ -144,6 +175,9 @@ locals {
     { name = "GOOGLE_COWORKER_REDIRECT_URI", value = "${var.backend_url}/api/coworker/connections/google/callback" },
     { name = "SLACK_CLIENT_ID", value = var.slack_client_id },
     { name = "SLACK_REDIRECT_URI", value = "${var.backend_url}/api/coworker/connections/slack/callback" },
+    { name = "MICROSOFT_CLIENT_ID", value = var.microsoft_client_id },
+    { name = "MICROSOFT_TENANT", value = var.microsoft_tenant },
+    { name = "MICROSOFT_REDIRECT_URI", value = "${var.backend_url}/api/coworker/connections/microsoft/callback" },
     { name = "TAVUS_REPLICA_ID", value = var.tavus_replica_id },
     { name = "STRIPE_PRICE_COWORKER", value = var.stripe_price_coworker },
     { name = "STRIPE_PRICE_COWORKER_CALLS", value = var.stripe_price_coworker_calls },
@@ -160,7 +194,7 @@ locals {
 
   coworker_secrets = [
     for name in ["SLACK_CLIENT_SECRET", "ELEVENLABS_API_KEY", "RECALL_API_KEY", "TAVUS_API_KEY", "PILOT_SLACK_WEBHOOK_URL", "SMTP_URL", "SENTRY_DSN",
-    "ALERT_SLACK_WEBHOOK_URL", "HUBSPOT_CLIENT_SECRET"] :
+    "ALERT_SLACK_WEBHOOK_URL", "HUBSPOT_CLIENT_SECRET", "MICROSOFT_CLIENT_SECRET", "SLACK_SIGNING_SECRET", "EXPO_ACCESS_TOKEN"] :
     { name = name, valueFrom = "${aws_secretsmanager_secret.backend.arn}:${name}::" }
   ]
 }

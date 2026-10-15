@@ -195,6 +195,8 @@ def test_recall_and_tavus_adapters(monkeypatch):
         assert recall.create_bot("https://zoom.us/j/1", "Natan's AI coworker (Ourogen)", "I'm an AI", "https://hook") == "bot1"
         body = req.call_args.kwargs["json"]
         assert body["chat"]["on_bot_join"]["message"] == "I'm an AI"
+        # Recall rejects output_audio unless the bot was created able to speak.
+        assert body["automatic_audio_output"]["in_call_recording"]["data"]["kind"] == "mp3"
         recall.leave("bot1")
         recall.send_chat("bot1", "hi")
         recall.speak("bot1", "b64")

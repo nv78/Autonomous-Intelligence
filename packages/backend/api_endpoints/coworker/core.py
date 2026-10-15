@@ -49,11 +49,12 @@ def get_coworker() -> tuple:
     user_id = uid()
     row = _require_coworker(user_id)
     from coworker import voice
-    from coworker.connectors import google, hubspot, recall, slack, tavus
+    from coworker.connectors import google, hubspot, microsoft, recall, slack, tavus
 
     capabilities = {
         "llm": llm_available(user_id),
         "google": google.is_configured(),
+        "microsoft": microsoft.is_configured(),
         "slack_oauth": slack.is_configured(),
         "hubspot_oauth": hubspot.is_configured(),
         "voice": voice.is_configured(),

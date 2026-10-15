@@ -7,7 +7,7 @@ from typing import Any, Protocol
 
 from coworker.store import Store, get_store, iso
 
-PROVIDERS = ("google", "slack")
+PROVIDERS = ("google", "microsoft", "slack")
 
 
 class ConnectorError(Exception):
@@ -31,6 +31,25 @@ class Connector(Protocol):
     def sync(self, store: Store, user_id: int) -> int: ...
 
 
+LABELS = {"google": "Google", "slack": "Slack", "microsoft": "Outlook", "hubspot": "HubSpot"}
+
+
+def _tell_owner_to_reconnect(store: Store, user_id: int, provider: str) -> None:
+    """A connection's access expired: until the owner reconnects, nothing from it is read or sent."""
+    from coworker import notify, push
+
+    name = LABELS.get(provider, provider.title())
+    body = (f"Your coworker lost access to {name}, so it has stopped reading and sending there. "
+            f"Reconnect it here: {notify._app_url('/coworker/settings')}")
+    try:
+        push.send(store, user_id, f"Reconnect {name}", f"Your coworker lost access to {name}.",
+                  data={"url": "/coworker/settings"})
+        notify.deliver(store, user_id, f"Reconnect {name}", body)
+    except Exception:  # never let an alert break the sync loop
+        pass
+    store.log(user_id, "connection.reauth", f"{name} needs to be reconnected", {"provider": provider})
+
+
 class Workspace:
     """Routes reads and writes for one user to demo or live connectors."""
 
@@ -52,6 +71,10 @@ class Workspace:
             from coworker.connectors.google import GoogleConnector
 
             return GoogleConnector.from_row(self.store, row)
+        if provider == "microsoft":
+            from coworker.connectors.microsoft import MicrosoftConnector
+
+            return MicrosoftConnector.from_row(self.store, row)
         if provider == "slack":
             from coworker.connectors.slack import SlackConnector
 
@@ -63,8 +86,12 @@ class Workspace:
 
         return DemoConnector()
 
+    def email_connector(self) -> Any | None:
+        """The live mailbox the coworker reads and sends from: Gmail, else Outlook."""
+        return self._live("google") or self._live("microsoft")
+
     def _for_email(self) -> Any:
-        return self._live("google") or self._demo()
+        return self.email_connector() or self._demo()
 
     def _for_slack(self) -> Any:
         return self._live("slack") or self._demo()
@@ -79,6 +106,7 @@ class Workspace:
             connector = self._live(provider)
             if not connector:
                 continue
+            before = (self.store.get_connection_row(self.user_id, provider) or {}).get("status")
             self.store.upsert_connection(self.user_id, provider, status="syncing")
             try:
                 counts[provider] = connector.sync(self.store, self.user_id)
@@ -88,6 +116,8 @@ class Workspace:
             except ConnectorError as exc:
                 status = "reauth_required" if exc.code == "reauth_required" else "error"
                 self.store.upsert_connection(self.user_id, provider, status=status, error=str(exc))
+                if status == "reauth_required" and before != "reauth_required":
+                    _tell_owner_to_reconnect(self.store, self.user_id, provider)
                 if status == "error":  # reauth is the user's to fix; other errors are ours
                     import observability
 

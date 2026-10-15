@@ -18,6 +18,13 @@ from coworker.connectors.base import ConnectorError
 
 TIMEOUT = 30
 
+# Recall only accepts output_audio for bots created with automatic_audio_output,
+# which needs a clip of its own. A 0.3s silent mp3 enables speaking without
+# playing anything on join.
+SILENT_MP3_B64 = (
+    "SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAAAAAAA//MYxAAAAANIAAAAAExBTUUzLjEwMFVVVVVVVVVVVVVVVVVV//MYxBcAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//MYxC4AAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//MYxEUAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//MYxFwAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//MYxHMAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//MYxIoAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//MYxKEAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//MYxLgAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//MYxM8AAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//MYxOYAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV"
+)
+
 
 def is_configured() -> bool:
     return bool(os.environ.get("RECALL_API_KEY"))
@@ -44,6 +51,7 @@ def create_bot(meeting_url: str, bot_name: str, disclosure: str, webhook_url: st
         "meeting_url": meeting_url,
         "bot_name": bot_name[:100],
         "chat": {"on_bot_join": {"send_to": "everyone", "message": disclosure[:500]}},
+        "automatic_audio_output": {"in_call_recording": {"data": {"kind": "mp3", "b64_data": SILENT_MP3_B64}}},
         "recording_config": {
             "transcript": {"provider": {"meeting_captions": {}}},
             "realtime_endpoints": [{"type": "webhook", "url": webhook_url, "events": ["transcript.data"]}],

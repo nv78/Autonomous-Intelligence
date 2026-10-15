@@ -1,4 +1,4 @@
-"""Connect, sync, and disconnect Google, Slack, and HubSpot."""
+"""Connect, sync, and disconnect Google, Microsoft 365 (Outlook), Slack, and HubSpot."""
 from __future__ import annotations
 
 import os
@@ -9,7 +9,7 @@ from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 from api_endpoints.coworker.common import coworker_bp, error, frontend_url, store, uid
 from api_endpoints.coworker.core import refresh_knowledge
-from coworker.connectors import google, hubspot, slack
+from coworker.connectors import google, hubspot, microsoft, slack
 from coworker.connectors.base import ConnectorError, decrypt_token, encrypt_token
 from middleware.auth import require_auth
 
@@ -94,6 +94,43 @@ def _switch_to_live(user_id: int) -> None:
         s.execute(f"DELETE FROM {table} WHERE user_id = %s", (user_id,))
     s.delete_connection(user_id, "demo")
     s.update_coworker(user_id, mode="live")
+
+
+# -- Microsoft 365 (Outlook mail + calendar) ---------------------------------
+
+@coworker_bp.post("/connections/microsoft/start")
+@require_auth
+def microsoft_start() -> tuple:
+    if not microsoft.is_configured():
+        return error("Outlook isn't configured on this server. Set MICROSOFT_CLIENT_ID and MICROSOFT_CLIENT_SECRET.",
+                     501, "not_configured")
+    level = (request.get_json(silent=True) or {}).get("level", "read")
+    if level not in ("read", "act"):
+        return error("level must be 'read' or 'act'")
+    return jsonify({"url": microsoft.auth_url(_state(uid(), "microsoft", level), level)}), 200
+
+
+@coworker_bp.get("/connections/microsoft/callback")
+def microsoft_callback() -> Any:
+    state = _read_state(request.args.get("state", ""), "microsoft")
+    if not state:
+        return _back("microsoft", False, "invalid or expired state")
+    if request.args.get("error"):
+        return _back("microsoft", False, request.args.get("error_description") or request.args["error"])
+    try:
+        token = microsoft.exchange_code(request.args.get("code", ""))
+    except ConnectorError as exc:
+        return _back("microsoft", False, str(exc))
+    user_id = int(state["uid"])
+    s = store()
+    email = microsoft.fetch_account_email(token.get("access_token", ""))
+    s.upsert_connection(user_id, "microsoft", account_label=email, token_enc=encrypt_token(token),
+                        scopes=token.get("scope", ""), status="connected", error="")
+    coworker = s.get_coworker(user_id)
+    if coworker and coworker["mode"] != "live":
+        _switch_to_live(user_id)
+    s.log(user_id, "connection", f"Connected Outlook ({email})", {"level": state.get("l")})
+    return _back("microsoft", True)
 
 
 # -- Slack ------------------------------------------------------------------
@@ -206,6 +243,9 @@ def disconnect(provider: str) -> tuple:
     if provider == "google":
         google.revoke(token)
         purged = sum(s.delete_items(user_id, p) for p in ("gmail", "gcal", "drive"))
+    elif provider == "microsoft":
+        microsoft.revoke(token)
+        purged = sum(s.delete_items(user_id, p) for p in ("outlook", "outlook_cal"))
     elif provider == "slack":
         slack.revoke(token)
         purged = s.delete_items(user_id, "slack")

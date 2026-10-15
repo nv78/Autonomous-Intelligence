@@ -164,13 +164,13 @@ export default function OnboardingPage() {
     }
   };
 
-  const startLive = async () => {
+  const startLive = async (provider: 'google' | 'microsoft' = 'google') => {
     setBusy(true);
     setErr('');
     try {
       if (!coworker) await api.post('', { mode: 'live', name: user?.name, email: user?.email });
       localStorage.setItem('coworker_return_to', '/app/onboarding');
-      const d = await api.post('/connections/google/start', { level: 'read' });
+      const d = await api.post(`/connections/${provider}/start`, { level: 'read' });
       window.location.href = d.url;
     } catch (e) {
       setErr(errorMessage(e));
@@ -265,11 +265,16 @@ export default function OnboardingPage() {
             {!coworker || coworker.mode === 'live' ? (
               <div className="grid gap-3 sm:grid-cols-2">
                 <Card className="p-4 flex flex-col">
-                  <p className="font-medium">Continue with Google</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 flex-1">Gmail, Calendar, and Drive with your real data. Slack is next.</p>
-                  <button className={`${primaryBtn} mt-3`} disabled={busy || !capabilities?.google} onClick={startLive}>
-                    {capabilities?.google ? 'Connect Google' : 'Not configured on this server'}
-                  </button>
+                  <p className="font-medium">Connect your real work</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 flex-1">Your email and calendar, from Google or Microsoft 365. Slack is next.</p>
+                  <div className="flex flex-col gap-2 mt-3">
+                    <button className={primaryBtn} disabled={busy || !capabilities?.google} onClick={() => startLive('google')}>
+                      {capabilities?.google ? 'Connect Google' : 'Google not configured on this server'}
+                    </button>
+                    {capabilities?.microsoft && (
+                      <button className={primaryBtn} disabled={busy} onClick={() => startLive('microsoft')}>Connect Outlook</button>
+                    )}
+                  </div>
                 </Card>
                 <Card className="p-4 flex flex-col">
                   <p className="font-medium">Try the Anote demo workspace</p>
