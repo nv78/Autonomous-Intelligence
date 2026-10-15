@@ -52,8 +52,12 @@ export function listenForResponses(): () => void {
       router.push("/coworker");
     } else if (data.type === "call" && data.meetingId) {
       router.push(`/call/${data.meetingId}`);
-    } else if (data.type === "today") {
+    } else if (data.type === "autojoin" && data.chatId) {
+      router.push({ pathname: "/chat", params: { session: String(data.chatId) } });
+    } else if (["today", "autojoin", "autojoin_failed"].includes(String(data.type))) {
       router.push({ pathname: "/coworker", params: { tab: "today" } });
+    } else if (data.url === "/coworker/settings") {
+      router.push("/coworker");  // reconnect prompts: settings live on the web app
     }
   });
   return () => sub.remove();
