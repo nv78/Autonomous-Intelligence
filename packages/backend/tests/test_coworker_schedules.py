@@ -9,7 +9,7 @@ import pytest
 
 from coworker import brain, executor, memory, responsibilities, schedules, tools
 from coworker.connectors.demo import DemoConnector
-from coworker.store import Store, iso
+from coworker.store import Store
 
 UTC = ZoneInfo("UTC")
 NY = ZoneInfo("America/New_York")
@@ -106,7 +106,9 @@ def _task(s: Store, text: str, autonomy: str = "approve", **schedule) -> dict:
     spec["autonomy"] = autonomy
     resp = responsibilities.create(s, 1, spec)
     s.update("cw_responsibilities", resp["id"], 1, {"created_at": "2026-01-01T00:00:00Z"})
-    return s.get("cw_responsibilities", resp["id"], 1)
+    fresh = s.get("cw_responsibilities", resp["id"], 1)
+    assert fresh is not None
+    return fresh
 
 
 def test_runs_once_per_occurrence_at_the_tasks_autonomy(s, _env):
@@ -187,4 +189,3 @@ def test_api_create_list_update_and_run_now(client, auth_headers):
     assert listed[-1]["schedule"]["runs"][0]["status"] == "done"
     with client.application.app_context():
         assert store().query("SELECT trigger_key FROM cw_runs")[-1]["trigger_key"].startswith("manual:")
-    assert iso  # keep import used for readability of timestamps in failures
