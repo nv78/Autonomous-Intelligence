@@ -58,8 +58,19 @@ export function ConnectionsPanel({ returnTo = '/app/coworker/settings' }: { retu
     setBusy(true);
     setMsg('Syncing…');
     try {
-      const d = await api.post('/sync?rebuild=1');
-      setMsg(`Synced: ${Object.entries(d.synced || {}).map(([k, v]) => `${k} +${v}`).join(', ') || 'no new items'}.`);
+      await api.post('/sync?rebuild=1');
+      // Sync runs in the background; poll until it finishes (or 2 minutes pass).
+      for (let i = 0; i < 80; i++) {
+        const st = await api.get('/sync/status');
+        if (!st.running) {
+          const job = st.job || {};
+          if (job.status === 'error') setMsg(`Sync failed: ${job.error}`);
+          else setMsg(`Synced: ${Object.entries(job.counts || {}).map(([k, v]) => `${k} +${v}`).join(', ') || 'no new items'}.`);
+          break;
+        }
+        setMsg(`Syncing… ${st.total} items so far.`);
+        await new Promise((r) => setTimeout(r, 1500));
+      }
       await refresh();
     } catch (e) {
       setMsg(errorMessage(e));
@@ -250,6 +261,34 @@ export default function SettingsTab() {
           </div>
         </Card>
       </Section>}
+
+      <Section title="Notifications" subtitle="Emails to you, sent from your own Gmail when I have send access.">
+        <Card className="divide-y divide-gray-100 dark:divide-gray-700/70">
+          {[
+            ['notify_approvals', 'Email me when actions are waiting for approval', 'At most one email every 30 minutes, batched.', true],
+            ['digest_email', 'Email me the daily digest', 'What I did, what is waiting, and what needs you, around 5pm.', false],
+          ].map(([key, label, help, dflt]) => {
+            const on = (coworker.settings || {})[key as string] ?? dflt;
+            return (
+              <label key={key as string} className="flex items-start gap-3 px-4 py-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={Boolean(on)}
+                  onChange={async (e) => {
+                    await api.patch('', { settings: { [key as string]: e.target.checked } });
+                    await refresh();
+                  }}
+                />
+                <span className="text-sm">
+                  {label}
+                  <span className="block text-xs text-gray-500">{help}</span>
+                </span>
+              </label>
+            );
+          })}
+        </Card>
+      </Section>
 
       <PlanSection />
 

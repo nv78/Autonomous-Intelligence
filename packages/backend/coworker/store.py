@@ -30,7 +30,7 @@ from typing import Any
 JSON_COLUMNS = {
     "autonomy", "settings", "onboarding", "style_profile", "recipients", "meta",
     "trigger_spec", "tools", "payload", "result", "detail", "transcript",
-    "metrics", "playbook", "answers", "risk",
+    "metrics", "playbook", "answers", "risk", "counts",
 }
 
 
@@ -251,6 +251,29 @@ TABLES: dict[str, str] = {
         quantity INT NOT NULL DEFAULT 0,
         created_at VARCHAR(40) NOT NULL
     """,
+    "cw_sync_jobs": """
+        id {pk},
+        user_id INT NOT NULL,
+        status VARCHAR(20) NOT NULL DEFAULT 'queued',
+        phase VARCHAR(20) NOT NULL DEFAULT 'queued',
+        rebuild INT NOT NULL DEFAULT 0,
+        counts {text},
+        error {text},
+        requested_at VARCHAR(40) NOT NULL,
+        started_at VARCHAR(40),
+        finished_at VARCHAR(40)
+    """,
+    "cw_notifications": """
+        id {pk},
+        user_id INT NOT NULL,
+        kind VARCHAR(30) NOT NULL,
+        slot VARCHAR(40) NOT NULL,
+        channel VARCHAR(20) NOT NULL DEFAULT '',
+        subject VARCHAR(500) NOT NULL DEFAULT '',
+        item_count INT NOT NULL DEFAULT 0,
+        sent_at VARCHAR(40) NOT NULL,
+        UNIQUE (user_id, kind, slot)
+    """,
     "cw_pilot_applications": """
         id {pk},
         name VARCHAR(255) NOT NULL DEFAULT '',
@@ -269,6 +292,7 @@ INDEXES: list[tuple[str, str, str]] = [
     ("idx_cw_actions_user_status", "cw_actions", "user_id, status"),
     ("idx_cw_activity_user", "cw_activity", "user_id, created_at"),
     ("idx_cw_memory_user", "cw_memory", "user_id, kind"),
+    ("idx_cw_sync_jobs_user", "cw_sync_jobs", "user_id, status"),
 ]
 
 

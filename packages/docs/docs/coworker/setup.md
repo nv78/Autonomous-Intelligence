@@ -23,6 +23,9 @@ Open `http://localhost:3000`, create an account, and you land in coworker onboar
 | `TAVUS_API_KEY`, `TAVUS_REPLICA_ID` | Real-time video avatar |
 | `STRIPE_PRICE_COWORKER*`, `COWORKER_ENFORCE_PLANS=1` | Paid plans and plan gating |
 | `PILOT_SLACK_WEBHOOK_URL`, `PILOT_BOOKING_URL`, `PILOT_ADMIN_EMAILS` | Founder pilot applications from ourogen.ai |
+| `SMTP_URL`, `SMTP_FROM` | Relay for approval and digest emails when the user's Gmail can't send (`smtp://user:pass@host:587` or `smtps://…:465`) |
+| `NOTIFY_BATCH_SECONDS`, `NOTIFY_MIN_INTERVAL_SECONDS` | Approval email batching (default 300s) and rate limit (default 1800s) |
+| `COWORKER_SYNC_MODE` | `thread` (default) syncs on a background thread in the web process; `worker` leaves sync to `coworker-worker` |
 
 ### Google
 

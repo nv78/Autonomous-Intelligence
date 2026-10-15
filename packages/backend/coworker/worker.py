@@ -16,12 +16,18 @@ from app import create_app
 
 def run_once() -> int:
     from api_endpoints.coworker.delegation import run_tick
+    from coworker import sync_jobs
     from coworker.store import get_store
 
-    users = [r["user_id"] for r in get_store().query("SELECT user_id FROM cw_coworkers WHERE status = 'active'")]
+    store = get_store()
+    try:
+        sync_jobs.run_pending(store)  # syncs queued from the web app (onboarding, "Sync now")
+    except Exception as exc:  # pragma: no cover - keep the loop alive
+        print(f"[coworker] sync jobs failed: {exc}")
+    users = [r["user_id"] for r in store.query("SELECT user_id FROM cw_coworkers WHERE status = 'active'")]
     for user_id in users:
         try:
-            result = run_tick(int(user_id), force=True)
+            result = run_tick(int(user_id), force=True, inline_sync=True)
             if result.get("results") or result.get("executed"):
                 print(f"[coworker] user {user_id}: {result}")
         except Exception as exc:  # keep going for other users

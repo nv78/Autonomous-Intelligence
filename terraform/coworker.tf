@@ -89,6 +89,18 @@ variable "tavus_api_key" {
   default   = ""
 }
 
+variable "smtp_from" {
+  type    = string
+  default = "Ourogen <notifications@ourogen.ai>"
+}
+
+variable "smtp_url" {
+  description = "Relay for approval/digest emails when a user's Gmail can't send: smtp://user:pass@host:587"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "pilot_slack_webhook_url" {
   type      = string
   sensitive = true
@@ -113,10 +125,11 @@ locals {
     { name = "TWIN_S3_BUCKET", value = aws_s3_bucket.twin.bucket },
     { name = "TWIN_S3_SSE", value = "aws:kms" },
     { name = "AWS_REGION", value = var.aws_region },
+    { name = "SMTP_FROM", value = var.smtp_from },
   ]
 
   coworker_secrets = [
-    for name in ["SLACK_CLIENT_SECRET", "ELEVENLABS_API_KEY", "RECALL_API_KEY", "TAVUS_API_KEY", "PILOT_SLACK_WEBHOOK_URL"] :
+    for name in ["SLACK_CLIENT_SECRET", "ELEVENLABS_API_KEY", "RECALL_API_KEY", "TAVUS_API_KEY", "PILOT_SLACK_WEBHOOK_URL", "SMTP_URL"] :
     { name = name, valueFrom = "${aws_secretsmanager_secret.backend.arn}:${name}::" }
   ]
 }

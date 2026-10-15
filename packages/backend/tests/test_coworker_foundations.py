@@ -427,8 +427,10 @@ def test_sync_live_google(client, auth_headers, demo, app):
         s.upsert_connection(1, "google", token_enc=encrypt_token({"access_token": "at", "expires_at": 9e9, "scope": ""}),
                             status="connected", account_label="natan@anote.ai")
     with patch("coworker.connectors.google.GoogleConnector.sync", return_value=3):
-        body = client.post("/api/coworker/sync", headers=auth_headers).get_json()
-    assert body["synced"] == {"google": 3}
+        resp = client.post("/api/coworker/sync", headers=auth_headers)
+    assert resp.status_code == 202 and resp.get_json()["queued"]
+    job = client.get("/api/coworker/sync/status", headers=auth_headers).get_json()["job"]
+    assert job["status"] == "done" and job["counts"] == {"google": 3}
     from coworker.connectors.base import ConnectorError
 
     with patch("coworker.connectors.google.GoogleConnector.sync", side_effect=ConnectorError("expired", "reauth_required")):

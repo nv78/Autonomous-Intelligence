@@ -25,6 +25,22 @@ function Bubble({ children }: { children: ReactNode }) {
   );
 }
 
+const SYNC_WAIT_MS = 45_000;
+
+type SyncStatus = {
+  running: boolean;
+  total: number;
+  items: Record<string, number>;
+  job: { status: string; phase: string; error: string } | null;
+};
+
+function syncLine(st: SyncStatus): string {
+  const n = (k: string) => st.items[k] || 0;
+  const what = `${n('gmail')} emails, ${n('slack')} Slack messages, ${n('gcal')} events, and ${n('drive')} docs`;
+  if (!st.running) return `Synced ${what}.`;
+  return st.job?.phase === 'learning' ? `Synced ${what}. Learning from them…` : `Syncing… ${what} so far.`;
+}
+
 export default function OnboardingPage() {
   const { token, user } = useAuth();
   const { coworker, capabilities, refresh, refreshStatus, loaded, tick } = useCoworker();
@@ -79,8 +95,29 @@ export default function OnboardingPage() {
     (async () => {
       setProgress(['Reading your recent email, Slack, calendar, and docs…']);
       try {
-        if (coworker?.mode === 'live') await api.post('/sync?rebuild=1');
-        else await api.post('/memory/rebuild', { enrich: false });
+        if (coworker?.mode === 'live') {
+          // Sync runs in the background. Show live counts, and move on with
+          // partial data if the first backfill is slow: it keeps going.
+          await api.post('/sync?rebuild=1');
+          const started = Date.now();
+          let shown = false;
+          while (!cancelled && Date.now() - started < SYNC_WAIT_MS) {
+            const st: SyncStatus = await api.get('/sync/status');
+            const line = syncLine(st);
+            setProgress((p) => (shown ? [...p.slice(0, -1), line] : [...p, line]));
+            shown = true;
+            if (!st.running) {
+              if (st.job?.status === 'error') setErr(`Sync hit a problem: ${st.job.error}. I'll retry in the background.`);
+              break;
+            }
+            await new Promise((r) => setTimeout(r, 1500));
+          }
+          if (cancelled) return;
+          if (Date.now() - started >= SYNC_WAIT_MS) {
+            setProgress((p) => [...p, "Still syncing older history in the background. Let's start with what I have."]);
+            await api.post('/memory/rebuild', { enrich: false });
+          }
+        } else await api.post('/memory/rebuild', { enrich: false });
         const l: Learned = await api.get('/memory/learned');
         if (cancelled) return;
         const lines = [
