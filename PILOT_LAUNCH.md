@@ -124,7 +124,14 @@ How the user sends the coworker to a meeting: in chat, *"Join my 2pm with Northw
 3. It answers out loud or in the meeting chat.
 4. When the call ends, it posts a summary, a lead score, and a drafted follow-up into the chat the user asked from.
 
-**Expect** a pause of a few seconds before each spoken answer (captions, then the model, then speech). It works for intro and qualification calls. It isn't yet natural for fast back-and-forth; streaming voice is on the roadmap.
+**On the call:**
+- It waits for a short pause before answering (`COWORKER_TURN_SILENCE`, 0.8 seconds by default), and ignores "mm-hm" and "yeah".
+- It stops talking when someone interrupts.
+- If its answer is slow, it says "Good question." first.
+- Calls use a fast model (Haiku when you've chosen Claude; set `COWORKER_CALL_MODEL` to override) and Recall's low-latency transcription. Set `RECALL_TRANSCRIPT=captions` to use the meeting platform's captions instead.
+- Each call summary records reply-time p50 and p95.
+
+**Expect** about 1.5–3 seconds before a spoken answer. That works for intro and qualification calls. Fully streaming speech is the next step.
 
 ## 6. Notifications
 

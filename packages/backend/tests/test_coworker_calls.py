@@ -200,6 +200,8 @@ def test_recall_and_tavus_adapters(monkeypatch):
         recall.leave("bot1")
         recall.send_chat("bot1", "hi")
         recall.speak("bot1", "b64")
+        recall.stop_audio("bot1")
+        assert req.call_args.args[:2] == ("DELETE", "https://us-east-1.recall.ai/api/v1/bot/bot1/output_audio/")
     with patch("coworker.connectors.recall.requests.request", return_value=_resp(400, {"e": 1})):
         with pytest.raises(Exception):
             recall.leave("bot1")

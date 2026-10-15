@@ -1,8 +1,8 @@
 """Calls, playbook, voice, and twin routes."""
 from __future__ import annotations
 
-import base64
 import os
+import threading
 from typing import Any
 
 from flask import Response, current_app, jsonify, request
@@ -175,20 +175,21 @@ def recall_webhook() -> tuple:
     parsed = recall.parse_transcript_event(request.get_json(silent=True) or {})
     if not parsed or parsed[2]:
         return jsonify({"ok": True}), 200
-    _, text, _ = parsed
-    result = meetings.respond(store(), user_id, meeting_id, text)
-    m = result["meeting"]
-    if result["reply"] and m.get("bot_id"):
-        try:
-            voice_id = ((store().get_coworker(user_id) or {}).get("settings") or {}).get("voice_id")
-            if voice.is_configured():
-                recall.speak(m["bot_id"], base64.b64encode(voice.tts(result["reply"], voice_id)).decode())
-            else:
-                recall.send_chat(m["bot_id"], result["reply"])
-            if result["ended"]:
-                recall.leave(m["bot_id"])
-        except (ConnectorError, voice.VoiceError):
-            pass
+    from coworker import live_call
+
+    turn_id = live_call.on_segment(store(), user_id, meeting_id, parsed[1])
+    if turn_id:
+        # Answer off the request once they've paused, so Recall never waits on the model or the voice.
+        app = current_app._get_current_object()  # type: ignore[attr-defined]
+
+        def target() -> None:
+            with app.app_context():
+                live_call.take_turn(store(), user_id, meeting_id, turn_id, wait=0 if app.config.get("TESTING") else None)
+
+        if app.config.get("TESTING") and not app.config.get("COWORKER_SYNC_THREADS"):
+            target()
+        else:
+            threading.Thread(target=target, name=f"call-turn-{meeting_id}", daemon=True).start()
     return jsonify({"ok": True}), 200
 
 

@@ -331,7 +331,8 @@ def _llm_reply(store: Store, user_id: int, meeting: dict[str, Any], text: str, a
     prompt = (f"Transcript so far:\n{transcript}\n\nThey just said:\n{security.wrap_untrusted(text, 'call')}\n\n"
               "Relevant facts:\n" + "\n".join(f"- {f.get('title')}: {f.get('snippet') or f.get('detail') or ''}" for f in facts)
               + "\n\nYour next spoken reply:")
-    return llm.complete_text(prompt, system=system, user_id=user_id, max_tokens=600, effort="low").strip()
+    return llm.complete_text(prompt, system=system, user_id=user_id, max_tokens=300, effort="low",
+                             model=llm.call_model(user_id)).strip()
 
 
 def respond(store: Store, user_id: int, meeting_id: int, text: str, speaker: str = "prospect") -> dict[str, Any]:
@@ -469,6 +470,10 @@ def finish(store: Store, user_id: int, meeting_id: int) -> dict[str, Any]:
     summary = {"text": text, "qualification": {f: answers.get(f, "") for f in QUALIFICATION_FIELDS},
                "buying_signals": signals, "score": score, "hot": score >= 60, "action_items": action_items,
                "followup": followup, "escalations": escalations}
+    from coworker import live_call
+
+    if (meeting.get("metrics") or {}).get("turn_ms"):
+        summary["latency"] = live_call.latency_summary(meeting.get("metrics") or {})
     latencies = (meeting.get("metrics") or {}).get("latencies_ms") or []
     duration = 0
     start_dt = parse_iso(meeting["started_at"])
