@@ -22,7 +22,7 @@ from middleware.auth import require_auth
 ALLOWED_SETTINGS = {
     "company_name", "company_domain", "timezone", "working_hours", "disclosure_text",
     "disclose_on_approved", "send_delay_seconds", "slack_channels", "meeting_join_policy",
-    "recording_consent", "digest_email", "notify_approvals",
+    "recording_consent", "digest_email", "notify_approvals", "model",
 }
 
 
@@ -130,6 +130,15 @@ def update_coworker() -> tuple:
         values["onboarding"] = {**(row.get("onboarding") or {}), **data["onboarding"]}
     if "settings" in data and isinstance(data["settings"], dict):
         clean = {k: v for k, v in data["settings"].items() if k in ALLOWED_SETTINGS}
+        if "model" in clean:
+            from coworker import llm
+
+            choice = next((m for m in llm.models_for(user_id) if m["id"] == clean["model"]), None)
+            if not choice:
+                return error("Unknown model")
+            if not choice["available"]:
+                return error(f"Add your {choice['provider'].title()} API key in Settings to use {choice['label']}.",
+                             400, "key_required")
         values["settings"] = {**(row.get("settings") or {}), **clean}
     store().update_coworker(user_id, **values)
     return jsonify({"coworker": serialize_coworker(store().get_coworker(user_id) or row)}), 200
@@ -330,3 +339,12 @@ def clear_style_rules() -> tuple:
     profile["summary"] = style.summarize(profile)
     store().update_coworker(user_id, style_profile=profile)
     return jsonify({"style": profile}), 200
+
+
+@coworker_bp.get("/models")
+@require_auth
+def list_models() -> tuple:
+    """Models the coworker can run on, and which ones this user has keys for."""
+    from coworker import llm
+
+    return jsonify({"models": llm.models_for(uid()), "default": llm.DEFAULT_MODEL}), 200
