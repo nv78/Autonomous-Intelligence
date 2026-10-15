@@ -60,7 +60,9 @@ It prints `OK: safe to start in production` or the exact settings to fix, and ex
 
 1. In the Azure portal, go to **Microsoft Entra ID → App registrations → New registration**.
    - Supported account types: **any organizational directory and personal Microsoft accounts**.
-   - Redirect URI: platform **Web**, `https://chat.ourogen.ai/api/coworker/connections/microsoft/callback`
+   - Redirect URIs: platform **Web**, both of these:
+     - `https://chat.ourogen.ai/api/coworker/connections/microsoft/callback` (connecting Outlook)
+     - `https://chat.ourogen.ai/auth/microsoft/callback` ("Continue with Microsoft" sign-in)
 2. Under **Certificates & secrets**, create a client secret.
 3. Under **API permissions**, add these Microsoft Graph **delegated** permissions:
    - `User.Read`
@@ -71,7 +73,7 @@ It prints `OK: safe to start in production` or the exact settings to fix, and ex
    - `MICROSOFT_CLIENT_ID`
    - `MICROSOFT_CLIENT_SECRET`
    - `MICROSOFT_TENANT=common`
-   - `MICROSOFT_REDIRECT_URI` (the URI above)
+   - `MICROSOFT_REDIRECT_URI` (the first URI above). Sign-in uses `BACKEND_URL` + `/auth/microsoft/callback`; override it with `MICROSOFT_LOGIN_REDIRECT_URI` if needed.
 
 > If the pilot user's company blocks user consent for unverified apps, their IT admin must approve the app once. They can grant admin consent from the app's **API permissions** page. Completing **Publisher verification** (it needs a Microsoft Partner Network ID) removes the "unverified" warning for everyone.
 
@@ -148,7 +150,9 @@ Leave `COWORKER_ENFORCE_PLANS=0` to run the pilot free.
 **Team plan.** Under **Coworker → Team**, an admin can:
 - create an organization;
 - invite teammates by email (the link only works for the invited address);
-- set rules every member's coworker follows: autonomy ceilings, blocked domains, all-party recording consent, and allowed models.
+- set rules every member's coworker follows: autonomy ceilings, blocked domains, all-party recording consent, and allowed models;
+- require Google or Microsoft sign-in for members (the password form refuses them);
+- let anyone who signs in with Google or Microsoft at the company domain join automatically. This only works for a non-public domain that the admin's own address is on, and for one organization per domain. People an admin removed can't rejoin this way.
 
 Members get Team features through the admin's subscription. If the Team price in Stripe is per seat, set `COWORKER_TEAM_PER_SEAT=1`. Inviting or removing someone then updates the subscription quantity, prorated. To charge, create the three coworker prices in Stripe, set `STRIPE_PRICE_COWORKER`, `STRIPE_PRICE_COWORKER_CALLS`, and `STRIPE_PRICE_COWORKER_TEAM`, then set `COWORKER_ENFORCE_PLANS=1`.
 

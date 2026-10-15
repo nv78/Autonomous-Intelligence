@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "../App";
 import AuthLayout from "../components/AuthLayout";
+import MicrosoftSignInButton from "../components/MicrosoftSignInButton";
 import { API_BASE_URL } from "../constants/constants";
 
 export default function RegisterPage() {
@@ -60,6 +61,7 @@ export default function RegisterPage() {
           </svg>
           {googleLoading ? "Redirecting..." : "Continue with Google"}
         </button>
+        <MicrosoftSignInButton disabled={googleLoading || loading} onError={setError} />
         <div className="flex items-center gap-3 mb-6">
           <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
           <span className="text-xs text-gray-600 dark:text-gray-400">OR</span>
