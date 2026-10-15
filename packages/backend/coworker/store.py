@@ -30,7 +30,7 @@ from typing import Any
 JSON_COLUMNS = {
     "autonomy", "settings", "onboarding", "style_profile", "recipients", "meta",
     "trigger_spec", "tools", "payload", "result", "detail", "transcript",
-    "metrics", "playbook", "answers", "risk", "counts", "policies",
+    "metrics", "playbook", "answers", "risk", "counts", "policies", "prefs",
 }
 
 
@@ -283,6 +283,17 @@ TABLES: dict[str, str] = {
         joined_at VARCHAR(40),
         UNIQUE (org_id, email)
     """,
+    "cw_phones": """
+        id {pk},
+        user_id INT NOT NULL UNIQUE,
+        number VARCHAR(20) NOT NULL,
+        verified INT NOT NULL DEFAULT 0,
+        code_hash VARCHAR(64) NOT NULL DEFAULT '',
+        code_sent_at VARCHAR(40),
+        attempts INT NOT NULL DEFAULT 0,
+        prefs {text},
+        created_at VARCHAR(40) NOT NULL
+    """,
     "cw_channel_threads": """
         id {pk},
         user_id INT NOT NULL,
@@ -333,6 +344,7 @@ INDEXES: list[tuple[str, str, str]] = [
     ("idx_cw_sync_jobs_user", "cw_sync_jobs", "user_id, status"),
     ("idx_cw_turns_meeting", "cw_turns", "meeting_id, status"),
     ("idx_cw_org_members_user", "cw_org_members", "user_id, status"),
+    ("idx_cw_phones_number", "cw_phones", "number, verified"),
 ]
 
 

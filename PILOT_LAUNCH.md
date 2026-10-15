@@ -153,6 +153,21 @@ How the user sends the coworker to a meeting: in chat, *"Join my 2pm with Northw
 
 **Expect** about 1.5–3 seconds before a spoken answer. That works for intro and qualification calls. Fully streaming speech is the next step.
 
+## 5b. Text messages (Twilio SMS and WhatsApp)
+
+Owners can text the coworker ("what's my next meeting?", "reply to Dana that Tuesday works") and approve by replying `YES 12`.
+
+1. In [Twilio](https://console.twilio.com), buy a phone number that can send SMS.
+   - US numbers need **A2P 10DLC** registration (brand + campaign) before carriers deliver texts. Toll-free numbers need toll-free verification instead.
+2. Under the number's **Messaging configuration**, set "A message comes in" to **Webhook**, `https://chat.ourogen.ai/api/coworker/sms/inbound`, HTTP POST.
+3. Set:
+   - `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN`, from the console home page;
+   - `TWILIO_FROM_NUMBER` in E.164 form, e.g. `+15551234567`.
+4. WhatsApp (optional): set up a WhatsApp sender in Twilio with the same webhook, then set `TWILIO_WHATSAPP_FROM`.
+5. Each owner links their phone in **Settings → Text messages**, using a 6-digit code.
+
+Twilio signs each webhook with the full public URL. If the backend sits behind a proxy with a different public URL than `BACKEND_URL`, set `TWILIO_WEBHOOK_URL` to the exact URL configured in Twilio.
+
 ## 6. Notifications
 
 | Setting | Purpose |
@@ -217,6 +232,7 @@ Members get Team features through the admin's subscription. If the Team price in
 | `SALESFORCE_CLIENT_ID` / `_SECRET` (optional) | In Salesforce: **Setup → App Manager → New Connected App**. Enable OAuth with scopes `api` and `refresh_token`, and callback `https://chat.ourogen.ai/api/coworker/connections/salesforce/callback` |
 | `PIPEDRIVE_CLIENT_ID` / `_SECRET` (optional) | [Pipedrive Developer Hub](https://developers.pipedrive.com). Users can instead paste their personal API token (**Personal preferences → API**). |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_*` (optional) | [dashboard.stripe.com/apikeys](https://dashboard.stripe.com/apikeys), [Webhooks](https://dashboard.stripe.com/webhooks), [Products](https://dashboard.stripe.com/products) |
+| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_FROM_NUMBER` (optional) | [console.twilio.com](https://console.twilio.com). Buy a number under **Phone Numbers → Buy a number**; US numbers need [A2P 10DLC registration](https://console.twilio.com/us1/develop/sms/regulatory-compliance/a2p-10dlc-overview) |
 | `EXPO_ACCESS_TOKEN` (optional) | [expo.dev](https://expo.dev) → account settings → Access tokens |
 | `SMTP_URL` | Any SMTP relay, e.g. [Resend](https://resend.com), [Postmark](https://postmarkapp.com), [SendGrid](https://sendgrid.com). Format: `smtp://user:pass@host:587` |
 | `SENTRY_DSN` | [sentry.io](https://sentry.io) → project → Client Keys (DSN) |

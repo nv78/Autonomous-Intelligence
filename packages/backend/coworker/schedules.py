@@ -38,7 +38,7 @@ DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 DAY_NAMES = {"monday": "mon", "tuesday": "tue", "wednesday": "wed", "thursday": "thu", "friday": "fri",
              "saturday": "sat", "sunday": "sun", "mon": "mon", "tue": "tue", "tues": "tue", "wed": "wed",
              "thu": "thu", "thur": "thu", "thurs": "thu", "fri": "fri", "sat": "sat", "sun": "sun"}
-DELIVERY = ("chat", "email", "push")
+DELIVERY = ("chat", "email", "push", "sms")
 _DAY = r"(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tues?|wed|thu(?:rs?)?|fri|sat|sun)"
 
 
@@ -290,4 +290,8 @@ def execute(store: Store, user_id: int, resp: dict[str, Any]) -> dict[str, Any]:
         from coworker import push
 
         push.send(store, user_id, resp["name"], answer["summary"][:180], {"chatId": answer["chat_id"]})
+    if "sms" in deliver:
+        from coworker import sms
+
+        sms.notify(store, user_id, f"{resp['name']}: {answer['text']}", "tasks")
     return answer
