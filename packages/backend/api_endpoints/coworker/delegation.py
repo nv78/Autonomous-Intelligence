@@ -279,6 +279,11 @@ def run_tick(user_id: int, force: bool = False, inline_sync: bool = False) -> di
     if coworker.get("status") == "active" and governance.org_disabled(coworker.get("owner_email") or ""):
         executor.pause(s, user_id, "your organization turned off AI coworkers")
         coworker = s.get_coworker(user_id) or coworker
+    if settings.get("pending_voice_deletes"):
+        from coworker import twin
+
+        twin.retry_voice_deletes(s, user_id)
+        coworker = s.get_coworker(user_id) or coworker
     if notify.handle_stop_replies(s, user_id):
         coworker = s.get_coworker(user_id) or coworker
     results = responsibilities.run_all(s, user_id) if coworker.get("status") == "active" else []

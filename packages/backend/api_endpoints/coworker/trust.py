@@ -136,3 +136,15 @@ def list_pilot_applications() -> tuple:
         return error("Not allowed", 403, "forbidden")
     rows = store().query("SELECT * FROM cw_pilot_applications ORDER BY id DESC LIMIT 500")
     return jsonify({"applications": rows}), 200
+
+
+@coworker_bp.get("/admin/vendors")
+@require_auth
+def vendor_status() -> tuple:
+    """Internal: read-only checks of every configured vendor (admins only)."""
+    from coworker import vendor_check
+
+    admins = {e.strip().lower() for e in os.environ.get("PILOT_ADMIN_EMAILS", "").split(",") if e.strip()}
+    if ((store().get_coworker(uid()) or {}).get("owner_email") or "").lower() not in admins:
+        return error("Not allowed", 403, "forbidden")
+    return jsonify({"vendors": vendor_check.run_all()}), 200

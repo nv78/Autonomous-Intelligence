@@ -238,6 +238,12 @@ def upload_asset() -> tuple:
         row = twin.save_asset(store(), user_id, request.form.get("kind", ""), f.filename or "upload", f.mimetype or "", f.read())
     except ValueError as exc:
         return error(str(exc))
+    try:
+        seconds = float(request.form.get("seconds") or 0)
+    except ValueError:
+        seconds = 0.0
+    if row["kind"] in ("voice_sample", "video_sample"):
+        twin.add_speech_sample(store(), user_id, int(row["id"]), request.form.get("transcript", ""), seconds)
     return jsonify({"asset": {"id": row["id"], "kind": row["kind"], "filename": row["filename"]}}), 201
 
 
@@ -284,6 +290,13 @@ def consent_verify() -> tuple:
     except ValueError as exc:
         return error(str(exc))
     return jsonify(result), 200 if result["verified"] else 422
+
+
+@coworker_bp.post("/twin/voice-match")
+@require_auth
+def check_voice_match() -> tuple:
+    """Run the consent-vs-samples voice check without cloning anything."""
+    return jsonify(twin.voice_match(store(), uid())), 200
 
 
 @coworker_bp.post("/twin/voice")
