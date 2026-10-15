@@ -98,11 +98,11 @@ class Workspace:
 
     # -- sync ------------------------------------------------------------
 
-    def sync(self) -> dict[str, int]:
+    def sync(self, providers: tuple[str, ...] = PROVIDERS) -> dict[str, int]:
         counts: dict[str, int] = {}
         if self.mode != "live":
             return counts
-        for provider in PROVIDERS:
+        for provider in providers:
             connector = self._live(provider)
             if not connector:
                 continue

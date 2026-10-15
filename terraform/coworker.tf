@@ -65,6 +65,23 @@ variable "pilot_admin_emails" {
   default     = ""
 }
 
+variable "gmail_pubsub_topic" {
+  description = "Real-time Gmail: projects/<project>/topics/<topic> that Gmail publishes to"
+  type        = string
+  default     = ""
+}
+
+variable "gmail_push_audience" {
+  description = "OIDC audience of the Pub/Sub push subscription (usually the push endpoint URL)"
+  type        = string
+  default     = ""
+}
+
+variable "gmail_push_service_account" {
+  type    = string
+  default = ""
+}
+
 variable "microsoft_client_id" {
   description = "Entra ID app registration for Outlook mail + calendar"
   type        = string
@@ -175,6 +192,9 @@ locals {
     { name = "GOOGLE_COWORKER_REDIRECT_URI", value = "${var.backend_url}/api/coworker/connections/google/callback" },
     { name = "SLACK_CLIENT_ID", value = var.slack_client_id },
     { name = "SLACK_REDIRECT_URI", value = "${var.backend_url}/api/coworker/connections/slack/callback" },
+    { name = "GMAIL_PUBSUB_TOPIC", value = var.gmail_pubsub_topic },
+    { name = "GMAIL_PUSH_AUDIENCE", value = var.gmail_push_audience },
+    { name = "GMAIL_PUSH_SERVICE_ACCOUNT", value = var.gmail_push_service_account },
     { name = "MICROSOFT_CLIENT_ID", value = var.microsoft_client_id },
     { name = "MICROSOFT_TENANT", value = var.microsoft_tenant },
     { name = "MICROSOFT_REDIRECT_URI", value = "${var.backend_url}/api/coworker/connections/microsoft/callback" },

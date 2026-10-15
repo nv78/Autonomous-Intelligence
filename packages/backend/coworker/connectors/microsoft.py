@@ -230,6 +230,9 @@ class MicrosoftConnector:
         if not self.account_email:
             self.account_email = fetch_account_email(self._access_token())
         count = self._sync_mail(store, user_id) + self._sync_calendar(store, user_id)
+        from coworker import mail_push
+
+        mail_push.ensure_graph_subscription(self)
         store.upsert_connection(user_id, "microsoft", sync_cursor=json.dumps(self.cursor))
         return count
 

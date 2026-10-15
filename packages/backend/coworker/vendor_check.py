@@ -92,7 +92,10 @@ def check_google() -> dict[str, str]:
     redirect = os.environ.get("GOOGLE_COWORKER_REDIRECT_URI", "")
     if os.environ.get("APP_ENV") == "production" and not redirect.startswith("https://"):
         return _result("Google OAuth", "fail", "GOOGLE_COWORKER_REDIRECT_URI must be https in production")
-    return _result("Google OAuth", "ok", f"client configured; redirect {redirect or '(default)'}")
+    from coworker import mail_push
+
+    push = "real-time Gmail on" if mail_push.gmail_enabled() else "Gmail polled every minute (set GMAIL_PUBSUB_TOPIC for real time)"
+    return _result("Google OAuth", "ok", f"client configured; redirect {redirect or '(default)'}; {push}")
 
 
 def check_slack() -> dict[str, str]:
