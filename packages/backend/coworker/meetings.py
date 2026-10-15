@@ -501,6 +501,11 @@ def finish(store: Store, user_id: int, meeting_id: int) -> dict[str, Any]:
         summary["followup_action_id"] = action["id"]
         store.update("cw_meetings", meeting_id, user_id, {"summary": json.dumps(summary)})
     if summary["hot"]:
+        from coworker import push
+
+        push.send(store, user_id, f"🔥 Hot lead: {meeting['prospect_name'] or meeting['title']}",
+                  f"Score {score}/100. The follow-up is drafted for your approval.",
+                  {"type": "call", "meetingId": meeting_id})
         store.log(user_id, "escalation", f"🔥 Hot lead: {meeting['prospect_name']} ({meeting['prospect_company']}), score {score}/100",
                   {"meeting_id": meeting_id})
     store.log(user_id, "meeting", f"Call ended: {meeting['title']} (score {score}/100)", {"meeting_id": meeting_id},

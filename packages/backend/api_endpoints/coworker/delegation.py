@@ -469,3 +469,24 @@ def get_day() -> tuple:
     if date and not __import__("re").match(r"^\d{4}-\d{2}-\d{2}$", date):
         return error("date must be YYYY-MM-DD")
     return jsonify(delegate.day(store(), uid(), date)), 200
+
+
+@coworker_bp.post("/push/register")
+@require_auth
+def register_push() -> tuple:
+    from coworker import push
+
+    try:
+        devices = push.register(store(), uid(), str((request.get_json(silent=True) or {}).get("token", "")))
+    except ValueError as exc:
+        return error(str(exc))
+    return jsonify({"devices": len(devices)}), 200
+
+
+@coworker_bp.post("/push/unregister")
+@require_auth
+def unregister_push() -> tuple:
+    from coworker import push
+
+    push.unregister(store(), uid(), str((request.get_json(silent=True) or {}).get("token", "")))
+    return jsonify({"ok": True}), 200

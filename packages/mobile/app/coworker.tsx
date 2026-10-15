@@ -2,12 +2,15 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet, SafeAreaView, TextInput, RefreshControl, Alert,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useAppTheme } from "./_layout";
 import {
-  CoworkerAction, approveAction, getCoworkerStatus, getDigest, getPendingActions, rejectAction, setCoworkerPaused,
-  tickCoworker,
+  CoworkerAction, DayEntry, Meeting, approveAction, getCoworkerStatus, getDay, getDigest, getMeetings, getPendingActions,
+  rejectAction, setCoworkerPaused, tickCoworker,
 } from "../src/api";
+
+type Tab = "approvals" | "today" | "calls";
+const DAY_ICON: Record<string, string> = { meeting: "📞", brief: "📋", escalation: "🙋", security: "🛡️", digest: "🗞️" };
 
 const POLL_MS = 15000;
 const ICON: Record<string, string> = {
@@ -23,6 +26,10 @@ export default function CoworkerScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [editing, setEditing] = useState<number | null>(null);
   const [draft, setDraft] = useState("");
+  const params = useLocalSearchParams<{ tab?: string }>();
+  const [tab, setTab] = useState<Tab>((params.tab as Tab) || "approvals");
+  const [day, setDay] = useState<{ headline: string; entries: DayEntry[] } | null>(null);
+  const [calls, setCalls] = useState<Meeting[]>([]);
 
   const load = useCallback(async () => {
     try {
@@ -31,8 +38,10 @@ export default function CoworkerScreen() {
       setStatus(s);
       setActions(a);
       if (d) setHeadline(d.headline);
+      if (tab === "today") setDay(await getDay());
+      if (tab === "calls") setCalls(await getMeetings());
     } catch {}
-  }, []);
+  }, [tab]);
 
   useEffect(() => {
     load();
@@ -84,7 +93,60 @@ export default function CoworkerScreen() {
         </TouchableOpacity>
       </View>
 
-      {!status.exists ? (
+      <View style={[styles.tabs, { borderBottomColor: theme.border }]}>
+        {(["approvals", "today", "calls"] as Tab[]).map((t) => (
+          <TouchableOpacity key={t} onPress={() => setTab(t)}
+            style={[styles.tab, tab === t && { borderBottomColor: theme.text }]}>
+            <Text style={{ color: tab === t ? theme.text : theme.textMuted, fontWeight: tab === t ? "600" : "400" }}>
+              {t === "approvals" ? `Approvals${actions.length ? ` (${actions.length})` : ""}` : t === "today" ? "Today" : "Calls"}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {tab === "today" && (
+        <FlatList
+          data={day?.entries || []}
+          keyExtractor={(e) => `${e.kind}-${e.id}`}
+          ListHeaderComponent={<Text style={{ color: theme.textMuted, padding: 16, fontSize: 13 }}>{day?.headline || ""}</Text>}
+          ListEmptyComponent={<Text style={[styles.empty, { color: theme.textMuted }]}>Nothing yet today.</Text>}
+          renderItem={({ item: e }) => (
+            <TouchableOpacity
+              onPress={() => (e.kind === "meeting" ? router.push(`/call/${e.id}`) : e.status === "proposed" ? setTab("approvals") : null)}
+              style={[styles.row2, { borderBottomColor: theme.border }]}>
+              <Text>{DAY_ICON[e.kind] || (e.status === "executed" ? "✅" : "📝")}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: theme.text, fontSize: 14 }} numberOfLines={2}>{e.title}</Text>
+                <Text style={{ color: theme.textMuted, fontSize: 12 }}>
+                  {new Date(e.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                  {e.status === "proposed" ? " · needs you" : ""}{e.score != null ? ` · ${e.score}/100` : ""}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
+        />
+      )}
+
+      {tab === "calls" && (
+        <FlatList
+          data={calls}
+          keyExtractor={(m) => String(m.id)}
+          ListEmptyComponent={<Text style={[styles.empty, { color: theme.textMuted }]}>No calls yet. Ask your coworker in chat to join one.</Text>}
+          renderItem={({ item: m }) => (
+            <TouchableOpacity onPress={() => router.push(`/call/${m.id}`)} style={[styles.row2, { borderBottomColor: theme.border }]}>
+              <Text>📞</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: theme.text, fontSize: 14 }} numberOfLines={1}>{m.title}</Text>
+                <Text style={{ color: m.status === "active" ? "#10B981" : theme.textMuted, fontSize: 12 }}>
+                  {m.status === "active" ? "● Live now" : `Ended${m.summary?.score != null ? ` · ${m.summary.score}/100` : ""}`}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
+        />
+      )}
+
+      {tab !== "approvals" ? null : !status.exists ? (
         <Text style={[styles.empty, { color: theme.textMuted }]}>Set up your coworker on the web app first.</Text>
       ) : (
         <FlatList
@@ -161,4 +223,7 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderRadius: 8, padding: 8, marginTop: 8, minHeight: 120, textAlignVertical: "top" },
   row: { flexDirection: "row", gap: 8, marginTop: 12 },
   btn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 },
+  tabs: { flexDirection: "row", borderBottomWidth: 1 },
+  tab: { flex: 1, alignItems: "center", paddingVertical: 10, borderBottomWidth: 2, borderBottomColor: "transparent" },
+  row2: { flexDirection: "row", gap: 10, alignItems: "center", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
 });

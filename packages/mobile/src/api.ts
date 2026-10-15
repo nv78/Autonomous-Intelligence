@@ -85,3 +85,60 @@ export async function tickCoworker(): Promise<void> {
 export async function getDigest(): Promise<{ headline: string; attention: string[] }> {
   return (await api.get("/api/coworker/digest")).data;
 }
+
+export async function getActions(ids: number[]): Promise<CoworkerAction[]> {
+  if (!ids.length) return [];
+  return (await api.get("/api/coworker/actions", { params: { ids: ids.join(",") } })).data.actions ?? [];
+}
+
+export interface DayEntry {
+  kind: string;
+  id: number;
+  at: string;
+  title: string;
+  status: string;
+  detail: string;
+  to?: string[];
+  score?: number;
+  hot?: boolean;
+  chatId?: number | null;
+}
+
+export async function getDay(date?: string): Promise<{ date: string; headline: string; entries: DayEntry[];
+  counts: { done: number; calls: number; pending: number } }> {
+  return (await api.get("/api/coworker/day", { params: date ? { date } : {} })).data;
+}
+
+export interface Meeting {
+  id: number;
+  title: string;
+  status: string;
+  mode: string;
+  meetingUrl?: string;
+  prospectName?: string;
+  transcript: { speaker: string; text: string; at?: string; kind?: string; redacted?: boolean }[];
+  metrics?: Record<string, any>;
+  summary?: Record<string, any> | null;
+}
+
+export async function getMeetings(): Promise<Meeting[]> {
+  return (await api.get("/api/coworker/meetings")).data.meetings ?? [];
+}
+
+export async function getMeeting(id: number): Promise<Meeting> {
+  return (await api.get(`/api/coworker/meetings/${id}`)).data.meeting;
+}
+
+/** A private instruction only the coworker sees during a call. */
+export async function whisper(id: number, text: string): Promise<Meeting> {
+  return (await api.post(`/api/coworker/meetings/${id}/turn`, { text, speaker: "owner" })).data.meeting;
+}
+
+/** Take over: the coworker leaves the call and writes up what happened so far. */
+export async function endMeeting(id: number): Promise<Meeting> {
+  return (await api.post(`/api/coworker/meetings/${id}/end`)).data.meeting;
+}
+
+export async function registerPushToken(token: string): Promise<void> {
+  await api.post("/api/coworker/push/register", { token });
+}

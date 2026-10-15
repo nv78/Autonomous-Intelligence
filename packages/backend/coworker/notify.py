@@ -186,6 +186,9 @@ def send_digest(store: Store, user_id: int, digest: dict[str, Any]) -> str:
             + section("Briefs", digest.get("briefs") or [])
             + f"\nOpen your coworker: {_app_url('/app/coworker/activity')}\n"
             + "Reply STOP to pause your coworker.\n")
+    from coworker import push
+
+    push.send(store, user_id, "Your coworker's day", digest["headline"], {"type": "today"})
     channel = deliver(store, user_id, "Your daily digest", body)
     store.update("cw_notifications", row_id, user_id, {"channel": channel or "none"})
     return channel

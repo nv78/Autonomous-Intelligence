@@ -21,6 +21,8 @@ The chat is the control plane. Say what you want and the coworker reports back i
 | "What did you do today?" | Lists calls taken, emails sent, and what's waiting for you. |
 | "From now on, handle inbound leads" | Proposes a standing responsibility for you to confirm. |
 
+On your phone (the Expo app in `packages/mobile`), the same chat delegates to your coworker. Push notifications have **Approve** and **Reject** buttons on the notification itself. The coworker tab shows Approvals, Today, and Calls. During a live call you can read the transcript, whisper an instruction only the coworker sees, or tap **Take over**: the coworker leaves, writes up the call so far, and opens the meeting link for you.
+
 The chat sidebar shows **Today**, the work your coworker did, next to your chats. **Coworker → Today** shows one day at a time, with "Send my coworker" for meetings still ahead.
 
 ## How it works

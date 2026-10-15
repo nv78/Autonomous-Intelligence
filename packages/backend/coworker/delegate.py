@@ -85,6 +85,10 @@ def join_meeting(store: Store, user_id: int, *, chat_id: int | None, meeting_url
                                    meetings.disclosure_line(store, user_id) + " Say 'please leave' and I will.", hook)
         store.update("cw_meetings", meeting["id"], user_id, {"bot_id": bot_id})
         how = "bot"
+        from coworker import push
+
+        push.send(store, user_id, f"Your coworker joined: {meeting['title']}", "Tap to watch, whisper, or take over.",
+                  {"type": "call", "meetingId": meeting["id"]})
     else:
         # No meeting bot here: run it as a browser call the user (or the guest) can join from the call studio.
         meeting = meetings.start(store, user_id, mode="live_call", title=title, prospect_name=prospect_name,
