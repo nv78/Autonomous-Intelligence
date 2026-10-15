@@ -58,7 +58,7 @@ export default function ScheduleEditor({ initial, onSave, onCancel, saveLabel = 
       )}
       <div className="flex flex-wrap items-center gap-4 text-sm">
         <span className="text-gray-500">Results go to its chat, and:</span>
-        {[['email', 'Email me'], ['push', 'Phone notification']].map(([v, l]) => (
+        {[['email', 'Email me'], ['push', 'Phone notification'], ['sms', 'Text me']].map(([v, l]) => (
           <label key={v} className="flex items-center gap-1.5">
             <input type="checkbox" checked={spec.deliver?.includes(v)} onChange={() => set({ deliver: toggle(spec.deliver, v) })} /> {l}
           </label>

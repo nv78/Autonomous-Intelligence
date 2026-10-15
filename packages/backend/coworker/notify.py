@@ -161,6 +161,10 @@ def maybe_notify_approvals(store: Store, user_id: int) -> int:
             "Proposals expire if nobody approves them. Reply STOP to pause your coworker. "
             "Turn these emails off in Settings → Notifications.\n")
     channel = deliver(store, user_id, subject, body)
+    from coworker import sms
+
+    if sms.notify_approvals(store, user_id, pending):
+        channel = f"{channel}+sms" if channel else "sms"
     store.update("cw_notifications", row_id, user_id, {"channel": channel or "none"})
     if channel:
         store.log(user_id, "notification", f"Emailed you about {n} pending approval{'s' if n != 1 else ''}")
