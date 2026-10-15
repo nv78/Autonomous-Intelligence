@@ -327,3 +327,59 @@ def _decide(store: Store, user_id: int, m: re.Match[str], text: str) -> str:
         return f"{done} #{action_id}: {action.get('title', '')}"
     except ActionError as exc:
         return f"Couldn't do #{action_id}: {exc}"
+
+
+# -- setup (python -m coworker.sms setup | test +15551234567) --------------------------------
+
+def _twilio(method: str, path: str, **data: str) -> dict[str, Any]:
+    sid = os.environ["TWILIO_ACCOUNT_SID"]
+    resp = requests.request(method, f"{API}/Accounts/{sid}{path}", auth=(sid, os.environ["TWILIO_AUTH_TOKEN"]),
+                            data=data or None, timeout=15)
+    if resp.status_code in (401, 403):
+        raise SmsError("Twilio rejected the Account SID / Auth Token.", "unauthorized", 401)
+    if resp.status_code >= 300:
+        raise SmsError(f"Twilio error {resp.status_code}: {resp.text[:200]}", "provider_error", 502)
+    return dict(resp.json() or {})
+
+
+def number_settings() -> dict[str, Any]:
+    """The Twilio record for TWILIO_FROM_NUMBER (its SID and current webhook)."""
+    if not is_configured():
+        raise SmsError("Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_FROM_NUMBER first.", "not_configured", 501)
+    from urllib.parse import quote
+
+    found = _twilio("GET", f"/IncomingPhoneNumbers.json?PhoneNumber={quote(service_number())}").get("incoming_phone_numbers") or []
+    if not found:
+        raise SmsError(f"{service_number()} isn't a number in this Twilio account.", "not_found", 404)
+    return dict(found[0])
+
+
+def configure_webhook() -> dict[str, str]:
+    """Point the number's "A message comes in" webhook at this backend. Safe to run again."""
+    url = webhook_url()
+    if not url.startswith("https://"):
+        raise SmsError(f"The webhook must be public https; got {url}. Set BACKEND_URL (or TWILIO_WEBHOOK_URL).")
+    record = number_settings()
+    if record.get("sms_url") != url or str(record.get("sms_method", "")).upper() != "POST":
+        _twilio("POST", f"/IncomingPhoneNumbers/{record['sid']}.json", SmsUrl=url, SmsMethod="POST")
+        return {"number": service_number(), "webhook": url, "changed": "yes"}
+    return {"number": service_number(), "webhook": url, "changed": "no (already set)"}
+
+
+def main(argv: list[str]) -> None:  # pragma: no cover - CLI wrapper
+    if len(argv) < 2 or argv[1] not in ("setup", "test"):
+        raise SystemExit("usage: python -m coworker.sms setup | test +15551234567")
+    try:
+        if argv[1] == "setup":
+            result = configure_webhook()
+            print(f"OK: texts to {result['number']} go to {result['webhook']} (changed: {result['changed']})")
+        else:
+            print("Sent:", send(normalize(argv[2]), "Test from your Ourogen coworker. Texting works."))
+    except (SmsError, IndexError) as exc:
+        raise SystemExit(f"FAILED: {exc}") from exc
+
+
+if __name__ == "__main__":  # pragma: no cover
+    import sys
+
+    main(sys.argv)
