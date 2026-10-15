@@ -134,6 +134,17 @@ def check_public_url() -> dict[str, str]:
     return _result("Public backend URL", "ok", url)
 
 
+def check_crms() -> dict[str, str]:
+    pairs = {"HubSpot": "HUBSPOT", "Salesforce": "SALESFORCE", "Pipedrive": "PIPEDRIVE"}
+    half = [name for name, env in pairs.items() if bool(os.environ.get(f"{env}_CLIENT_ID")) != bool(os.environ.get(f"{env}_CLIENT_SECRET"))]
+    if half:
+        return _result("CRM OAuth", "fail", f"set both client id and secret for {', '.join(half)}")
+    ready = [name for name, env in pairs.items() if os.environ.get(f"{env}_CLIENT_ID")]
+    if not ready:
+        return _result("CRM OAuth", "skipped", "no CRM OAuth apps (users can paste HubSpot or Pipedrive tokens)")
+    return _result("CRM OAuth", "ok", f"{', '.join(ready)} configured")
+
+
 def check_smtp() -> dict[str, str]:
     url = os.environ.get("SMTP_URL", "")
     if not url:
@@ -193,7 +204,7 @@ def check_voiceprint() -> dict[str, str]:
 
 
 CHECKS = [check_anthropic, check_elevenlabs, check_recall, check_tavus, check_google, check_microsoft, check_slack,
-          check_smtp, check_s3, check_redis, check_voiceprint, check_public_url]
+          check_crms, check_smtp, check_s3, check_redis, check_voiceprint, check_public_url]
 
 
 def run_all() -> list[dict[str, str]]:

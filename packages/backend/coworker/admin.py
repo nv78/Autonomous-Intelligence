@@ -14,7 +14,7 @@ import argparse
 from typing import Any
 
 from coworker import executor
-from coworker.connectors import google, hubspot, microsoft, slack
+from coworker.connectors import crm, google, microsoft, slack
 from coworker.connectors.base import decrypt_token
 from coworker.store import Store, get_store
 
@@ -28,8 +28,8 @@ def revoke_all(store: Store, user_id: int) -> dict[str, Any]:
             google.revoke(token)
         elif row["provider"] == "slack":
             slack.revoke(token)
-        elif row["provider"] == "hubspot":
-            hubspot.revoke(token)
+        elif row["provider"] in crm.PROVIDERS:
+            crm.revoke(row["provider"], token)
         elif row["provider"] == "microsoft":
             microsoft.revoke(token)
         store.delete_connection(user_id, row["provider"])

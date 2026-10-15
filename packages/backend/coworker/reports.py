@@ -76,7 +76,7 @@ def action_done(action: dict[str, Any], result: dict[str, Any]) -> str:
         return f"✅ Sent the invite **{p.get('title', '')}** to {', '.join(p.get('attendees') or [])}." + marker(
             {"t": "action", "id": action["id"]})
     if kind == "crm.update":
-        where = "HubSpot" if "hubspot" in result else "your CRM notes"
+        where = (result.get("crm") or {}).get("label") or ("HubSpot" if "hubspot" in result else "your CRM notes")
         return f"✅ Logged the call with {p.get('company', '')} in {where}."
     return f"✅ Done: {action.get('title', '')}"
 

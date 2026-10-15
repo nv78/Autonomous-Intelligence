@@ -42,6 +42,8 @@ export interface Capabilities {
   microsoft?: boolean;
   slack_oauth: boolean;
   hubspot_oauth?: boolean;
+  salesforce_oauth?: boolean;
+  pipedrive_oauth?: boolean;
   voice?: boolean;
   avatar?: boolean;
   meeting_bot?: boolean;

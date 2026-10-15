@@ -90,6 +90,8 @@ def revoke(token: dict[str, Any]) -> None:
 
 
 class HubSpotClient:
+    label = "HubSpot"
+
     def __init__(self, token: dict[str, Any], on_refresh: Any = None) -> None:
         self.token = token
         self.on_refresh = on_refresh

@@ -185,6 +185,8 @@ Leave `COWORKER_ENFORCE_PLANS=0` to run the pilot free. To charge, create the th
 | `ELEVENLABS_API_KEY` | [elevenlabs.io → API keys](https://elevenlabs.io/app/settings/api-keys). Voice cloning needs a paid plan. |
 | `TAVUS_API_KEY`, `TAVUS_REPLICA_ID` (optional video avatar) | [platform.tavus.io](https://platform.tavus.io) |
 | `HUBSPOT_CLIENT_ID` / `_SECRET` (optional) | [developers.hubspot.com](https://developers.hubspot.com) → your app. Users can instead paste a private-app token from HubSpot **Settings → Integrations → Private Apps**. |
+| `SALESFORCE_CLIENT_ID` / `_SECRET` (optional) | In Salesforce: **Setup → App Manager → New Connected App**. Enable OAuth with scopes `api` and `refresh_token`, and callback `https://chat.ourogen.ai/api/coworker/connections/salesforce/callback` |
+| `PIPEDRIVE_CLIENT_ID` / `_SECRET` (optional) | [Pipedrive Developer Hub](https://developers.pipedrive.com). Users can instead paste their personal API token (**Personal preferences → API**). |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_*` (optional) | [dashboard.stripe.com/apikeys](https://dashboard.stripe.com/apikeys), [Webhooks](https://dashboard.stripe.com/webhooks), [Products](https://dashboard.stripe.com/products) |
 | `EXPO_ACCESS_TOKEN` (optional) | [expo.dev](https://expo.dev) → account settings → Access tokens |
 | `SMTP_URL` | Any SMTP relay, e.g. [Resend](https://resend.com), [Postmark](https://postmarkapp.com), [SendGrid](https://sendgrid.com). Format: `smtp://user:pass@host:587` |

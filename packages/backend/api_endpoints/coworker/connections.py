@@ -1,4 +1,4 @@
-"""Connect, sync, and disconnect Google, Microsoft 365 (Outlook), Slack, and HubSpot."""
+"""Connect, sync, and disconnect Google, Microsoft 365 (Outlook), Slack, and CRMs (HubSpot, Salesforce, Pipedrive)."""
 from __future__ import annotations
 
 import os
@@ -9,7 +9,7 @@ from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 from api_endpoints.coworker.common import coworker_bp, error, frontend_url, store, uid
 from api_endpoints.coworker.core import refresh_knowledge
-from coworker.connectors import google, hubspot, microsoft, slack
+from coworker.connectors import crm, google, hubspot, microsoft, pipedrive, salesforce, slack
 from coworker.connectors.base import ConnectorError, decrypt_token, encrypt_token
 from middleware.auth import require_auth
 
@@ -231,6 +231,77 @@ def hubspot_token() -> tuple:
     return jsonify({"connected": True, "portal": token["portal"]}), 200
 
 
+# -- Salesforce and Pipedrive ---------------------------------------------------
+
+def _save_crm(user_id: int, provider: str, token: dict[str, Any], account: str) -> None:
+    s = store()
+    s.upsert_connection(user_id, provider, account_label=account, token_enc=encrypt_token(token),
+                        scopes=str(token.get("scope", "")), status="connected", error="")
+    s.log(user_id, "connection", f"Connected {crm.label(provider)} ({account})")
+
+
+@coworker_bp.post("/connections/salesforce/start")
+@require_auth
+def salesforce_start() -> tuple:
+    if not salesforce.is_configured():
+        return error("Salesforce isn't configured. Set SALESFORCE_CLIENT_ID and SALESFORCE_CLIENT_SECRET.", 501,
+                     "not_configured")
+    return jsonify({"url": salesforce.auth_url(_state(uid(), "salesforce"))}), 200
+
+
+@coworker_bp.get("/connections/salesforce/callback")
+def salesforce_callback() -> Any:
+    state = _read_state(request.args.get("state", ""), "salesforce")
+    if not state:
+        return _back("salesforce", False, "invalid or expired state")
+    if request.args.get("error"):
+        return _back("salesforce", False, request.args.get("error_description") or request.args["error"])
+    try:
+        token = salesforce.exchange_code(request.args.get("code", ""))
+    except ConnectorError as exc:
+        return _back("salesforce", False, str(exc))
+    _save_crm(int(state["uid"]), "salesforce", token, token.get("org", "Salesforce"))
+    return _back("salesforce", True)
+
+
+@coworker_bp.post("/connections/pipedrive/start")
+@require_auth
+def pipedrive_start() -> tuple:
+    if not pipedrive.is_configured():
+        return error("Pipedrive OAuth isn't configured. Paste an API token instead, or set PIPEDRIVE_CLIENT_ID and "
+                     "PIPEDRIVE_CLIENT_SECRET.", 501, "not_configured")
+    return jsonify({"url": pipedrive.auth_url(_state(uid(), "pipedrive"))}), 200
+
+
+@coworker_bp.get("/connections/pipedrive/callback")
+def pipedrive_callback() -> Any:
+    state = _read_state(request.args.get("state", ""), "pipedrive")
+    if not state:
+        return _back("pipedrive", False, "invalid or expired state")
+    try:
+        token = pipedrive.exchange_code(request.args.get("code", ""))
+    except ConnectorError as exc:
+        return _back("pipedrive", False, str(exc))
+    _save_crm(int(state["uid"]), "pipedrive", token, token.get("company", "Pipedrive"))
+    return _back("pipedrive", True)
+
+
+@coworker_bp.post("/connections/pipedrive/token")
+@require_auth
+def pipedrive_token() -> tuple:
+    value = str((request.get_json(silent=True) or {}).get("token", "")).strip()
+    if not value or len(value) < 20:
+        return error("Paste your Pipedrive API token (Settings → Personal preferences → API)")
+    if not store().get_coworker(uid()):
+        return error("Set up your coworker first", 404, "not_found")
+    try:
+        token = pipedrive.verify_api_token(value)
+    except ConnectorError as exc:
+        return error(str(exc), 400, "invalid_token")
+    _save_crm(uid(), "pipedrive", token, token["company"])
+    return jsonify({"connected": True, "company": token["company"]}), 200
+
+
 @coworker_bp.delete("/connections/<provider>")
 @require_auth
 def disconnect(provider: str) -> tuple:
@@ -249,9 +320,9 @@ def disconnect(provider: str) -> tuple:
     elif provider == "slack":
         slack.revoke(token)
         purged = s.delete_items(user_id, "slack")
-    elif provider == "hubspot":
-        hubspot.revoke(token)
-        purged = 0  # nothing synced from HubSpot; records stay in the user's CRM
+    elif provider in crm.PROVIDERS:
+        crm.revoke(provider, token)
+        purged = 0  # nothing synced from a CRM; records stay in the user's CRM
     else:
         purged = s.delete_items(user_id)
     s.delete_connection(user_id, provider)
