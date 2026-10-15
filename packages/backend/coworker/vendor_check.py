@@ -105,7 +105,42 @@ def check_slack() -> dict[str, str]:
     if not (cid and secret):
         return _result("Slack OAuth", "fail", "set both SLACK_CLIENT_ID and SLACK_CLIENT_SECRET")
     events = "real-time events on" if os.environ.get("SLACK_SIGNING_SECRET") else "polling every minute (set SLACK_SIGNING_SECRET for real-time)"
+    if os.environ.get("SLACK_BOT_ENABLED") == "1":
+        if not os.environ.get("SLACK_SIGNING_SECRET"):
+            return _result("Slack OAuth", "fail", "SLACK_BOT_ENABLED=1 needs SLACK_SIGNING_SECRET (mentions arrive as signed events)")
+        events += "; @mention bot on (users click Settings → Slack → Add the bot)"
     return _result("Slack OAuth", "ok", f"client configured; {events}")
+
+
+def check_twilio() -> dict[str, str]:
+    from coworker import sms
+
+    if not any(os.environ.get(k) for k in ("TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM_NUMBER")):
+        return _result("Text messages", "skipped", "Twilio not configured")
+    try:
+        record = sms.number_settings()
+    except sms.SmsError as exc:
+        return _result("Text messages", "fail", str(exc))
+    except requests.RequestException as exc:
+        return _result("Text messages", "fail", f"network error: {exc.__class__.__name__}")
+    if record.get("sms_url") != sms.webhook_url():
+        return _result("Text messages", "fail", f"the number's webhook is {record.get('sms_url') or '(none)'}; "
+                       "run python -m coworker.sms setup")
+    return _result("Text messages", "ok", f"{sms.service_number()} → {sms.webhook_url()}")
+
+
+def check_worker() -> dict[str, str]:
+    try:
+        from coworker import ops
+        from coworker.store import get_store
+
+        st = ops.worker_status(get_store())
+    except Exception as exc:  # no database from where this runs
+        return _result("Background worker", "skipped", f"can't read heartbeats ({exc.__class__.__name__})")
+    if st["status"] == "ok":
+        return _result("Background worker", "ok", f"{st['workers']} running; last tick {st['lastTickAt']}")
+    return _result("Background worker", "fail", f"{st['status']}: start the coworker-worker service "
+                   "(scheduled tasks and responsibilities don't run without it)")
 
 
 def check_microsoft() -> dict[str, str]:
@@ -204,7 +239,7 @@ def check_voiceprint() -> dict[str, str]:
 
 
 CHECKS = [check_anthropic, check_elevenlabs, check_recall, check_tavus, check_google, check_microsoft, check_slack,
-          check_crms, check_smtp, check_s3, check_redis, check_voiceprint, check_public_url]
+          check_twilio, check_crms, check_smtp, check_s3, check_redis, check_voiceprint, check_public_url, check_worker]
 
 
 def run_all() -> list[dict[str, str]]:

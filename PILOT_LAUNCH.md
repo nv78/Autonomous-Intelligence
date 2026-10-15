@@ -44,7 +44,7 @@ It prints `OK: safe to start in production` or the exact settings to fix, and ex
    docker compose exec backend python -m coworker.vendor_check
    ```
 
-   Every vendor you configured should show `ok`.
+   Every vendor you configured should show `ok`, including **Background worker** (it fails if no worker has ticked in the last 3 minutes).
 
 ## 2. Google (Gmail, Calendar, Drive)
 
@@ -96,24 +96,24 @@ Without this step, the worker checks mail every minute. With it, a new email get
 
 If a watch or subscription can't be created, the coworker keeps polling and retries an hour later.
 
-## 4. Slack (real time)
+## 4. Slack (real time, plus the @mention bot)
 
-1. Create a Slack app at https://api.slack.com/apps.
-2. Under **OAuth & Permissions**, add these **user** token scopes:
-   - `channels:history`, `groups:history`, `im:history`, `mpim:history`
-   - `channels:read`, `groups:read`, `im:read`
-   - `users:read`, `users:read.email`
-   - `chat:write`
-3. Add the redirect URL: `https://chat.ourogen.ai/api/coworker/connections/slack/callback`
-4. Under **Event Subscriptions**:
-   - Turn it on.
-   - Set the Request URL to `https://chat.ourogen.ai/api/coworker/slack/events`. Slack verifies it immediately, so deploy first.
-   - Under **Subscribe to events on behalf of users**, add `message.im`, `message.mpim`, `message.channels`, and `message.groups`.
-5. Set `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET`, `SLACK_REDIRECT_URI`, and `SLACK_SIGNING_SECRET` (from **Basic Information**).
+**Fast path (about 3 minutes):** one manifest sets every scope, event, URL, the bot user, and the buttons.
 
-With the signing secret set, Slack pushes each message and the coworker answers in seconds. Without it, Slack is polled every minute.
+1. Deploy first. Slack checks the event URL as soon as you save.
+2. Go to https://api.slack.com/apps → **Create New App → From a manifest**, pick your workspace, and paste the contents of `packages/backend/deploy/slack-app-manifest.json`.
+   - The file is generated for `https://chat.ourogen.ai`. For another host, run `python -m coworker.slack_manifest https://your-host`.
+   - For an app you already created: open it, go to **App Manifest** in the sidebar, and paste over it.
+3. On **Basic Information**, copy the Client ID, Client Secret, and Signing Secret. Set:
+   - `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET`, `SLACK_SIGNING_SECRET`;
+   - `SLACK_BOT_ENABLED=1`.
 
-To install in someone else's workspace, either turn on public distribution, or have them paste a user token (`xoxp-…`) in **Settings**.
+   Then restart the stack.
+4. On **Event Subscriptions**, click **Retry** next to the Request URL if it shows unverified. That happens when the secret wasn't set yet.
+5. Each user connects Slack in **Settings**. Users who connected before the bot existed click **Add the bot** once.
+6. Check: `docker compose exec backend python -m coworker.vendor_check` shows `Slack OAuth ok … @mention bot on`.
+
+With the signing secret set, Slack pushes each message and the coworker answers in seconds. Without it, Slack is polled every minute. To install in someone else's workspace, turn on public distribution under **Manage Distribution**, or have them paste a user token (`xoxp-…`) in **Settings**.
 
 ### @mention the coworker (Slack bot)
 
@@ -123,15 +123,11 @@ With the bot, anyone can talk to the coworker in Slack: "@Ourogen what did Acme 
   - It's posted right away only when the owner's Slack autonomy is "notify" or "silent".
   - Otherwise the owner gets the answer to approve by DM, or a question when the coworker doesn't know.
 
-1. In the same Slack app, open **App Home**:
-   - Add a bot user (display name e.g. "Ourogen").
-   - Turn on the **Messages tab** and "Allow users to send messages".
-2. Under **OAuth & Permissions**, add these **bot** token scopes: `app_mentions:read`, `chat:write`, `im:history`, `im:read`, `im:write`, `users:read`.
-3. Under **Event Subscriptions → Subscribe to bot events**, add `app_mention` and `message.im`.
-4. Under **Interactivity & Shortcuts**:
-   - Turn it on.
-   - Set the Request URL to `https://chat.ourogen.ai/api/coworker/slack/interactive`.
-5. Set `SLACK_BOT_ENABLED=1`. Each user reconnects Slack once (**Settings → Slack → Add the bot**).
+The manifest above already sets the bot up. If you configure the app by hand instead, the bot needs:
+- bot scopes `app_mentions:read`, `chat:write`, `im:history`, `im:read`, `im:write`, `users:read`;
+- bot events `app_mention` and `message.im`;
+- the App Home **Messages tab** turned on;
+- Interactivity pointed at `/api/coworker/slack/interactive`.
 
 ## 5. Meetings (Recall.ai) and voice (ElevenLabs)
 
@@ -161,10 +157,19 @@ Owners can text the coworker ("what's my next meeting?", "reply to Dana that Tue
 
 1. In [Twilio](https://console.twilio.com), buy a phone number that can send SMS.
    - US numbers need **A2P 10DLC** registration (brand + campaign) before carriers deliver texts. Toll-free numbers need toll-free verification instead.
-2. Under the number's **Messaging configuration**, set "A message comes in" to **Webhook**, `https://chat.ourogen.ai/api/coworker/sms/inbound`, HTTP POST.
-3. Set:
+2. Set:
    - `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN`, from the console home page;
    - `TWILIO_FROM_NUMBER` in E.164 form, e.g. `+15551234567`.
+
+   Then restart the stack.
+3. Point the number at the backend and send yourself a test:
+
+   ```bash
+   docker compose exec backend python -m coworker.sms setup
+   docker compose exec backend python -m coworker.sms test +1YOURNUMBER
+   ```
+
+   `setup` sets the number's "A message comes in" webhook to `BACKEND_URL/api/coworker/sms/inbound` (POST). It's safe to run again. `vendor_check` reports `Text messages ok` once it matches.
 4. WhatsApp (optional): set up a WhatsApp sender in Twilio with the same webhook, then set `TWILIO_WHATSAPP_FROM`.
 5. Each owner links their phone in **Settings → Text messages**, using a 6-digit code.
 

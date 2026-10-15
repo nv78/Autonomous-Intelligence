@@ -1,0 +1,67 @@
+{
+  "display_information": {
+    "name": "Ourogen",
+    "description": "Your AI coworker. @mention it or DM it to ask questions and hand off work.",
+    "background_color": "#212121"
+  },
+  "features": {
+    "app_home": {
+      "home_tab_enabled": false,
+      "messages_tab_enabled": true,
+      "messages_tab_read_only_enabled": false
+    },
+    "bot_user": {
+      "display_name": "Ourogen",
+      "always_online": true
+    }
+  },
+  "oauth_config": {
+    "redirect_urls": [
+      "https://chat.ourogen.ai/api/coworker/connections/slack/callback"
+    ],
+    "scopes": {
+      "user": [
+        "channels:history",
+        "groups:history",
+        "im:history",
+        "mpim:history",
+        "channels:read",
+        "groups:read",
+        "im:read",
+        "users:read",
+        "users:read.email",
+        "chat:write"
+      ],
+      "bot": [
+        "app_mentions:read",
+        "chat:write",
+        "im:history",
+        "im:read",
+        "im:write",
+        "users:read"
+      ]
+    }
+  },
+  "settings": {
+    "event_subscriptions": {
+      "request_url": "https://chat.ourogen.ai/api/coworker/slack/events",
+      "user_events": [
+        "message.im",
+        "message.mpim",
+        "message.channels",
+        "message.groups"
+      ],
+      "bot_events": [
+        "app_mention",
+        "message.im"
+      ]
+    },
+    "interactivity": {
+      "is_enabled": true,
+      "request_url": "https://chat.ourogen.ai/api/coworker/slack/interactive"
+    },
+    "org_deploy_enabled": false,
+    "socket_mode_enabled": false,
+    "token_rotation_enabled": false
+  }
+}
