@@ -405,12 +405,16 @@ def autojoin_skip(event_id: str) -> tuple:
 @require_auth
 def get_autonomy() -> tuple:
     user_id, coworker = _coworker_or_404()
+    from coworker import orgs
+
     levels = {t: policy.level_for(coworker or {}, t) for t in policy.ACTION_TYPES if t not in policy.ALWAYS_APPROVE}
+    ceiling = (orgs.policies(store(), user_id).get("autonomy_ceiling") or {}) if coworker else {}
     suggestions = [sg for t in levels if (sg := policy.earned_autonomy(store(), user_id, t))]
     return jsonify({
         "levels": levels, "options": list(policy.LEVELS),
         "types": {t: v["label"] for t, v in policy.ACTION_TYPES.items() if t not in policy.ALWAYS_APPROVE},
         "suggestions": suggestions,
+        "orgCeiling": ceiling,
         "hardFloors": [
             "First contact with someone new", "Pricing, discounts, contracts, or payments",
             "Details from a different conversation", "More than 5 recipients",

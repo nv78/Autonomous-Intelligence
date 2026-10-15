@@ -141,6 +141,14 @@ Connecting a real account replaces the demo data, so demo and real data never mi
 
 ---
 
+**Teams:** **Coworker → Team** creates an organization, invites teammates, and sets the rules every member's coworker follows:
+- the most autonomy allowed per action, e.g. "always ask before sending email";
+- domains never to email;
+- consent before taking notes on calls;
+- which AI models are allowed.
+
+Removing a member pauses their coworker and revokes their connections.
+
 Putting a real person on production (Google test users, Microsoft app registration, Slack events, the worker, the meeting bot)? Follow **[PILOT_LAUNCH.md](PILOT_LAUNCH.md)**.
 
 ## Mobile

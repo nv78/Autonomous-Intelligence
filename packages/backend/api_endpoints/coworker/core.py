@@ -148,6 +148,8 @@ def update_coworker() -> tuple:
             choice = next((m for m in llm.models_for(user_id) if m["id"] == clean["model"]), None)
             if not choice:
                 return error("Unknown model")
+            if not choice.get("allowedByOrg", True):
+                return error(f"Your organization doesn't allow {choice['label']}.", 403, "org_policy")
             if not choice["available"]:
                 return error(f"Add your {choice['provider'].title()} API key in Settings to use {choice['label']}.",
                              400, "key_required")

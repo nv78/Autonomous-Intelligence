@@ -48,12 +48,48 @@ def plan_of(coworker: dict[str, Any]) -> str:
     return plan if plan in PLANS else "pilot"
 
 
+def effective_plan(store: Store, user_id: int) -> str:
+    """The user's own plan, or Team when their organization's owner pays for Team."""
+    own = plan_of(store.get_coworker(user_id) or {})
+    if own == "team":
+        return own
+    from coworker import orgs
+
+    org = orgs.org_for(store, user_id)
+    if org and plan_of(store.get_coworker(int(org["owner_user_id"])) or {}) == "team":
+        return "team"
+    return own
+
+
+def sync_seats(store: Store, org: dict[str, Any]) -> int | None:
+    """Keep the Team subscription's quantity equal to the organization's seats (prorated).
+
+    Only when ``COWORKER_TEAM_PER_SEAT=1`` (the Team price in Stripe is per seat);
+    otherwise Team is a flat price and seats don't change the bill.
+    """
+    from coworker import orgs
+
+    if os.environ.get("COWORKER_TEAM_PER_SEAT") != "1" or not os.environ.get("STRIPE_SECRET_KEY"):
+        return None
+    payer = store.get_coworker(int(org["owner_user_id"])) or {}
+    sub_id = billing_state(payer).get("subscription_id")
+    if plan_of(payer) != "team" or not sub_id:
+        return None
+    count = max(1, orgs.seats(store, int(org["id"])))
+    stripe = _stripe()
+    sub = stripe.Subscription.retrieve(sub_id)
+    item = sub["items"]["data"][0]
+    if int(item.get("quantity") or 1) != count:
+        stripe.Subscription.modify(sub_id, proration_behavior="create_prorations", items=[{"id": item["id"], "quantity": count}])
+        store.log(int(org["owner_user_id"]), "billing", f"Team seats updated to {count} (prorated on your next invoice)")
+    return count
+
+
 def require(store: Store, user_id: int, feature: str) -> None:
     """Raise PlanError if the user's plan doesn't include ``feature``."""
     if not enforce():
         return
-    coworker = store.get_coworker(user_id) or {}
-    plan = PLANS[plan_of(coworker)]
+    plan = PLANS[effective_plan(store, user_id)]
     if feature not in plan["features"]:
         raise PlanError(f"{plan['name']} doesn't include {feature.replace('_', ' ')}. Upgrade to Coworker + Calls.")
     if feature == "calls":
@@ -64,7 +100,7 @@ def require(store: Store, user_id: int, feature: str) -> None:
 
 def summary(store: Store, user_id: int) -> dict[str, Any]:
     coworker = store.get_coworker(user_id) or {}
-    plan_id = plan_of(coworker)
+    plan_id = effective_plan(store, user_id)
     plan = PLANS[plan_id]
     usage = store.usage_since(user_id, month_start())
     actions = store.one(

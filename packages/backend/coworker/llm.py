@@ -68,17 +68,23 @@ def provider_of(model: str) -> str:
 
 
 def model_name(user_id: int | None = None) -> str:
-    """The user's chosen model, else the server default."""
+    """The user's chosen model, else the server default; always within the organization's allowed models."""
+    chosen = ""
+    allowed: list[str] = []
     if user_id is not None:
         try:
+            from coworker import orgs
             from coworker.store import get_store
 
-            chosen = ((get_store().get_coworker(user_id) or {}).get("settings") or {}).get("model")
-            if chosen:
-                return str(chosen)
+            store = get_store()
+            chosen = str(((store.get_coworker(user_id) or {}).get("settings") or {}).get("model") or "")
+            allowed = orgs.allowed_models(store, user_id)
         except Exception:  # pragma: no cover - never block a call on settings lookup
             pass
-    return os.environ.get("COWORKER_MODEL", DEFAULT_MODEL)
+    model = chosen or os.environ.get("COWORKER_MODEL", DEFAULT_MODEL)
+    if allowed and model not in allowed:
+        return allowed[0]
+    return model
 
 
 FAST_MODELS = {"anthropic": "claude-haiku-5-5", "openai": "gpt-4o-mini", "google": "gemini-2.5-flash"}
@@ -130,9 +136,19 @@ def available(user_id: int | None = None) -> bool:
 
 
 def models_for(user_id: int | None = None) -> list[dict[str, Any]]:
-    """The catalog, marking which models this user can use right now."""
+    """The catalog, marking which models this user can use right now (and which their organization allows)."""
     current = model_name(user_id)
-    return [{**m, "available": bool(key_for(m["provider"], user_id)), "selected": m["id"] == current} for m in catalog()]
+    allowed: list[str] = []
+    if user_id is not None:
+        try:
+            from coworker import orgs
+            from coworker.store import get_store
+
+            allowed = orgs.allowed_models(get_store(), user_id)
+        except Exception:  # pragma: no cover
+            pass
+    return [{**m, "available": bool(key_for(m["provider"], user_id)) and (not allowed or m["id"] in allowed),
+             "allowedByOrg": not allowed or m["id"] in allowed, "selected": m["id"] == current} for m in catalog()]
 
 
 def create_message(

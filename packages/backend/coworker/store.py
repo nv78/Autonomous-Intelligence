@@ -30,7 +30,7 @@ from typing import Any
 JSON_COLUMNS = {
     "autonomy", "settings", "onboarding", "style_profile", "recipients", "meta",
     "trigger_spec", "tools", "payload", "result", "detail", "transcript",
-    "metrics", "playbook", "answers", "risk", "counts",
+    "metrics", "playbook", "answers", "risk", "counts", "policies",
 }
 
 
@@ -263,6 +263,26 @@ TABLES: dict[str, str] = {
         started_at VARCHAR(40),
         finished_at VARCHAR(40)
     """,
+    "cw_orgs": """
+        id {pk},
+        name VARCHAR(255) NOT NULL,
+        domain VARCHAR(255) NOT NULL DEFAULT '',
+        owner_user_id INT NOT NULL,
+        policies {text},
+        created_at VARCHAR(40) NOT NULL
+    """,
+    "cw_org_members": """
+        id {pk},
+        org_id INT NOT NULL,
+        user_id INT,
+        email VARCHAR(255) NOT NULL,
+        role VARCHAR(20) NOT NULL DEFAULT 'member',
+        status VARCHAR(20) NOT NULL DEFAULT 'invited',
+        invited_by INT,
+        invited_at VARCHAR(40),
+        joined_at VARCHAR(40),
+        UNIQUE (org_id, email)
+    """,
     "cw_turns": """
         id {pk},
         user_id INT NOT NULL,
@@ -303,6 +323,7 @@ INDEXES: list[tuple[str, str, str]] = [
     ("idx_cw_memory_user", "cw_memory", "user_id, kind"),
     ("idx_cw_sync_jobs_user", "cw_sync_jobs", "user_id, status"),
     ("idx_cw_turns_meeting", "cw_turns", "meeting_id, status"),
+    ("idx_cw_org_members_user", "cw_org_members", "user_id, status"),
 ]
 
 

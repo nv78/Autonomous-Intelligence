@@ -11,6 +11,7 @@ from api_endpoints.coworker import (  # noqa: F401  (route registration)
     email_actions,
     mail_events,
     slack_events,
+    team,
     trust,
 )
 from api_endpoints.coworker.common import coworker_bp
