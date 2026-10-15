@@ -51,10 +51,12 @@ def test_take_turn_speaks_records_latency_and_barge_in(s, meeting, monkeypatch):
     turn = live_call.on_segment(s, 1, meeting["id"], "Is this a bot?")
     with patch("coworker.voice.tts", return_value=b"mp3") as tts, patch("coworker.connectors.recall.speak") as speak:
         result = live_call.take_turn(s, 1, meeting["id"], turn, wait=0)
-    assert result and "AI" in result["reply"] and speak.call_count == 1
+    assert result and "AI" in result["reply"]
+    assert speak.call_count == 2 and tts.call_count == 2  # first sentence, then the rest
+    assert any(c.args[0].startswith("Yes, I'm an AI") for c in tts.call_args_list)
     m = s.get("cw_meetings", meeting["id"], 1)
-    assert m["metrics"]["speaking_until"] > time.time() and len(m["metrics"]["turn_ms"]) == 1
-    assert tts.call_count == 1
+    assert m["metrics"]["speaking_until"] > 0 and len(m["metrics"]["turn_ms"]) == 1
+    s.update("cw_meetings", meeting["id"], 1, {"metrics": {**m["metrics"], "speaking_until": time.time() + 30}})
 
     with patch("coworker.connectors.recall.stop_audio") as stop:
         live_call.on_segment(s, 1, meeting["id"], "Sorry to interrupt, quick question")
@@ -129,3 +131,42 @@ def test_recall_transcription_mode(monkeypatch):
     assert live_call.silence_seconds() == 0.8
     monkeypatch.setenv("COWORKER_TURN_SILENCE", "1.5")
     assert live_call.silence_seconds() == 1.5
+
+
+def test_first_sentence_first_and_interruptions(s, meeting, monkeypatch):
+    assert live_call.split_first_sentence("Sure. We can do that next week, and I'll send times.") == \
+        ("Sure. We can do that next week, and I'll send times.", "")  # too short to split
+    assert live_call.split_first_sentence("Great question about pricing. It's $25 per seat.") == \
+        ("Great question about pricing.", "It's $25 per seat.")
+    assert live_call.split_first_sentence("One sentence only, no split") == ("One sentence only, no split", "")
+    assert live_call.mp3_seconds(b"x" * 16000) == 1.0
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "el")
+    import threading
+
+    real_audio = live_call._audio
+    first_part_playing = threading.Event()
+
+    def audio(text, voice_id):
+        if text.startswith("It's"):  # they interrupt while the first part plays and the rest is synthesized
+            assert first_part_playing.wait(5)
+            s.update("cw_meetings", meeting["id"], 1, {"metrics": {"speaking_until": 0, "consent": "granted"}})
+        return b"x" * 320  # 0.02s
+
+    real_set = live_call._set_metric
+
+    def set_metric(store, user_id, meeting_id, **values):
+        real_set(store, user_id, meeting_id, **values)
+        if values.get("speaking_until"):
+            first_part_playing.set()  # the first part is out and marked as playing
+
+    monkeypatch.setattr(live_call, "_audio", audio)
+    monkeypatch.setattr(live_call, "_set_metric", set_metric)
+    with patch("coworker.connectors.recall.speak") as speak:
+        live_call._say(s, 1, meeting, "Great question about pricing. It's $25 per seat.")
+    assert speak.call_count == 1  # the rest was dropped
+    with patch("coworker.connectors.recall.speak") as speak:
+        live_call._say(s, 1, meeting, "Short.")
+    assert speak.call_count == 1
+    monkeypatch.setattr(live_call, "_audio", real_audio)
+    monkeypatch.setattr(live_call, "_set_metric", real_set)

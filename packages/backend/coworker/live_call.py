@@ -15,6 +15,8 @@ answer "mm-hm", and keep talking when interrupted. Instead:
 * **Latency masking**: if the reply takes longer than ``FILLER_AFTER``
   seconds, the coworker says a short "Good question." first.
 * Replies use ``llm.call_model`` (a fast model) and are kept short.
+* **First sentence first**: a longer reply starts playing as soon as its first
+  sentence is synthesized, while the rest is still being generated.
 
 Per-turn timings land in the meeting's metrics (``turn_ms``) so p50/p95 can
 be measured on real calls.
@@ -112,18 +114,59 @@ def _audio(text: str, voice_id: str | None) -> bytes:
     return audio
 
 
+MP3_BITS_PER_SECOND = 128_000  # ElevenLabs mp3_44100_128
+SENTENCE_RE = re.compile(r"(.+?[.!?])\s+(.+)", re.S)
+
+
+def mp3_seconds(audio: bytes) -> float:
+    return len(audio) * 8 / MP3_BITS_PER_SECOND
+
+
+def split_first_sentence(text: str) -> tuple[str, str]:
+    """('First sentence.', 'the rest') when the reply has more than one sentence worth splitting."""
+    m = SENTENCE_RE.match(text.strip())
+    if not m or len(m.group(1).split()) < 3:
+        return text.strip(), ""
+    return m.group(1).strip(), m.group(2).strip()
+
+
 def _say(store: Store, user_id: int, meeting: dict[str, Any], text: str) -> None:
+    """Speak ``text``. Longer replies start after the first sentence's audio is ready,
+    while the rest is still being synthesized, and stop if the other side interrupts."""
+    from concurrent.futures import ThreadPoolExecutor
+
     from coworker import voice
     from coworker.connectors import recall
 
     if not meeting.get("bot_id") or not text:
         return
-    if voice.is_configured():
-        voice_id = ((store.get_coworker(user_id) or {}).get("settings") or {}).get("voice_id")
-        recall.speak(meeting["bot_id"], base64.b64encode(_audio(text, voice_id)).decode())
-        _set_metric(store, user_id, meeting["id"], speaking_until=time.time() + len(text.split()) / WORDS_PER_SECOND)
-    else:
+    if not voice.is_configured():
         recall.send_chat(meeting["bot_id"], text)
+        return
+    voice_id = ((store.get_coworker(user_id) or {}).get("settings") or {}).get("voice_id")
+    first, rest = split_first_sentence(text)
+    if not rest:
+        audio = _audio(text, voice_id)
+        recall.speak(meeting["bot_id"], base64.b64encode(audio).decode())
+        _set_metric(store, user_id, meeting["id"], speaking_until=time.time() + mp3_seconds(audio))
+        return
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        later = pool.submit(_audio, rest, voice_id)
+        head = _audio(first, voice_id)
+        started = time.time()
+        # Marked before the audio goes out (and long enough to cover the rest), so any interruption is caught.
+        _set_metric(store, user_id, meeting["id"],
+                    speaking_until=started + mp3_seconds(head) + len(rest.split()) / WORDS_PER_SECOND)
+        recall.speak(meeting["bot_id"], base64.b64encode(head).decode())
+        tail = later.result()
+    wait = mp3_seconds(head) - (time.time() - started) - 0.15  # queue the rest just before the first part ends
+    if wait > 0:
+        time.sleep(wait)
+    current = store.get("cw_meetings", meeting["id"], user_id) or {}
+    if _speaking_until(current) == 0 or current.get("status") != "active":
+        return  # they interrupted (barge-in cleared it) or the call ended: don't keep talking
+    recall.speak(meeting["bot_id"], base64.b64encode(tail).decode())
+    _set_metric(store, user_id, meeting["id"], speaking_until=time.time() + mp3_seconds(tail))
 
 
 def take_turn(store: Store, user_id: int, meeting_id: int, turn_id: int, wait: float | None = None) -> dict[str, Any] | None:
