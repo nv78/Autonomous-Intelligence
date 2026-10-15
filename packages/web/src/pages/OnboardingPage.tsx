@@ -379,7 +379,8 @@ export default function OnboardingPage() {
               You can set this up anytime from the Coworker page.
             </p>
             <div className="flex gap-2">
-              <button className={primaryBtn} onClick={finish}>Finish setup</button>
+              <button className={primaryBtn} onClick={async () => { await finish(); nav('/app/coworker/twin'); }}>Set up my twin</button>
+              <button className={ghostBtn} onClick={finish}>Finish setup</button>
             </div>
           </Bubble>
         )}

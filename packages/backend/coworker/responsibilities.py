@@ -269,8 +269,11 @@ def _meeting_followup(store: Store, user_id: int, resp: dict[str, Any]) -> list[
         run_id = _claim(store, user_id, resp, f"meeting:{meeting['id']}")
         if not run_id:
             continue
-        follow = ((meeting.get("summary") or {}) if isinstance(meeting.get("summary"), dict) else {}).get("followup")
-        if not follow:
+        from coworker.meetings import summary_of
+
+        summary = summary_of(meeting) or {}
+        follow = summary.get("followup")
+        if not follow or summary.get("followup_action_id"):
             _finish(store, run_id, "no follow-up drafted", "skipped")
             continue
         action = executor.propose(
