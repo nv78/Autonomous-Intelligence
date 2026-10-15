@@ -55,8 +55,14 @@ def _context(store: Store, user_id: int, payload: dict[str, Any], source_item_id
         "ORDER BY occurred_at DESC LIMIT 300",
         (user_id, thread_id),
     )
+    external_channel = False
+    if payload.get("channel"):
+        latest = store.one("SELECT meta FROM cw_items WHERE user_id = %s AND kind = 'slack' AND channel = %s "
+                           "ORDER BY occurred_at DESC LIMIT 1", (user_id, payload["channel"]))
+        external_channel = bool(((latest or {}).get("meta") or {}).get("shared"))
     return {
         "coworker": coworker,
+        "external_channel": external_channel,
         "known_emails": known,
         "thread_participants": participants,
         "trigger_text": (source or {}).get("body") or "",
@@ -98,7 +104,9 @@ def propose(
     if any(r["code"] == "suspicious_trigger" for r in risks):
         store.log(user_id, "security", "Flagged a suspicious message and held the related action for review",
                   {"risks": risks}, action_id=action_id)
-    if decision["auto"] and coworker.get("status") == "active":
+    from coworker import governance
+
+    if decision["auto"] and coworker.get("status") == "active" and not governance.needs_employer_ok(store, user_id):
         store.update("cw_actions", action_id, user_id, {"status": "approved", "decided_at": iso(),
                                                         "execute_after": _execute_after(coworker, action_type)})
         store.log(user_id, "auto_approved", f"Auto-approved: {title}", {"level": level}, action_id=action_id)
@@ -131,17 +139,37 @@ def edit(store: Store, user_id: int, action_id: int, payload_changes: dict[str, 
         raise ActionError("Only pending actions can be edited", "conflict")
     allowed = {"to", "cc", "subject", "body", "text", "title", "start", "end", "attendees", "description", "channel",
                "instruction", "autonomy", "name"}
-    payload = {**(action.get("payload") or {}), **{k: v for k, v in payload_changes.items() if k in allowed}}
+    before = action.get("payload") or {}
+    payload = {**before, **{k: v for k, v in payload_changes.items() if k in allowed}}
     store.update("cw_actions", action_id, user_id, {"payload": payload, "edited": 1})
+    old_text = str(before.get("body") or before.get("text") or "")
+    new_text = str(payload.get("body") or payload.get("text") or "")
+    if old_text != new_text:
+        import difflib
+
+        changed = round(1 - difflib.SequenceMatcher(None, old_text, new_text).ratio(), 3)
+        store.log(user_id, "edited", f"You edited: {action['title']}", {"changed": changed, "type": action["type"]},
+                  action_id=action_id)
     updated = store.get("cw_actions", action_id, user_id)
     assert updated is not None
     return updated
+
+
+def _check_governance(store: Store, user_id: int, coworker: dict[str, Any]) -> None:
+    from coworker import governance
+
+    if governance.org_disabled(coworker.get("owner_email") or ""):
+        raise ActionError("Your organization has turned off AI coworkers.", "org_disabled")
+    if governance.needs_employer_ok(store, user_id):
+        raise ActionError("Confirm in Settings that you own the company or your employer allows an AI coworker, "
+                          "then approve again.", "employer_authorization")
 
 
 def approve(store: Store, user_id: int, action_id: int, payload_changes: dict[str, Any] | None = None) -> dict[str, Any]:
     coworker = store.get_coworker(user_id) or {}
     if coworker.get("status") != "active":
         raise ActionError("Your coworker is paused. Resume it to approve actions.", "paused")
+    _check_governance(store, user_id, coworker)
     action = _get_open(store, user_id, action_id)
     if action["status"] != "proposed":
         raise ActionError(f"This action is already {action['status']}", "conflict")
@@ -242,6 +270,29 @@ def _execute(store: Store, user_id: int, action: dict[str, Any], coworker: dict[
     raise ActionError(f"Don't know how to execute {kind}")  # pragma: no cover
 
 
+DOUBLE_REPLY_MINUTES = 30
+
+
+def _owner_already_replied(store: Store, user_id: int, action: dict[str, Any]) -> bool:
+    """True when the user wrote in this email thread themselves after the
+    draft was proposed, or within the last few minutes. Sending the
+    coworker's draft then would be a double reply."""
+    if action["type"] != "email.send":
+        return False
+    thread_id = (action.get("payload") or {}).get("thread_id")
+    if not thread_id:
+        return False
+    thread = store.thread(user_id, thread_id)
+    last_inbound = max((it["occurred_at"] for it in thread if it["direction"] == "inbound"), default="")
+    since = max(last_inbound, min(action["created_at"], iso(utcnow() - timedelta(minutes=DOUBLE_REPLY_MINUTES))))
+    for it in thread:
+        meta = it.get("meta") or {}
+        if (it["direction"] == "outbound" and it["occurred_at"] > since and meta.get("sent_by") != "coworker"
+                and not meta.get("notification")):
+            return True
+    return False
+
+
 def run_due(store: Store, user_id: int) -> dict[str, int]:
     """Execute approved actions whose send delay passed; expire stale proposals."""
     coworker = store.get_coworker(user_id) or {}
@@ -260,6 +311,11 @@ def run_due(store: Store, user_id: int) -> dict[str, int]:
     for action in due:
         # Claim the row first so two workers can't both execute it.
         if not store.execute("UPDATE cw_actions SET status = 'executing' WHERE id = %s AND status = 'approved'", (action["id"],)):
+            continue
+        if _owner_already_replied(store, user_id, action):
+            store.update("cw_actions", action["id"], user_id, {"status": "superseded"})
+            store.log(user_id, "superseded", f"Didn't send: {action['title']} (you already replied in that thread)",
+                      action_id=action["id"])
             continue
         try:
             result = _execute(store, user_id, action, coworker)

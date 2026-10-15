@@ -94,6 +94,10 @@ def create_coworker() -> tuple:
     name, email = owner_profile(user_id)
     name = (data.get("name") or name or "").strip()
     email = (data.get("email") or email or "").strip().lower()
+    from coworker import governance
+
+    if governance.org_disabled(email):
+        return error("Your organization has turned off AI coworkers for your account. Ask your admin.", 403, "org_disabled")
     s = store()
     row = s.create_coworker(user_id, name, email, mode=mode)
     if row["mode"] != mode:
