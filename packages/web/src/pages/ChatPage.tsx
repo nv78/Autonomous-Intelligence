@@ -10,6 +10,28 @@ import OnboardingTour from '../components/OnboardingTour';
 import OurogenLogo from '../components/OurogenLogo';
 import UserMenu from '../components/UserMenu';
 import { API_BASE_URL } from '../constants/constants';
+import { marker, streamCoworkerChat } from '../coworker/api';
+import CoworkerMessage from '../coworker/CoworkerMessage';
+import { useCoworker } from '../coworker/CoworkerContext';
+import HeaderControls from '../coworker/HeaderControls';
+
+const DELEGATE_PROMPTS = [
+  { title: 'What needs a reply?', prompt: 'What needs a reply?' },
+  { title: "What's going on with Acme?", prompt: "What's going on with Acme?" },
+  { title: 'Prep me for my next meeting', prompt: 'Prep me for my next meeting' },
+  { title: 'Handle inbound leads', prompt: 'From now on, handle first replies to inbound sales leads' },
+  { title: 'Reply to Dana', prompt: 'Reply to Dana' },
+  { title: 'Follow up with Sarah', prompt: 'Follow up with Sarah' },
+];
+
+const LIVE_PROMPTS = [
+  { title: 'What needs a reply?', prompt: 'What needs a reply?' },
+  { title: 'Prep me for my next meeting', prompt: 'Prep me for my next meeting' },
+  { title: "What's on my calendar?", prompt: "What's on my calendar this week?" },
+  { title: 'Handle inbound leads', prompt: 'From now on, handle first replies to inbound sales leads' },
+  { title: 'Nudge stalled deals', prompt: 'From now on, nudge deal threads that go quiet' },
+  { title: 'Brief me before meetings', prompt: 'From now on, prep me before every external meeting' },
+];
 
 interface Message {
   id?: string;
@@ -123,6 +145,14 @@ export default function ChatPage() {
   const nav = useNavigate();
   const { token } = useAuth();
   const { model } = useModel();
+  const { coworker, status: coworkerStatus, putActions, loaded: coworkerLoaded } = useCoworker();
+  const [assistantMode, setAssistantMode] = useState(() => localStorage.getItem('chat_mode') === 'assistant');
+  const coworkerMode = !!coworker && !assistantMode;
+  const toggleMode = () => {
+    const next = !assistantMode;
+    setAssistantMode(next);
+    localStorage.setItem('chat_mode', next ? 'assistant' : 'coworker');
+  };
 
   const [sessions, setSessions] = useState<Session[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -451,6 +481,34 @@ export default function ChatPage() {
     onChunk: (accumulated: string) => void,
   ): Promise<void> => {
     abortRef.current = new AbortController();
+    if (coworkerMode) {
+      let acc = '';
+      await streamCoworkerChat(
+        token,
+        { message: userContent, session_id: sessionId },
+        (ev) => {
+          if (ev.type === 'error') throw new Error(ev.message || 'Your coworker hit an error.');
+          if (ev.type === 'text' && ev.text) acc += ev.text;
+          if (ev.type === 'tool') acc += marker({ t: 'tool', name: ev.name, summary: ev.summary });
+          if (ev.type === 'card' && ev.card === 'action' && ev.action) {
+            putActions([ev.action]);
+            acc += marker({ t: 'action', id: ev.action.id });
+          }
+          if (ev.type === 'session_id' && !sessionId) {
+            skipNextLoadRef.current = true;
+            nav(`/app/chat/${ev.session_id}`, { replace: true });
+            loadSessions();
+          }
+          if (ev.type === 'title' && ev.session_id) {
+            const id = String(ev.session_id);
+            setSessions((prev) => prev.map((s) => (s.id === id ? { ...s, title: ev.title } : s)));
+          }
+          onChunk(acc);
+        },
+        abortRef.current.signal,
+      );
+      return;
+    }
     const res = await fetch(`${API_BASE_URL}/api/chat/stream`, {
       method: 'POST',
       headers: {
@@ -720,7 +778,7 @@ export default function ChatPage() {
             autoResize();
           }}
           onKeyDown={handleKeyDown}
-          placeholder="Message Ourogen..."
+          placeholder={coworkerMode ? "Ask or delegate: \u201creply to Dana\u201d, \u201chandle inbound leads from now on\u201d…" : "Message Ourogen..."}
           aria-label="Message Ourogen"
           rows={1}
           className="w-full bg-transparent px-4 pt-3.5 pb-1 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none min-h-[52px] resize-none"
@@ -1081,6 +1139,21 @@ export default function ChatPage() {
             </svg>
             {sidebarOpen && 'Search Chats'}
           </button>
+          <button
+            onClick={() => nav(coworker ? '/app/coworker' : '/app/onboarding')}
+            title={coworker ? 'Your AI coworker' : 'Set up your AI coworker'}
+            className={`w-full rounded-lg text-sm hover:bg-gray-200 dark:hover:bg-[#2F2F2F] transition-colors flex items-center gap-2 ${
+              sidebarOpen ? 'text-left px-3 py-2' : 'justify-center py-2'
+            }`}
+          >
+            <span className="w-4 text-center flex-shrink-0" aria-hidden>🤖</span>
+            {sidebarOpen && <span className="flex-1">{coworker ? 'Coworker' : 'Set up your coworker'}</span>}
+            {sidebarOpen && coworker && (coworkerStatus.pending || 0) > 0 && (
+              <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-black text-white dark:bg-white dark:text-black text-[10px] font-semibold flex items-center justify-center">
+                {coworkerStatus.pending}
+              </span>
+            )}
+          </button>
         </div>
         {sidebarOpen && (
           <div className="flex-1 overflow-y-auto px-2 space-y-0.5 flex flex-col justify-end">
@@ -1141,7 +1214,24 @@ export default function ChatPage() {
               />
             </svg>
           </button>
+          <div className="flex items-center gap-2">
+            {coworker && (
+              <button
+                onClick={toggleMode}
+                title={coworkerMode ? 'Talking to your AI coworker (can act for you). Click for a plain assistant.' : 'Plain assistant. Click to talk to your coworker.'}
+                className="text-xs px-2.5 py-1.5 rounded-lg bg-[#F7F7F8] dark:bg-[#2F2F2F] hover:bg-gray-200 dark:hover:bg-[#3a3a3a]"
+              >
+                {coworkerMode ? '🤖 Coworker' : '💬 Assistant'}
+              </button>
+            )}
+            {coworkerMode && <HeaderControls />}
+          </div>
         </header>
+        {coworkerMode && coworker?.status === 'paused' && (
+          <div className="bg-amber-50 dark:bg-amber-500/10 border-b border-amber-200 dark:border-amber-500/30 text-xs text-amber-900 dark:text-amber-200 px-4 py-1.5 text-center">
+            Your coworker is paused. It can still answer questions, but nothing will be sent and no responsibilities will run.
+          </div>
+        )}
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto">
@@ -1149,17 +1239,28 @@ export default function ChatPage() {
             <div className="flex flex-col items-center justify-center min-h-full gap-4 px-5 py-10 text-center">
               <OurogenLogo className="w-12 h-12" />
               <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">
-                What would you like to work on?
+                {coworkerMode ? 'What should I take off your plate?' : 'What would you like to work on?'}
               </h1>
               <p className="text-xs text-gray-600 dark:text-gray-400">
-                Ask a question, explore an idea, or bring a document.
+                {coworkerMode
+                  ? `I'm ${coworker?.displayName || 'your AI coworker'}. I can read your work, draft in your voice, and take on ongoing jobs. Anything I send waits for your approval.`
+                  : 'Ask a question, explore an idea, or bring a document.'}
               </p>
+              {coworkerLoaded && !coworker && (
+                <button
+                  onClick={() => nav('/app/onboarding')}
+                  className="rounded-2xl border border-gray-200 dark:border-gray-700 px-4 py-3 text-sm text-left max-w-xl hover:bg-gray-50 dark:hover:bg-white/5"
+                >
+                  <span className="font-medium">New: your AI coworker.</span>{' '}
+                  <span className="text-gray-600 dark:text-gray-400">It learns from your email, Slack, and calendar, then handles work for you. Set it up in 5 minutes →</span>
+                </button>
+              )}
               <div className="grid w-full max-w-3xl gap-3 sm:grid-cols-3 my-3 text-left">
-                {[
+                {(coworkerMode ? (coworker?.mode === 'demo' ? DELEGATE_PROMPTS : LIVE_PROMPTS) : [
                   { title: 'Make a plan', prompt: 'Help me turn an idea into a practical plan. Ask me about my goal first.' },
                   { title: 'Improve my writing', prompt: 'Help me make a draft clearer and more concise. Ask me to share it.' },
                   { title: 'Understand some code', prompt: 'Help me understand a piece of code. Ask me to paste it and explain what I want to learn.' },
-                ].map(({ title, prompt }) => (
+                ]).map(({ title, prompt }) => (
                   <button key={title} onClick={() => { setInput(prompt); requestAnimationFrame(() => { textareaRef.current?.focus(); autoResize(); }); }}
                     className="rounded-2xl border border-gray-200 dark:border-gray-700 px-4 py-4 text-sm font-medium hover:bg-gray-50 dark:hover:bg-white/5 transition-colors text-left">
                     {title}<span aria-hidden="true" className="float-right text-gray-500">↗</span>
@@ -1192,18 +1293,22 @@ export default function ChatPage() {
                       </div>
                     )}
                     <div
-                      className={`max-w-[85%] rounded-2xl px-4 ${
+                      className={`${msg.role === 'assistant' ? 'max-w-[92%] min-w-0 flex-1' : 'max-w-[85%]'} rounded-2xl px-4 ${
                         msg.role === 'user'
                           ? 'py-3 bg-gray-100 dark:bg-[#2F2F2F] text-gray-900 dark:text-white'
                           : 'py-1.5 bg-transparent text-gray-900 dark:text-white'
                       }`}
                     >
                       {msg.role === 'assistant' ? (
-                        <div className="prose prose-sm dark:prose-invert max-w-none">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                            {msg.content || (isThisStreaming ? '▋' : '')}
-                          </ReactMarkdown>
-                        </div>
+                        msg.content.includes(':::cw ') || (coworkerMode && isThisStreaming) ? (
+                          <CoworkerMessage content={msg.content} streaming={isThisStreaming} />
+                        ) : (
+                          <div className="prose prose-sm dark:prose-invert max-w-none">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              {msg.content || (isThisStreaming ? '▋' : '')}
+                            </ReactMarkdown>
+                          </div>
+                        )
                       ) : (
                         <p className="whitespace-pre-wrap text-sm">
                           {msg.content}

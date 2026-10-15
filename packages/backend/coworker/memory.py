@@ -67,11 +67,26 @@ def company_context(store: Store, user_id: int) -> dict[str, str]:
             "owner_name": coworker.get("owner_name", "")}
 
 
+COMPANY_SUFFIXES = {
+    "health": "Health", "capital": "Capital", "cap": "Capital", "labs": "Labs", "lab": "Lab", "corp": "Corp",
+    "ventures": "Ventures", "vc": "VC", "analytics": "Analytics", "partners": "Partners", "group": "Group",
+    "systems": "Systems", "tech": "Tech", "software": "Software", "bank": "Bank", "first": "First", "media": "Media",
+    "studio": "Studio", "data": "Data", "cloud": "Cloud", "finance": "Finance", "fund": "Fund", "insurance": "Insurance",
+    "energy": "Energy", "bio": "Bio", "pharma": "Pharma", "logistics": "Logistics", "ai": "AI", "hq": "HQ",
+    "consulting": "Consulting", "holdings": "Holdings", "global": "Global", "invest": "Invest", "security": "Security",
+}
+
+
 def _company_from_domain(domain: str) -> str:
+    """Best-effort company name from an email domain: acmehealth.com -> Acme Health."""
     if not domain or domain in PUBLIC_DOMAINS:
         return ""
-    root = domain.split(".")[0]
-    return root.replace("-", " ").title()
+    root = domain.split(".")[0].replace("-", " ")
+    if " " not in root:
+        for suffix in sorted(COMPANY_SUFFIXES, key=len, reverse=True):
+            if root.endswith(suffix) and len(root) > len(suffix) + 2:
+                return f"{root[: -len(suffix)].title()} {COMPANY_SUFFIXES[suffix]}"
+    return root.title()
 
 
 def domain_of(email: str) -> str:
@@ -275,7 +290,10 @@ def _sentences(text: str) -> list[str]:
 
 
 def extract_decision(body: str) -> dict[str, str] | None:
-    sentences = _sentences(body)
+    lines = [ln for ln in (body or "").strip().splitlines()]
+    if lines and re.match(r"^(hi|hey|hello|dear|good (?:morning|afternoon))\b.{0,40},?\s*$", lines[0].strip(), re.IGNORECASE):
+        lines = lines[1:]
+    sentences = _sentences("\n".join(lines))
     for i, s in enumerate(sentences):
         if DECISION_RE.search(s):
             rationale = ""
@@ -300,17 +318,27 @@ def recall(store: Store, user_id: int, query: str, k: int = 6) -> list[dict[str,
         if is_noise(it):
             continue
         docs.append((f"{it['subject']} {it['author_name']} {it.get('channel', '')} {it['body']}", {"type": "item", **it}))
+    by_id = {i["id"]: i for i in items}
     for m in mems:
-        docs.append((f"{m['subject']} {m['title']} {m.get('detail') or ''}", {"type": "decision", **m}))
+        src = by_id.get(m.get("source_item_id") or 0) or {}
+        names = " ".join([src.get("subject", ""), src.get("author_name", "")] +
+                         [f"{r.get('name', '')} {domain_of(r.get('email', ''))}" for r in src.get("recipients") or []])
+        docs.append((f"{m['subject']} {m['title']} {m.get('detail') or ''} {names}", {"type": "decision", **m}))
     if not docs or not query.strip():
         return []
-    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
     from sklearn.metrics.pairwise import linear_kernel
 
+    def analyze(text: str) -> list[str]:
+        words = [_stem(w) for w in re.findall(r"[a-z0-9$]+", text.lower()) if w not in ENGLISH_STOP_WORDS]
+        return words + [f"{a} {b}" for a, b in zip(words, words[1:], strict=False)]
+
+    raw_q = re.findall(r"[a-z0-9]+", query.lower())
+    joined = [a + b for a, b in zip(raw_q, raw_q[1:], strict=False)]  # "beta corp" also matches "betacorp"
     try:
-        vec = TfidfVectorizer(stop_words="english", ngram_range=(1, 2), sublinear_tf=True)
+        vec = TfidfVectorizer(analyzer=analyze, sublinear_tf=True)
         matrix = vec.fit_transform([d[0] for d in docs])
-        scores = linear_kernel(vec.transform([query]), matrix).flatten()
+        scores = linear_kernel(vec.transform([f"{query} {' '.join(joined)}"]), matrix).flatten()
     except ValueError:
         return []
     now = utcnow()
@@ -325,6 +353,14 @@ def recall(store: Store, user_id: int, query: str, k: int = 6) -> list[dict[str,
         ranked.append((float(score) * (0.75 + 0.25 * recency) * boost, meta))
     ranked.sort(key=lambda x: x[0], reverse=True)
     return [cite(meta, score) for score, meta in ranked[:k]]
+
+
+def _stem(word: str) -> str:
+    """Tiny suffix stripper so "decide", "decided", and "deciding" match."""
+    for suffix in ("ing", "ed", "es", "e", "s"):
+        if len(word) > 4 and word.endswith(suffix):
+            return word[: -len(suffix)]
+    return word
 
 
 def cite(meta: dict[str, Any], score: float = 0.0) -> dict[str, Any]:
@@ -454,16 +490,19 @@ def needs_reply(store: Store, user_id: int, include_internal: bool = True) -> li
     return out
 
 
-def stale_threads(store: Store, user_id: int, days: int = 4) -> list[dict[str, Any]]:
+def stale_threads(store: Store, user_id: int, days: int = 4, max_age_days: int = 21) -> list[dict[str, Any]]:
     """Threads where the user wrote last and nobody has replied in ``days``."""
     cutoff = iso(utcnow() - timedelta(days=days))
     latest: dict[str, dict[str, Any]] = {}
     for it in store.items(user_id, kind="email", limit=3000):
         if it["thread_id"] not in latest:
             latest[it["thread_id"]] = it
+    oldest = iso(utcnow() - timedelta(days=max_age_days))
     return [
         cite({"type": "item", **it}) for it in latest.values()
-        if it["direction"] == "outbound" and it["occurred_at"] < cutoff and (it.get("meta") or {}).get("sent_by") != "coworker"
+        if it["direction"] == "outbound" and oldest <= it["occurred_at"] < cutoff
+        and (it.get("meta") or {}).get("sent_by") != "coworker"
+        and not extract_decision(it.get("body") or "")  # we closed this one ourselves; don't chase it
         and any(w in f"{it['subject']} {it['body']}".lower() for w in ("proposal", "pricing", "pilot", "contract", "next steps", "security"))
     ]
 

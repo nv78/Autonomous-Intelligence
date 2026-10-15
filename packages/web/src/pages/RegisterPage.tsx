@@ -35,10 +35,8 @@ export default function RegisterPage() {
     try {
       const res = await axios.post(`${API_BASE_URL}/auth/register`, { email, password, name });
       setToken(res.data.token);
-      if (res.data.isNewUser) {
-        localStorage.setItem("ourogen_show_onboarding", "1");
-      }
-      nav("/app");
+      // New accounts go straight into coworker onboarding.
+      nav(res.data.isNewUser === false ? "/app" : "/app/onboarding");
     } catch (err: any) {
       setError(err.response?.data?.error || "Registration failed");
     } finally {
