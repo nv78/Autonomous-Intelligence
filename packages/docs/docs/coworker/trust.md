@@ -50,7 +50,9 @@ Email, Slack, and call content is wrapped in `<untrusted_content>` before any mo
 - Only the account holder can create a twin.
 - Before any cloning, you record a randomized on-camera statement with a one-time code. The transcript must contain your name, the word "authorize", and the code (`twin.verify`).
 - One click deletes the cloned voice at the provider, every uploaded file, and the consent recording.
-- **Prototype limit:** consent verification checks the spoken statement and code. It doesn't yet biometrically match the consent video to the samples. That match is required before general availability.
+- Before cloning, the voice in the consent recording is compared with every voice and video sample (`voiceprint.compare`). Cloning happens only when all of them match. A recording of someone else blocks it. When the check can't decide, cloning stays blocked until you re-record or an admin reviews it manually (`python -m coworker.admin approve-voice`).
+- The default check is local (pitch and spectral statistics). It catches clearly different voices but can pass similar ones, so set `VOICEPRINT_BACKEND=resemblyzer` (a neural speaker embedding) before general availability. Face matching for the video avatar relies on the avatar vendor's own consent flow for now.
+- If deleting your cloned voice at the provider fails, your local files are still deleted at once, and the deletion is retried until the provider confirms it.
 
 ## 7. Your data
 

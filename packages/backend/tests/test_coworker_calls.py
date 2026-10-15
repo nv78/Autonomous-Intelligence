@@ -144,6 +144,7 @@ def test_playbook_and_serialize(s):
 # ---------------------------------------------------------------------------
 
 def test_twin_consent_and_voice(s, monkeypatch):
+    monkeypatch.setattr("coworker.voiceprint.compare", lambda a, b: {"verdict": "match", "backend": "test"})
     with pytest.raises(ValueError):
         twin.save_asset(s, 1, "bogus", "a.mp3", "audio/mpeg", b"x")
     with pytest.raises(ValueError):
@@ -276,6 +277,7 @@ def test_bot_meeting_and_webhook(client, auth_headers, demo, monkeypatch):
 
 
 def test_voice_and_twin_routes(client, auth_headers, demo, monkeypatch):
+    monkeypatch.setattr("coworker.voiceprint.compare", lambda a, b: {"verdict": "match", "backend": "test"})
     h = auth_headers
     assert client.post("/api/coworker/voice/tts", json={"text": "hi"}, headers=h).status_code == 501
     monkeypatch.setenv("ELEVENLABS_API_KEY", "el")

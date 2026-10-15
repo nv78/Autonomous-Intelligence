@@ -29,6 +29,7 @@ Open `http://localhost:3000`, create an account, and you land in coworker onboar
 | `SENTRY_DSN`, `ALERT_SLACK_WEBHOOK_URL` | Error tracking for the backend and worker; Slack alerts when an approved action fails or a sync errors (throttled to one per problem per 15 minutes) |
 | `COWORKER_RETENTION_DAYS`, `COWORKER_TRANSCRIPT_RETENTION_DAYS`, `COWORKER_ACTIVITY_RETENTION_DAYS` | Delete synced content after 180 days, raw call transcripts after 180 (summaries are kept), and the activity log after 730. The worker applies them every 6 hours. |
 | `REDIS_URL` | Shared rate limits for public endpoints (pilot form, meeting webhook). Without Redis, limits are per process. |
+| `VOICEPRINT_BACKEND`, `VOICEPRINT_REQUIRED` | Voice match before cloning: `local` (default, needs ffmpeg) or `resemblyzer`. `VOICEPRINT_REQUIRED=0` disables the check (development only). |
 | `COWORKER_SYNC_MODE` | `thread` (default) syncs on a background thread in the web process; `worker` leaves sync to `coworker-worker` |
 
 ### Google
@@ -45,6 +46,15 @@ The web app runs the coworker loop while it's open. The `coworker-worker` servic
 python -m coworker.worker            # every 60s
 python -m coworker.worker --once
 ```
+
+## Check vendors before going live
+
+```bash
+cd packages/backend
+python -m coworker.vendor_check
+```
+
+Each configured vendor gets one read-only call: Anthropic, ElevenLabs (plan and cloning allowance), Recall.ai, Tavus, Google and Slack OAuth config, SMTP, S3, Redis, and the voice-match decoder. Nothing is sent, joined, or cloned. Admins (`PILOT_ADMIN_EMAILS`) can also open `GET /api/coworker/admin/vendors`.
 
 ## Evals
 
