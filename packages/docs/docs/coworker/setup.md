@@ -33,6 +33,7 @@ Open `http://localhost:3000`, create an account, and you land in coworker onboar
 | `REDIS_URL` | Shared rate limits for public endpoints (pilot form, meeting webhook). Without Redis, limits are per process. |
 | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`, `TWILIO_WHATSAPP_FROM`, `TWILIO_WEBHOOK_URL` | Text your coworker by SMS or WhatsApp, and approve by text. Point the number's webhook at `BACKEND_URL/api/coworker/sms/inbound` |
 | `COWORKER_INBOUND_DOMAIN`, `COWORKER_INBOUND_TOKEN`, `COWORKER_INBOUND_REQUIRE_AUTH` | Email your coworker: CC or forward to `<first name>@<domain>` (Postmark or SendGrid inbound webhook at `BACKEND_URL/api/coworker/email/inbound?token=…`) |
+| `COWORKER_MODEL_PRICES` | Optional. Prices for non-Claude models in per-task cost, as JSON: `{"gpt-4o": [2.5, 10]}` (USD per million input, output tokens) |
 | `SLACK_BOT_ENABLED` | The @mentionable Slack bot (see the launch guide for the Slack app settings) |
 | `EXPO_ACCESS_TOKEN`, `COWORKER_PUSH` | Mobile push through Expo (the token is optional, for enhanced push security). `COWORKER_PUSH=0` turns pushes off. |
 | `COWORKER_MODEL`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `OLLAMA_BASE_URL`, `COWORKER_EXTRA_MODELS` | Model choice. Users pick a model in **Settings → Model**: Claude (default `claude-opus-5-5`), OpenAI, Gemini, or a local Ollama model. A model is offered when the server has a key for it or the user added their own. `COWORKER_EXTRA_MODELS=openai:gpt-5,google:gemini-3-pro` adds ids. |

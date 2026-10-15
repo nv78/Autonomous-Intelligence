@@ -70,6 +70,8 @@ def recent_runs(store: Store, user_id: int, limit: int = 50) -> list[dict[str, A
             "id": r["id"], "responsibility": r.get("name") or "(removed)", "responsibilityId": r["responsibility_id"],
             "status": r["status"], "summary": r.get("summary") or "", "error": r.get("error") or "",
             "attempts": int(r.get("attempts") or 1), "at": r.get("started_at") or r["created_at"],
+            "tokens": int(r.get("tokens") or 0),
+            "costUsd": None if r.get("cost_micros") is None else round(int(r["cost_micros"]) / 1_000_000, 4),
             "durationMs": int((finished - started).total_seconds() * 1000) if started and finished else None,
         })
     return out

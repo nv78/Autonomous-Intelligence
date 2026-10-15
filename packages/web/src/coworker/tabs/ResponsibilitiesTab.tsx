@@ -5,22 +5,7 @@ import { coworkerApi, errorMessage, timeAgo } from '../api';
 import { useCoworker } from '../CoworkerContext';
 import type { Responsibility, Suggestion } from '../types';
 import { Card, Empty, Pill, Section, ghostBtn, inputCls, primaryBtn } from '../ui';
-import ScheduleEditor, { type ScheduleSpec } from '../ScheduleEditor';
-
-/** One-click recurring jobs (each one is a scheduled task you can edit afterwards). */
-const RECIPES: { name: string; instruction: string; schedule: ScheduleSpec }[] = [
-  { name: 'Morning briefing', instruction: "Tell me what's on my plate today: meetings with prep notes, emails waiting on me, and anything overdue.",
-    schedule: { freq: 'weekdays', time: '08:00' } },
-  { name: 'Inbox sweep', instruction: 'Reply to my emails that are waiting on me.', schedule: { freq: 'weekdays', time: '10:00' } },
-  { name: 'Weekly pipeline report', instruction: 'Summarize my open deals: what moved this week, what is stuck, and who I should follow up with.',
-    schedule: { freq: 'weekly', days: ['mon'], time: '09:00' } },
-  { name: 'Friday status update', instruction: 'Draft my weekly status update to my team: what got done, what is next, and blockers.',
-    schedule: { freq: 'weekly', days: ['fri'], time: '16:00' } },
-  { name: 'Follow-up check', instruction: "List people I haven't followed up with this week and draft a short nudge to each.",
-    schedule: { freq: 'weekly', days: ['thu'], time: '14:00' } },
-  { name: 'Month-start review', instruction: 'Recap last month: meetings held, deals moved, emails handled, and time I saved.',
-    schedule: { freq: 'monthly', day: 1, time: '09:00' } },
-];
+import ScheduleEditor from '../ScheduleEditor';
 
 function when(iso: string | null) {
   if (!iso) return '';
@@ -45,6 +30,7 @@ export default function ResponsibilitiesTab() {
   const [msg, setMsg] = useState('');
   const [editing, setEditing] = useState<number | null>(null);
   const [newTask, setNewTask] = useState('');
+  const [recipes, setRecipes] = useState<any[]>([]);
   const nav = useNavigate();
 
   const load = async () => {
@@ -52,6 +38,7 @@ export default function ResponsibilitiesTab() {
     setItems(d.responsibilities || []);
     setTemplates(d.templates || []);
     setSuggestions(d.suggestions || []);
+    api.get('/recipes').then((r) => setRecipes(r.recipes || [])).catch(() => {});
   };
   useEffect(() => {
     load();
@@ -92,7 +79,6 @@ export default function ResponsibilitiesTab() {
   };
 
   const owned = new Set(items.map((i) => i.template));
-  const ownedNames = new Set(items.map((i) => i.name));
   return (
     <div>
       {msg && <p className="mb-4 text-sm rounded-lg bg-[#F7F7F8] dark:bg-[#2F2F2F] px-3 py-2">{msg}</p>}
@@ -130,6 +116,14 @@ export default function ResponsibilitiesTab() {
                           ⏰ {r.schedule.description}{r.enabled && r.schedule.nextRun ? ` · next ${when(r.schedule.nextRun)}` : ''}
                           {r.schedule.deliver.filter((d) => d !== 'chat').length > 0 && ` · also by ${r.schedule.deliver.filter((d) => d !== 'chat').join(' and ')}`}
                         </p>
+                        {r.schedule.usage && r.schedule.usage.runs > 0 && (
+                          <p className="text-xs text-gray-500">
+                            Last 30 days: {r.schedule.usage.runs} run{r.schedule.usage.runs === 1 ? '' : 's'}
+                            {r.schedule.usage.costUsd != null ? ` · $${r.schedule.usage.costUsd.toFixed(2)} in AI usage` : ''}
+                            {r.schedule.usage.actions ? ` · ${r.schedule.usage.executed}/${r.schedule.usage.actions} actions sent` : ''}
+                            {` · ~${r.schedule.usage.hoursSaved}h saved`}
+                          </p>
+                        )}
                         {r.schedule.runs.slice(0, 3).map((run, i) => (
                           <p key={i} className="text-xs text-gray-400 truncate">
                             {run.status === 'failed' ? '⚠️' : '✓'} {timeAgo(run.at)}: {run.summary}
@@ -168,10 +162,19 @@ export default function ResponsibilitiesTab() {
       </Section>
 
       <Section title="Scheduled tasks" subtitle="Recurring work I do on a clock, in your time zone. Or just tell me in chat: “Every Monday at 9, post the pipeline in #sales.”">
-        <div className="flex flex-wrap gap-2 mb-4">
-          {RECIPES.filter((r) => !ownedNames.has(r.name)).map((r) => (
-            <button key={r.name} className={ghostBtn} title={r.instruction}
-              onClick={() => add({ name: r.name, instruction: r.instruction, schedule: r.schedule, runNow: false })}>⏰ {r.name}</button>
+        <div className="grid gap-3 sm:grid-cols-2 mb-4">
+          {recipes.filter((r) => !r.enabled).map((r) => (
+            <Card key={r.id} className="p-4 flex flex-col">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium flex-1">⏰ {r.name}</p>
+                <span className="text-xs text-gray-500">{r.when}</span>
+              </div>
+              {r.why && <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">{r.why}</p>}
+              <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{r.instruction}</p>
+              <p className="text-xs text-gray-400 mt-1 flex-1 italic">e.g. “{r.sample}”</p>
+              <button className={`${primaryBtn} mt-3 self-start`}
+                onClick={() => add({ name: r.name, instruction: r.instruction, schedule: r.schedule, runNow: false })}>Turn on</button>
+            </Card>
           ))}
         </div>
         <Card className="p-4 space-y-3">

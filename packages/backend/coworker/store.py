@@ -170,6 +170,8 @@ TABLES: dict[str, str] = {
         finished_at VARCHAR(40),
         attempts INT NOT NULL DEFAULT 1,
         error {text},
+        tokens INT NOT NULL DEFAULT 0,
+        cost_micros INT,
         UNIQUE (user_id, responsibility_id, trigger_key)
     """,
     "cw_worker_heartbeats": """
@@ -374,6 +376,8 @@ ADDED_COLUMNS: list[tuple[str, str, str]] = [
     ("cw_runs", "finished_at", "VARCHAR(40)"),
     ("cw_runs", "attempts", "INT NOT NULL DEFAULT 1"),
     ("cw_runs", "error", "{text}"),
+    ("cw_runs", "tokens", "INT NOT NULL DEFAULT 0"),
+    ("cw_runs", "cost_micros", "INT"),
 ]
 
 

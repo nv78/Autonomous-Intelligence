@@ -16,7 +16,7 @@ The live roadmap is [GitHub issue #425](https://github.com/anote-ai/Panacea/issu
 
 - Email the coworker: CC or forward to a personal coworker address (#422), shipped
 - Microsoft Teams and Google Chat bots (#423)
-- Recipe gallery and per-task cost (#424)
+- Recipe gallery and per-task cost (#424), shipped
 - Team plan: SCIM provisioning (#402)
 
 ## Later

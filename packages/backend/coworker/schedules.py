@@ -243,7 +243,7 @@ def state(store: Store, user_id: int, resp: dict[str, Any]) -> dict[str, Any]:
                        "AND user_id = %s ORDER BY id DESC LIMIT 5", (resp["id"], user_id))
     return {"description": describe(spec), "nextRun": iso(nxt) if nxt else None, "deliver": spec.get("deliver") or ["chat"],
             "chatId": spec.get("chat_id"), "runs": [{"at": r["created_at"], "status": r["status"], "summary": r.get("summary") or ""}
-                                                    for r in runs]}
+                                                    for r in runs], "usage": usage(store, user_id, int(resp["id"]))}
 
 
 def run(store: Store, user_id: int, resp: dict[str, Any], force: bool = False) -> list[str]:
@@ -263,12 +263,15 @@ def run(store: Store, user_id: int, resp: dict[str, Any], force: bool = False) -
     run_id = responsibilities._claim(store, user_id, resp, key) or _retry(store, user_id, resp, key)
     if not run_id:
         return []
-    try:
-        answer = execute(store, user_id, resp)
-    except Exception as exc:  # one failed run must not stop the others; it's visible in the task's history
-        _failed(store, user_id, resp, run_id, exc)
-        return []
-    responsibilities._finish(store, run_id, answer["summary"][:500])
+    from coworker import llm
+
+    with llm.metering() as usage:
+        try:
+            answer = execute(store, user_id, resp)
+        except Exception as exc:  # one failed run must not stop the others; it's visible in the task's history
+            _failed(store, user_id, resp, run_id, exc)
+            return []
+    responsibilities._finish(store, run_id, answer["summary"][:500], usage=usage)
     return [f"Ran '{resp['name']}'"]
 
 
@@ -338,3 +341,105 @@ def execute(store: Store, user_id: int, resp: dict[str, Any]) -> dict[str, Any]:
 
         sms.notify(store, user_id, f"{resp['name']}: {answer['text']}", "tasks")
     return answer
+
+
+# -- usage per task -------------------------------------------------------------------------------
+
+READ_MINUTES = 5  # a report or briefing the owner would otherwise have put together themselves
+
+
+def usage(store: Store, user_id: int, resp_id: int, days: int = 30) -> dict[str, Any]:
+    """Runs, model spend, actions, and an estimate of time saved for one task over ``days``."""
+    from coworker import metrics
+
+    since = iso(utcnow() - timedelta(days=days))
+    runs = store.query("SELECT status, tokens, cost_micros FROM cw_runs WHERE user_id = %s AND responsibility_id = %s "
+                       "AND created_at >= %s", (user_id, resp_id, since))
+    actions = store.query("SELECT type, status FROM cw_actions WHERE user_id = %s AND responsibility_id = %s AND created_at >= %s",
+                          (user_id, resp_id, since))
+    done = [r for r in runs if r["status"] == "done"]
+    priced = all(r.get("cost_micros") is not None for r in done)
+    executed = [a for a in actions if a["status"] == "executed"]
+    minutes = len(done) * READ_MINUTES + sum(metrics.MINUTES_SAVED.get(a["type"], 3) for a in executed)
+    return {
+        "days": days, "runs": len(done), "failed": sum(1 for r in runs if r["status"] == "failed"),
+        "tokens": sum(int(r.get("tokens") or 0) for r in runs),
+        "costUsd": round(sum(int(r.get("cost_micros") or 0) for r in runs) / 1_000_000, 2) if priced else None,
+        "actions": len(actions), "executed": len(executed), "hoursSaved": round(minutes / 60, 1),
+    }
+
+
+def spend(store: Store, user_id: int, days: int = 30) -> float:
+    """Model spend on all of a user's scheduled runs (unpriced runs count as 0)."""
+    row = store.one("SELECT SUM(cost_micros) AS c FROM cw_runs WHERE user_id = %s AND created_at >= %s",
+                    (user_id, iso(utcnow() - timedelta(days=days))))
+    return round(int((row or {}).get("c") or 0) / 1_000_000, 2)
+
+
+# -- recipes ----------------------------------------------------------------------------------------
+
+RECIPES: list[dict[str, Any]] = [
+    {"id": "morning_briefing", "name": "Morning briefing", "category": "Daily",
+     "instruction": "Tell me what's on my plate today: meetings with prep notes, emails waiting on me, and anything overdue.",
+     "schedule": {"freq": "weekdays", "time": "08:00"},
+     "sample": "3 meetings today. Prep for Northwind at 11 is below. 4 emails are waiting on you; Dana's is the oldest."},
+    {"id": "inbox_sweep", "name": "Inbox sweep", "category": "Daily",
+     "instruction": "Reply to my emails that are waiting on me.", "schedule": {"freq": "weekdays", "time": "10:00"},
+     "sample": "Drafted 5 replies (2 leads, 2 scheduling, 1 support). They're waiting for your approval."},
+    {"id": "end_of_day", "name": "End-of-day wrap", "category": "Daily",
+     "instruction": "Wrap up my day: what got done, what's still waiting on me, and what's first tomorrow.",
+     "schedule": {"freq": "weekdays", "time": "17:30"},
+     "sample": "Done: 6 emails sent, 2 calls. Waiting on you: Globex pricing question. First tomorrow: Acme kickoff."},
+    {"id": "pipeline_report", "name": "Weekly pipeline report", "category": "Weekly",
+     "instruction": "Summarize my open deals: what moved this week, what is stuck, and who I should follow up with.",
+     "schedule": {"freq": "weekly", "days": ["mon"], "time": "09:00"},
+     "sample": "Moved: Northwind to pilot. Stuck: Globex (no reply in 9 days). Follow up with Kevin and Priya."},
+    {"id": "status_update", "name": "Friday status update", "category": "Weekly",
+     "instruction": "Draft my weekly status update to my team: what got done, what is next, and blockers.",
+     "schedule": {"freq": "weekly", "days": ["fri"], "time": "16:00"},
+     "sample": "Draft ready: 3 wins, 2 next steps, 1 blocker (legal review). Approve to send to the team."},
+    {"id": "follow_up_check", "name": "Follow-up check", "category": "Weekly",
+     "instruction": "List people I haven't followed up with this week and draft a short nudge to each.",
+     "schedule": {"freq": "weekly", "days": ["thu"], "time": "14:00"},
+     "sample": "4 threads went quiet after you wrote. Drafted a nudge to each for your approval."},
+    {"id": "meeting_digest", "name": "Meeting notes digest", "category": "Weekly",
+     "instruction": "Summarize this week's meetings: decisions, action items with owners, and follow-ups still unsent.",
+     "schedule": {"freq": "weekly", "days": ["fri"], "time": "15:00"},
+     "sample": "5 meetings. Decisions: pilot starts Nov 1. Action items: 7 (3 yours). 1 follow-up still unsent."},
+    {"id": "month_review", "name": "Month-start review", "category": "Monthly",
+     "instruction": "Recap last month: meetings held, deals moved, emails handled, and time I saved.",
+     "schedule": {"freq": "monthly", "day": 1, "time": "09:00"},
+     "sample": "October: 22 meetings, 3 deals moved, 140 emails handled, about 19 hours saved."},
+    {"id": "investor_update", "name": "Investor update draft", "category": "Monthly",
+     "instruction": "Draft my monthly investor update from last month: highlights, metrics I mentioned, lowlights, and asks.",
+     "schedule": {"freq": "monthly", "day": 2, "time": "10:00"},
+     "sample": "Draft ready with 4 highlights, 2 lowlights, and 2 asks. Review and send from the card."},
+    {"id": "overdue_invoices", "name": "Overdue invoice reminders", "category": "Monthly",
+     "instruction": "Find clients with overdue invoices in my email and draft a polite reminder to each.",
+     "schedule": {"freq": "monthly", "day": 1, "time": "10:00"},
+     "sample": "2 clients have invoices past due. Drafted a friendly reminder to each."},
+]
+
+
+def recipes(store: Store, user_id: int) -> list[dict[str, Any]]:
+    """The gallery, with a reason to try each one when the user's own data suggests it."""
+    from coworker import memory, scheduling
+
+    have = {r["name"] for r in store.query("SELECT name FROM cw_responsibilities WHERE user_id = %s", (user_id,))}
+    waiting = len(memory.needs_reply(store, user_id))
+    stale = len(memory.stale_threads(store, user_id))
+    meetings = len(scheduling.upcoming_events(store, user_id, hours=24 * 7))
+    held = int((store.one("SELECT COUNT(*) AS n FROM cw_meetings WHERE user_id = %s AND started_at >= %s",
+                          (user_id, iso(utcnow() - timedelta(days=14)))) or {}).get("n") or 0)
+    why = {
+        "inbox_sweep": f"{waiting} emails are waiting on you right now." if waiting >= 3 else "",
+        "morning_briefing": f"You have {meetings} meetings in the next week." if meetings >= 3 else "",
+        "follow_up_check": f"{stale} threads went quiet after you wrote." if stale >= 2 else "",
+        "meeting_digest": f"Your coworker was in {held} meetings in the last two weeks." if held >= 2 else "",
+    }
+    out = []
+    for r in RECIPES:
+        spec = clean(r["schedule"])
+        out.append({**r, "schedule": spec, "when": describe(spec), "enabled": r["name"] in have, "why": why.get(r["id"], "")})
+    out.sort(key=lambda r: (r["enabled"], not r["why"]))
+    return out

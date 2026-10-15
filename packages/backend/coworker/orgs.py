@@ -400,5 +400,8 @@ def _usage(store: Store, user_id: int) -> dict[str, Any]:
 
     tr = metrics.track_record(store, user_id, days=30)
     coworker = store.get_coworker(user_id) or {}
+    from coworker import schedules
+
     return {"status": coworker.get("status") or "not set up", "executed": tr["executed"], "acceptance": tr["acceptance"],
-            "hoursSaved": tr["hoursSaved"], "callMinutes": tr["calls"]["minutes"], "pending": tr["pending"]}
+            "hoursSaved": tr["hoursSaved"], "callMinutes": tr["calls"]["minutes"], "pending": tr["pending"],
+            "taskSpendUsd": schedules.spend(store, user_id)}
