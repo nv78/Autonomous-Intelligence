@@ -10,6 +10,7 @@ import CallsTab from '../coworker/tabs/CallsTab';
 import MemoryTab from '../coworker/tabs/MemoryTab';
 import ResponsibilitiesTab from '../coworker/tabs/ResponsibilitiesTab';
 import SettingsTab from '../coworker/tabs/SettingsTab';
+import TodayTab from '../coworker/tabs/TodayTab';
 import TwinTab from '../coworker/tabs/TwinTab';
 import { Pill } from '../coworker/ui';
 
@@ -21,6 +22,7 @@ export interface CoworkerTab {
 }
 
 export const TABS: CoworkerTab[] = [
+  { id: 'today', label: 'Today', icon: '☀️', component: TodayTab },
   { id: 'approvals', label: 'Approvals', icon: '📥', component: ApprovalsTab },
   { id: 'responsibilities', label: 'Responsibilities', icon: '📌', component: ResponsibilitiesTab },
   { id: 'calls', label: 'Calls', icon: '🎙️', component: CallsTab },
@@ -31,7 +33,7 @@ export const TABS: CoworkerTab[] = [
 ];
 
 export default function CoworkerPage() {
-  const { tab = 'approvals' } = useParams<{ tab: string }>();
+  const { tab = 'today' } = useParams<{ tab: string }>();
   const nav = useNavigate();
   const { coworker, loaded, status } = useCoworker();
 

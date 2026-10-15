@@ -135,7 +135,8 @@ def _all_party(store: Store, user_id: int) -> bool:
 
 
 def start(store: Store, user_id: int, *, mode: str, title: str = "", prospect_name: str = "", company: str = "",
-          prospect_email: str = "", meeting_url: str = "", persona: str = "") -> dict[str, Any]:
+          prospect_email: str = "", meeting_url: str = "", persona: str = "", context: str = "",
+          chat_id: int | None = None) -> dict[str, Any]:
     if persona in SIMULATED_PROSPECTS:
         p = SIMULATED_PROSPECTS[persona]
         prospect_name, company, prospect_email, title = p["name"], p["company"], p["email"], p["title"]
@@ -145,7 +146,8 @@ def start(store: Store, user_id: int, *, mode: str, title: str = "", prospect_na
         "platform": _platform(meeting_url), "meeting_url": meeting_url, "prospect_name": prospect_name,
         "prospect_company": company, "status": "active",
         "transcript": [{"speaker": "coworker", "text": opener, "at": iso()}],
-        "answers": {"prospect_email": prospect_email, "persona": persona},
+        "answers": {"prospect_email": prospect_email, "persona": persona, "context": context[:2000],
+                    "chat_id": chat_id},
         "metrics": {"latencies_ms": [], "escalations": [], "disclosed": True,
                     "consent": "pending" if _all_party(store, user_id) else "not_required"},
         "started_at": iso(),
@@ -177,7 +179,28 @@ def next_prospect_line(meeting: dict[str, Any]) -> str | None:
 # Talking
 # ---------------------------------------------------------------------------
 
+FIELD_PATTERNS = {
+    "decision_maker": r"\b(sign(?:s)? off|decision|approve|budget holder|my (?:boss|ceo|coo|cfo)|i'?d run|i (?:decide|own))\b",
+    "timeline": r"\b(within|next|by|this) (?:\w+ )?(?:week|month|quarter|year|weeks|months)\b|\bq[1-4]\b|asap|before our",
+    "budget": r"\$\s?\d|\bbudget\b",
+    "current_process": r"\b(right now|currently|today we|we use|by hand|manual\w*|ctrl-?f|spreadsheet|it'?s slow|copy and paste)\b",
+    "need": r"\b(drown|pain|problem|struggl|eats|waste|slow|hours|need|looking for)\w*",
+}
+FILLER_RE = re.compile(r"^(?:(?:okay|ok|so|well|yeah|yes|great|sure|um|uh|honestly|basically)[,.!]?\s+)+", re.IGNORECASE)
+
+
+def _sentences(text: str) -> list[str]:
+    return [p.strip() for p in re.split(r"(?<=[.!?])\s+", text.strip()) if p.strip()]
+
+
+def _clean(sentence: str) -> str:
+    out = FILLER_RE.sub("", sentence).strip()
+    return (out[:1].upper() + out[1:])[:200] if out else sentence[:200]
+
+
 def _extract_answers(text: str, answers: dict[str, Any]) -> dict[str, Any]:
+    """Pull qualification answers from what the prospect said, keeping just
+    the sentence that answers each question (minus filler like "Okay, so")."""
     low = text.lower()
     out = dict(answers)
     company = re.search(r"\b(\d{1,5})[- ](?:person|people|employee)s? (?:company|fund|firm|team|org|startup)\b", low)
@@ -191,16 +214,13 @@ def _extract_answers(text: str, answers: dict[str, Any]) -> dict[str, Any]:
         m = re.search(r"\b(\d{1,4})\s*(?:people|person|employees)\b", low)
         if m:
             out["team_size"] = m.group(1)
-    if re.search(r"\b(sign(?:s)? off|decision|approve|budget holder|my (?:boss|ceo|coo|cfo)|i'?d run|i (?:decide|own))\b", low):
-        out.setdefault("decision_maker", text.strip()[:200])
-    if re.search(r"\b(within|next|by|this) (?:\w+ )?(?:week|month|quarter|year|weeks|months)\b|\bq[1-4]\b|asap|before our", low):
-        out.setdefault("timeline", text.strip()[:200])
-    if re.search(r"\$\s?\d|\bbudget\b", low):
-        out.setdefault("budget", text.strip()[:200])
-    if re.search(r"\b(right now|currently|today we|we use|by hand|manual\w*|ctrl-?f|spreadsheet|it'?s slow|copy and paste)\b", low):
-        out.setdefault("current_process", text.strip()[:200])
-    if re.search(r"\b(drown|pain|problem|struggl|eats|waste|slow|hours|need|looking for)\w*", low):
-        out.setdefault("need", text.strip()[:200])
+    sentences = _sentences(text)
+    for field, pattern in FIELD_PATTERNS.items():
+        if out.get(field):
+            continue
+        hit = next((sent for sent in sentences if re.search(pattern, sent, re.IGNORECASE)), None)
+        if hit and not HUMAN_Q_RE.search(hit):
+            out[field] = _clean(hit)
     return out
 
 
@@ -303,7 +323,9 @@ def _llm_reply(store: Store, user_id: int, meeting: dict[str, Any], text: str, a
         f"Pricing you may state (nothing else): {pb.get('pricing_notes') or 'none; say ' + first + ' will follow up'}\n"
         f"Escalate to {first}, never decide yourself: {', '.join(pb['escalate'])}.\n"
         f"Still to learn: {', '.join(missing) or 'nothing; move to next steps'}.\n"
-        f"If asked whether you are human, say you are an AI. Never claim to be {first}.\n"
+        + (f"What {first} wants from this call (follow it, but these rules come first): "
+           f"{(meeting.get('answers') or {}).get('context')}\n" if (meeting.get("answers") or {}).get("context") else "")
+        + f"If asked whether you are human, say you are an AI. Never claim to be {first}.\n"
         f"{_speaking_style(store, user_id)}\n\n{security.SYSTEM_RULES}"
     )
     prompt = (f"Transcript so far:\n{transcript}\n\nThey just said:\n{security.wrap_untrusted(text, 'call')}\n\n"
@@ -472,18 +494,23 @@ def finish(store: Store, user_id: int, meeting_id: int) -> dict[str, Any]:
             "summary": f"Call {iso()[:10]}: score {score}/100. " + "; ".join(action_items),
             "fields": summary["qualification"],
         }, title=f"Update CRM: {meeting.get('prospect_company') or meeting['prospect_name']}",
-            reasoning="Qualification captured on the call.")
+            reasoning="Qualification captured on the call.", chat_id=answers.get("chat_id"))
     if followup:
         action = executor.propose(store, user_id, "email.send", followup, title=f"Follow up: {meeting['title']}",
-                                  reasoning="Recap and next steps from the call.")
+                                  reasoning="Recap and next steps from the call.", chat_id=answers.get("chat_id"))
         summary["followup_action_id"] = action["id"]
         store.update("cw_meetings", meeting_id, user_id, {"summary": json.dumps(summary)})
     if summary["hot"]:
         store.log(user_id, "escalation", f"🔥 Hot lead: {meeting['prospect_name']} ({meeting['prospect_company']}), score {score}/100",
                   {"meeting_id": meeting_id})
-    store.log(user_id, "meeting", f"Call ended: {meeting['title']} (score {score}/100)", {"meeting_id": meeting_id})
+    store.log(user_id, "meeting", f"Call ended: {meeting['title']} (score {score}/100)", {"meeting_id": meeting_id},
+              chat_id=answers.get("chat_id"))
     result = store.get("cw_meetings", meeting_id, user_id)
     assert result is not None
+    if answers.get("chat_id"):
+        from coworker import reports
+
+        reports.post(user_id, answers["chat_id"], reports.meeting_summary(result, summary))
     return result
 
 
