@@ -93,7 +93,12 @@ def propose(
         risks = security.assess_outbound(
             action_type, payload, owner_email=coworker.get("owner_email", ""), requested_in_chat=requested_in_chat, **ctx,
         )
-    level = policy.level_for(coworker, action_type, responsibility)
+    from coworker import orgs
+
+    level = orgs.cap_level(store, user_id, action_type, policy.level_for(coworker, action_type, responsibility))
+    blocked = orgs.blocked_recipients(store, user_id, _recipients(payload))
+    if blocked:
+        risks.append({"code": "org_blocked", "message": f"Your organization doesn't allow sending to {', '.join(blocked)}."})
     decision = policy.decide(action_type, level, risks)
     action_id = store.insert("cw_actions", {
         "user_id": user_id, "type": action_type, "status": "proposed", "title": title[:500], "payload": payload,
@@ -137,6 +142,10 @@ def _get_open(store: Store, user_id: int, action_id: int) -> dict[str, Any]:
     if not action:
         raise ActionError("Action not found", "not_found")
     return action
+
+
+def _recipients(payload: dict[str, Any]) -> list[str]:
+    return [str(r) for r in (payload.get("to") or []) + (payload.get("cc") or []) + (payload.get("attendees") or [])]
 
 
 def edit(store: Store, user_id: int, action_id: int, payload_changes: dict[str, Any]) -> dict[str, Any]:
@@ -186,6 +195,12 @@ def approve(store: Store, user_id: int, action_id: int, payload_changes: dict[st
         raise ActionError(f"This action is already {action['status']}", "conflict")
     if payload_changes:
         action = edit(store, user_id, action_id, payload_changes)
+    from coworker import orgs
+
+    blocked = orgs.blocked_recipients(store, user_id, _recipients(action.get("payload") or {}))
+    if blocked:
+        raise ActionError(f"Your organization doesn't allow sending to {', '.join(blocked)}. Edit the recipients or reject it.",
+                          "org_blocked")
     if payload_changes and policy.ACTION_TYPES[action["type"]]["external"]:
         # Re-check risk on the edited content; edits can't silently widen what gets sent.
         ctx = _context(store, user_id, action["payload"] or {}, action.get("source_item_id"))

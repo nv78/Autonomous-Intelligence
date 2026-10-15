@@ -130,6 +130,10 @@ def disclosure_line(store: Store, user_id: int, prospect_name: str = "") -> str:
 
 
 def _all_party(store: Store, user_id: int) -> bool:
+    from coworker import orgs
+
+    if orgs.forces_all_party_consent(store, user_id):
+        return True
     settings = (store.get_coworker(user_id) or {}).get("settings") or {}
     return settings.get("recording_consent", "all_party") != "one_party"
 

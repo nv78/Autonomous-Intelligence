@@ -143,7 +143,14 @@ How the user sends the coworker to a meeting: in chat, *"Join my 2pm with Northw
 
 ## 7. Billing (optional for a friend)
 
-Leave `COWORKER_ENFORCE_PLANS=0` to run the pilot free. To charge, create the three coworker prices in Stripe, set `STRIPE_PRICE_COWORKER`, `STRIPE_PRICE_COWORKER_CALLS`, and `STRIPE_PRICE_COWORKER_TEAM`, then set `COWORKER_ENFORCE_PLANS=1`.
+Leave `COWORKER_ENFORCE_PLANS=0` to run the pilot free.
+
+**Team plan.** Under **Coworker → Team**, an admin can:
+- create an organization;
+- invite teammates by email (the link only works for the invited address);
+- set rules every member's coworker follows: autonomy ceilings, blocked domains, all-party recording consent, and allowed models.
+
+Members get Team features through the admin's subscription. If the Team price in Stripe is per seat, set `COWORKER_TEAM_PER_SEAT=1`. Inviting or removing someone then updates the subscription quantity, prorated. To charge, create the three coworker prices in Stripe, set `STRIPE_PRICE_COWORKER`, `STRIPE_PRICE_COWORKER_CALLS`, and `STRIPE_PRICE_COWORKER_TEAM`, then set `COWORKER_ENFORCE_PLANS=1`.
 
 ---
 
