@@ -277,7 +277,7 @@ def _fulfill_checkout_session(session_id: str, obj: dict, already_claimed: bool)
                 from coworker.billing import apply_checkout
                 from coworker.store import get_store
 
-                apply_checkout(get_store(), metadata)
+                apply_checkout(get_store(), metadata, obj)
             elif metadata.get("kind") == "credit_pack":
                 user_id = int(metadata["user_id"])
                 credits = int(metadata["credits"])
@@ -318,6 +318,12 @@ def _handle_webhook_event(event: dict) -> None:
             cnx.close()
 
     elif event_type in ("customer.subscription.deleted", "customer.subscription.updated"):
+        if (obj.get("metadata") or {}).get("kind") == "coworker_plan":
+            from coworker.billing import apply_subscription_event
+            from coworker.store import get_store
+
+            apply_subscription_event(get_store(), event_type, obj)
+            return
         customer_id = obj.get("customer", "")
         cancellation_requested = (
             event_type == "customer.subscription.deleted"

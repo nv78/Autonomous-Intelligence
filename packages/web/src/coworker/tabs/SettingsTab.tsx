@@ -360,6 +360,8 @@ export default function SettingsTab() {
         </Card>
       </Section>
 
+      <ModelSection />
+
       <PlanSection />
 
       <Section title="Your data" subtitle="Download everything your coworker stored, or delete it all.">
@@ -380,44 +382,132 @@ export default function SettingsTab() {
 
 function PlanSection() {
   const { token } = useAuth();
+  const { refresh } = useCoworker();
   const api = coworkerApi(token);
   const [b, setB] = useState<any>(null);
   const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState('');
   useEffect(() => {
     api.get('/billing').then(setB).catch(() => {});
   }, []);
   if (!b) return null;
-  const upgrade = async (plan: string) => {
+  const change = async (plan: string, label: string, dir: string) => {
+    if (dir === 'downgrade' && !confirm(plan === 'free'
+      ? 'Move to Free at the end of your billing period? Calls and your twin turn off then.'
+      : `Switch to ${label}? The difference is prorated on your next invoice.`)) return;
+    setBusy(plan);
+    setMsg('');
     try {
-      window.location.href = (await api.post('/billing/checkout', { plan })).url;
+      const d = await api.post('/billing/change', { plan });
+      if (d.status === 'checkout' && d.url) {
+        window.location.href = d.url;
+        return;
+      }
+      setB(d.billing);
+      setMsg(d.status === 'scheduled' ? `You'll move to Free at the end of this billing period.` : `You're on ${label} now.`);
+      await refresh();
+    } catch (e) {
+      setMsg(errorMessage(e));
+    } finally {
+      setBusy('');
+    }
+  };
+  const portal = async () => {
+    try {
+      window.location.href = (await api.post('/billing/portal')).url;
     } catch (e) {
       setMsg(errorMessage(e));
     }
   };
+  const pct = b.callMinutesIncluded ? Math.min(100, Math.round((b.callMinutes / b.callMinutesIncluded) * 100)) : 0;
   return (
-    <Section title="Plan & usage" subtitle="Prices are early hypotheses. Pilot users are free.">
-      <Card className="p-4 mb-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-        <div><p className="text-lg font-semibold">{b.planName}</p><p className="text-xs text-gray-500">current plan</p></div>
-        <div>
-          <p className={`text-lg font-semibold tabular-nums ${b.warn ? 'text-amber-600' : ''}`}>{b.callMinutes}{b.callMinutesIncluded ? ` / ${b.callMinutesIncluded}` : ''}</p>
-          <p className="text-xs text-gray-500">call minutes this month</p>
+    <Section title="Plan & usage" subtitle="Change plans anytime. Upgrades take effect now; prorated on your next invoice."
+      action={b.hasBillingAccount ? <button className={ghostBtn} onClick={portal}>Invoices & payment</button> : undefined}>
+      <Card className="p-4 mb-3">
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="text-lg font-semibold">{b.planName}</p>
+          {b.subscription?.cancel_at_period_end && <Pill tone="amber">Moves to Free at period end</Pill>}
         </div>
-        <div><p className="text-lg font-semibold tabular-nums">{b.actionsExecuted}</p><p className="text-xs text-gray-500">actions completed</p></div>
-        <div><p className="text-lg font-semibold tabular-nums">${b.estimatedCostUsd}</p><p className="text-xs text-gray-500">est. cost to serve</p></div>
+        {b.callMinutesIncluded > 0 && (
+          <div className="mt-3">
+            <div className="flex justify-between text-xs text-gray-500 mb-1">
+              <span>Call minutes this month</span>
+              <span className={b.warn ? 'text-amber-600 font-medium' : ''}>{b.callMinutes} / {b.callMinutesIncluded}</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+              <div className={`h-full ${b.warn ? 'bg-amber-500' : 'bg-black dark:bg-white'}`} style={{ width: `${pct}%` }} />
+            </div>
+            {b.warn && <p className="text-xs text-amber-600 mt-1">You've used over 80% of your call minutes.</p>}
+          </div>
+        )}
+        <p className="text-xs text-gray-500 mt-3">{b.actionsExecuted} actions completed this month.</p>
       </Card>
-      <div className="grid gap-3 sm:grid-cols-3">
-        {b.plans.filter((p: any) => p.id !== 'pilot').map((p: any) => (
-          <Card key={p.id} className="p-4 flex flex-col">
-            <p className="text-sm font-medium">{p.name}</p>
-            <p className="text-xl font-semibold mt-1">${p.priceUsd}<span className="text-xs font-normal text-gray-500">/mo</span></p>
-            <p className="text-xs text-gray-500 mt-1 flex-1">{p.features.join(', ').replace(/_/g, ' ')}</p>
-            <button className={`${ghostBtn} mt-3`} disabled={!p.available || b.plan === p.id} onClick={() => upgrade(p.id)}>
-              {b.plan === p.id ? 'Current' : p.available ? 'Upgrade' : 'Coming soon'}
-            </button>
-          </Card>
-        ))}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {b.plans.filter((p: any) => p.id !== 'pilot').map((p: any) => {
+          const current = b.plan === p.id && !b.subscription?.cancel_at_period_end;
+          const label = current ? 'Current plan' : !p.available ? 'Coming soon'
+            : p.direction === 'upgrade' ? 'Upgrade' : p.direction === 'downgrade' ? 'Downgrade' : 'Switch';
+          return (
+            <Card key={p.id} className={`p-4 flex flex-col ${current ? 'ring-2 ring-black dark:ring-white' : ''}`}>
+              <p className="text-sm font-medium">{p.name}</p>
+              <p className="text-xl font-semibold mt-1">${p.priceUsd}<span className="text-xs font-normal text-gray-500">/mo</span></p>
+              <p className="text-xs text-gray-500 mt-1 flex-1">
+                {p.features.join(', ').replace(/_/g, ' ')}{p.callMinutes ? ` · ${p.callMinutes} call min` : ''}
+              </p>
+              <button className={`${p.direction === 'upgrade' && !current ? primaryBtn : ghostBtn} mt-3`}
+                disabled={current || !p.available || !!busy} onClick={() => change(p.id, p.name, p.direction)}>
+                {busy === p.id ? '…' : label}
+              </button>
+            </Card>
+          );
+        })}
       </div>
-      {msg && <p className="text-sm text-red-500 mt-2">{msg}</p>}
+      {b.plan === 'pilot' && <p className="text-xs text-gray-500 mt-2">You're in the founder pilot: everything is included and free.</p>}
+      {msg && <p className="text-sm mt-2">{msg}</p>}
+    </Section>
+  );
+}
+
+function ModelSection() {
+  const { token } = useAuth();
+  const { refresh } = useCoworker();
+  const api = coworkerApi(token);
+  const [models, setModels] = useState<any[]>([]);
+  const [msg, setMsg] = useState('');
+  useEffect(() => {
+    api.get('/models').then((d) => setModels(d.models || [])).catch(() => {});
+  }, []);
+  if (!models.length) return null;
+  const pick = async (id: string) => {
+    setMsg('');
+    try {
+      await api.patch('', { settings: { model: id } });
+      setModels((ms) => ms.map((m) => ({ ...m, selected: m.id === id })));
+      await refresh();
+      setMsg('Saved. New chats and calls use this model.');
+    } catch (e) {
+      setMsg(errorMessage(e));
+    }
+  };
+  const groups: Record<string, string> = { anthropic: 'Anthropic', openai: 'OpenAI', google: 'Google', ollama: 'Local' };
+  return (
+    <Section title="Model" subtitle="Pick the AI that powers your coworker. The same guardrails apply to every model.">
+      <Card className="divide-y divide-gray-100 dark:divide-gray-700/70">
+        {models.map((m) => (
+          <label key={m.id} className={`flex items-center gap-3 px-4 py-3 ${m.available ? 'cursor-pointer' : 'opacity-60'}`}>
+            <input type="radio" name="model" checked={!!m.selected} disabled={!m.available} onChange={() => pick(m.id)} />
+            <span className="flex-1 text-sm">
+              {m.label} <span className="text-xs text-gray-500">· {groups[m.provider] || m.provider} · {m.note}</span>
+            </span>
+            {!m.available && <span className="text-xs text-gray-500">Needs a {groups[m.provider] || m.provider} key</span>}
+          </label>
+        ))}
+      </Card>
+      <p className="text-xs text-gray-500 mt-2">
+        Add your own OpenAI or Google key under your account settings (API keys) to unlock those models.
+        Without any key, the coworker runs its built-in offline planner.
+      </p>
+      {msg && <p className="text-sm mt-2">{msg}</p>}
     </Section>
   );
 }
