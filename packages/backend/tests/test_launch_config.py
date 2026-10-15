@@ -109,6 +109,10 @@ def test_config_check_safe_and_unsafe():
     assert any("GOOGLE_COWORKER_REDIRECT_URI" in w for w in warnings)
     assert any("TWIN_S3_BUCKET" in w for w in warnings)
     assert any("offline planner" in w for w in warnings)
+    _, warnings = config.check({**SAFE, "MICROSOFT_CLIENT_ID": "m", "SLACK_CLIENT_ID": "s"})
+    assert any("MICROSOFT_REDIRECT_URI" in w for w in warnings) and any("SLACK_SIGNING_SECRET" in w for w in warnings)
+    assert config.check({**SAFE, "MICROSOFT_CLIENT_ID": "m", "MICROSOFT_REDIRECT_URI": "https://x/cb",
+                         "SLACK_CLIENT_ID": "s", "SLACK_SIGNING_SECRET": "z"}) == ([], [])
 
 
 def test_config_enforce(caplog):

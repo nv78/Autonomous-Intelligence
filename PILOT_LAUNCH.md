@@ -8,6 +8,25 @@ It assumes production is `https://chat.ourogen.ai`, deployed by `.github/workflo
 
 ---
 
+## 0. Before you merge to `main`: don't take the live chatbot down
+
+With `APP_ENV=production`, the new backend **refuses to start** when `JWT_SECRET_KEY` is weak (shorter than 32 characters or a default value) or `PROVIDER_KEY_ENCRYPTION_KEY` is missing. That protects users' OAuth tokens, but it also means a deploy onto an old `.env` would take chat.ourogen.ai offline.
+
+1. On the EC2 host, add the new settings to the backend's environment file first.
+2. Then run the check against that file with the image CI built from `develop`, or any checkout of this repo:
+
+```bash
+# on the host, from APP_DIR (adjust the env file name to the one your compose file uses)
+docker run --rm --env-file .env <ECR_REGISTRY>/<ECR_REPOSITORY>:<develop-sha> python -m coworker.config
+# or from a checkout:  cd packages/backend && set -a && . /path/to/.env && set +a && python -m coworker.config
+```
+
+It prints `OK: safe to start in production` or the exact settings to fix, and exits 1 on errors.
+
+- **Changing `JWT_SECRET_KEY` signs everyone out once.** Pick the value now and never change it again.
+- **Generate `PROVIDER_KEY_ENCRYPTION_KEY` once** with `python -c "import secrets; print(secrets.token_urlsafe(48))"`. If it ever changes, every saved connection stops working.
+- **The coworker stores its data in the same MySQL database as the chatbot,** and creates its tables on first use. Don't set `COWORKER_DB_URL` in production.
+
 ## 1. Ship the code and run the worker
 
 1. Merge `develop` into `main`. The deploy workflow builds the backend image (it includes ffmpeg for voice checks), restarts the stack on the EC2 host, and publishes the web app.

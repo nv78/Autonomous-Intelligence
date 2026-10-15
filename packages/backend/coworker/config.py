@@ -7,6 +7,11 @@ store on SQLite. Missing public URLs are reported as warnings.
 
 Set ``ALLOW_UNSAFE_CONFIG=1`` only to get a broken deploy running again
 while you fix the configuration.
+
+Check an environment before deploying, so a bad setting fails the check
+instead of taking the running app down::
+
+    APP_ENV=production python -m coworker.config      # exits 1 on errors
 """
 from __future__ import annotations
 
@@ -37,6 +42,10 @@ def check(env: Mapping[str, Any]) -> tuple[list[str], list[str]]:
             warnings.append(f"{key} should be the public https:// URL (OAuth redirects and webhooks use it).")
     if env.get("GOOGLE_CLIENT_ID") and not str(env.get("GOOGLE_COWORKER_REDIRECT_URI") or "").startswith("https://"):
         warnings.append("GOOGLE_COWORKER_REDIRECT_URI should be https:// in production.")
+    if env.get("MICROSOFT_CLIENT_ID") and not str(env.get("MICROSOFT_REDIRECT_URI") or "").startswith("https://"):
+        warnings.append("MICROSOFT_REDIRECT_URI should be https:// in production.")
+    if env.get("SLACK_CLIENT_ID") and not env.get("SLACK_SIGNING_SECRET"):
+        warnings.append("SLACK_SIGNING_SECRET is unset: Slack is polled every minute instead of answered in real time.")
     if not env.get("TWIN_S3_BUCKET"):
         warnings.append("TWIN_S3_BUCKET is unset: twin files and consent evidence will be stored on container disk.")
     if not env.get("ANTHROPIC_API_KEY"):
@@ -57,3 +66,17 @@ def enforce(env: Mapping[str, Any] | None = None) -> None:
             log.critical("%s\n(ALLOW_UNSAFE_CONFIG=1 set; starting anyway)", message)
             return
         raise RuntimeError(message)
+
+
+def main() -> int:  # pragma: no cover - CLI wrapper
+    errors, warnings = check(os.environ)
+    for w in warnings:
+        print(f"warning: {w}")
+    for e in errors:
+        print(f"ERROR: {e}")
+    print("OK: safe to start in production" if not errors else "Fix the errors above before deploying.")
+    return 1 if errors else 0
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())
