@@ -67,7 +67,15 @@ def create_app(config: dict[str, object] | None = None) -> Flask:
 
     @app.get("/health")
     def health() -> tuple[Response, int]:
-        return jsonify({"status": "ok", **get_build_metadata()}), 200
+        # Always 200 while the web process is up; "worker" tells whether autonomous work is running.
+        try:
+            from coworker import ops
+            from coworker.store import get_store
+
+            worker = ops.worker_status(get_store())["status"]
+        except Exception:
+            worker = "unknown"
+        return jsonify({"status": "ok", "worker": worker, **get_build_metadata()}), 200
 
     @app.get("/version")
     @app.get("/api/version")

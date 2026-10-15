@@ -33,6 +33,8 @@ It prints `OK: safe to start in production` or the exact settings to fix, and ex
 2. On the EC2 host, open the compose file in `APP_DIR`. Check two things:
    - It has a **`coworker-worker`** service: `python -m coworker.worker --interval 60`, with the same image and environment as the backend. See `docker-compose.yml` in this repo. Without the worker, the coworker only works while the user has the web app open.
    - Its environment passes through every variable in steps 2–7 below.
+   - It has `restart: unless-stopped` and the `python -m coworker.ops --check` health check, so a crashed worker comes back on its own.
+   - To confirm it's running, check `curl https://chat.ourogen.ai/health`. `"worker": "ok"` means it ticked in the last 3 minutes. `stale` also raises an alert to `ALERT_SLACK_WEBHOOK_URL` and Sentry, and shows a banner in the app.
 3. Set `BACKEND_URL=https://chat.ourogen.ai` and `FRONTEND_URL=https://chat.ourogen.ai`. Meeting bots and Slack push events to `BACKEND_URL`, so it must be public and use HTTPS.
 4. Set `ANTHROPIC_API_KEY`. Without it, the coworker falls back to a scripted planner.
 5. Set `PROVIDER_KEY_ENCRYPTION_KEY`. It encrypts OAuth tokens at rest. Generate it once and never change it, or every connection breaks.

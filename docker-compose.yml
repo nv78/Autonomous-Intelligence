@@ -143,8 +143,15 @@ services:
     build:
       context: ./packages/backend
       dockerfile: Dockerfile
-    restart: "no"
+    # Keep it running: scheduled tasks and responsibilities stop when the worker does.
+    restart: unless-stopped
     entrypoint: ["python", "-m", "coworker.worker", "--interval", "60"]
+    healthcheck:
+      test: ["CMD", "python", "-m", "coworker.ops", "--check"]
+      interval: 2m
+      timeout: 30s
+      start_period: 5m
+      retries: 2
     # Same settings as the backend: the worker sends email, posts to Slack,
     # and reads twin files.
     environment: *backend_env
