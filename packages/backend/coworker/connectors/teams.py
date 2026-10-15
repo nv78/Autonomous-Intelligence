@@ -61,7 +61,7 @@ def verify(auth_header: str, service_url: str) -> dict[str, Any]:
                                             issuer=ISSUER, leeway=300)
     except Exception as exc:
         raise TeamsError(f"invalid token: {exc.__class__.__name__}") from exc
-    if claims.get("serviceurl") and claims["serviceurl"].rstrip("/") != service_url.rstrip("/"):
+    if not claims.get("serviceurl") or claims["serviceurl"].rstrip("/") != service_url.rstrip("/"):
         raise TeamsError("serviceUrl mismatch")
     return claims
 
@@ -132,7 +132,7 @@ def handle(store: Store, activity: dict[str, Any]) -> str:
     tenant = str(conv.get("tenantId") or (activity.get("channelData") or {}).get("tenant", {}).get("id") or "")
     sender = activity.get("from") or {}
     email = member_email(activity)
-    owner = chatbots.owner_by_email(store, email)
+    owner = chatbots.owner_for_teams(store, str(sender.get("aadObjectId") or ""), tenant)
     if owner is not None:
         personal = conv.get("conversationType") == "personal"
         chatbots.remember(store, "teams", sender.get("id", ""), owner, tenant, email,

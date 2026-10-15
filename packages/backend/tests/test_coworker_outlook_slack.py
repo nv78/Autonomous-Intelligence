@@ -14,6 +14,7 @@ import pytest
 from coworker.connectors import microsoft, slack
 from coworker.connectors.base import ConnectorError, Workspace, encrypt_token
 from coworker.store import Store
+from tests.conftest import oauth_return
 
 
 @pytest.fixture(autouse=True)
@@ -215,14 +216,14 @@ def test_outlook_oauth_routes(client, auth_headers, monkeypatch):
     token = {"access_token": "at", "refresh_token": "rt", "scope": "Mail.Read Mail.Send", "expires_at": 9e9}
     with patch("coworker.connectors.microsoft.exchange_code", return_value=token), \
          patch("coworker.connectors.microsoft.fetch_account_email", return_value="natan@contoso.com"):
-        assert "connected=microsoft" in client.get(f"/api/coworker/connections/microsoft/callback?state={state}&code=c").location
+        assert "connected=microsoft" in oauth_return(client, f"/api/coworker/connections/microsoft/callback?state={state}&code=c").location
     cw = client.get("/api/coworker", headers=h).get_json()
     assert cw["coworker"]["mode"] == "live" and cw["connections"][0]["account"] == "natan@contoso.com"
-    assert "connect_error=microsoft" in client.get("/api/coworker/connections/microsoft/callback?state=bad").location
-    denied = client.get(f"/api/coworker/connections/microsoft/callback?state={state}&error=access_denied")
+    assert "connect_error=microsoft" in oauth_return(client, "/api/coworker/connections/microsoft/callback?state=bad").location
+    denied = oauth_return(client, f"/api/coworker/connections/microsoft/callback?state={state}&error=access_denied")
     assert "connect_error" in denied.location
     with patch("coworker.connectors.microsoft.exchange_code", side_effect=ConnectorError("nope")):
-        assert "connect_error" in client.get(f"/api/coworker/connections/microsoft/callback?state={state}&code=c").location
+        assert "connect_error" in oauth_return(client, f"/api/coworker/connections/microsoft/callback?state={state}&code=c").location
     assert client.delete("/api/coworker/connections/microsoft", headers=h).get_json()["disconnected"]
 
 

@@ -2,8 +2,8 @@
 
 Same rules as the Slack bot (``coworker/slackbot.py``):
 
-* **The owner** (their chat identity's email is their account email or a
-  connected Google / Microsoft mailbox) is giving a command: it runs as a
+* **The owner** (matched by their verified Microsoft object id, or a Google
+  address verified at sign-in) is giving a command: it runs as a
   chat turn, one web chat per conversation, and proposed actions come back
   with Approve / Skip buttons.
 * **A teammate** is asking the coworker of an owner in the same tenant /
@@ -23,16 +23,25 @@ from coworker.store import IntegrityError, Store, iso
 CHAT_NAMES = {"teams": "💬 Teams", "gchat": "💬 Google Chat"}
 
 
-def owner_by_email(store: Store, email: str) -> int | None:
-    email = (email or "").strip().lower()
-    if not email:
+def owner_for_teams(store: Store, aad_object_id: str, tenant: str) -> int | None:
+    """The owner behind a Teams user: their Microsoft object id and tenant, as verified at Microsoft sign-in.
+
+    Never by email: any tenant admin can set a user's mail attribute to someone else's address.
+    """
+    if not aad_object_id:
         return None
-    row = store.one("SELECT user_id FROM cw_coworkers WHERE LOWER(owner_email) = %s", (email,))
-    if row:
-        return int(row["user_id"])
-    row = store.one("SELECT user_id FROM cw_connections WHERE provider IN ('google', 'microsoft') "
-                    "AND LOWER(account_label) = %s AND status IN ('connected', 'syncing')", (email,))
-    return int(row["user_id"]) if row else None
+    row = store.one("SELECT user_id, tenant FROM cw_verified_identities WHERE provider = 'microsoft' AND subject = %s",
+                    (aad_object_id,))
+    if not row or (tenant and row.get("tenant") and row["tenant"] != tenant):
+        return None
+    return int(row["user_id"])
+
+
+def owner_for_google(store: Store, email: str) -> int | None:
+    """The owner behind a Google Chat user: an address Google verified at sign-in or when connecting Gmail."""
+    from coworker import identity
+
+    return identity.user_for(store, "google", email=email) if email else None
 
 
 def remember(store: Store, platform: str, external_id: str, user_id: int, tenant: str, email: str,

@@ -112,7 +112,7 @@ def create_coworker() -> tuple:
         return error("mode must be 'demo' or 'live'")
     name, email = owner_profile(user_id)
     name = (data.get("name") or name or "").strip()
-    email = (data.get("email") or email or "").strip().lower()
+    email = (email or "").strip().lower()  # always the account's own email: admin checks and governance rely on it
     from coworker import governance
 
     if governance.org_disabled(email):

@@ -9,7 +9,7 @@ import jwt
 import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa
 
-from coworker import chatbots, memory
+from coworker import chatbots, identity, memory
 from coworker.connectors import gchat, teams
 from coworker.connectors.demo import DemoConnector
 from coworker.store import Store
@@ -36,6 +36,8 @@ def s(tmp_path):
     store.create_coworker(1, "Natan Vidra", "natan@anote.ai", mode="demo")
     DemoConnector.seed(store, 1, "Natan Vidra", "natan@anote.ai")
     memory.rebuild(store, 1)
+    identity.record(store, 1, "microsoft", "aad-natan", "natan@anote.ai", "anote.ai", "t1")
+    identity.record(store, 1, "google", "sub-natan", "natan@anote.ai", "anote.ai")
     return store
 
 
@@ -73,7 +75,7 @@ class FakeBF:
 
 def _act(text="", user="29:natan", conv="a:dm1", kind="personal", **extra):
     return {"type": "message", "id": f"m{time.time_ns()}", "serviceUrl": SERVICE, "text": text,
-            "from": {"id": user, "name": "Natan" if user == "29:natan" else "Dana"},
+            "from": {"id": user, "name": "Natan" if user == "29:natan" else "Dana", "aadObjectId": f"aad-{user[3:]}"},
             "conversation": {"id": conv, "conversationType": kind, "tenantId": "t1"}, **extra}
 
 
@@ -188,10 +190,12 @@ def test_gchat_owner_buttons_and_teammates(s, _env):
 
 
 def test_owner_lookup_and_endpoints(s, client, monkeypatch):
-    s.upsert_connection(1, "microsoft", status="connected", account_label="Natan@Anote.onmicrosoft.com")
-    assert chatbots.owner_by_email(s, "NATAN@anote.ai") == 1
-    assert chatbots.owner_by_email(s, "natan@anote.onmicrosoft.com") == 1
-    assert chatbots.owner_by_email(s, "") is None
+    assert chatbots.owner_for_teams(s, "aad-natan", "t1") == 1
+    assert chatbots.owner_for_teams(s, "aad-natan", "other-tenant") is None  # same object id, wrong tenant
+    assert chatbots.owner_for_teams(s, "", "t1") is None
+    assert chatbots.owner_for_google(s, "NATAN@anote.ai") == 1
+    s.create_coworker(9, "Mallory", "natan@anote.ai", mode="demo")  # claiming the address proves nothing
+    assert chatbots.owner_for_google(s, "natan@anote.ai") == 1 and chatbots.owner_for_google(s, "") is None
 
     assert client.post("/api/coworker/teams/messages", json={}).status_code == 401
     assert client.post("/api/coworker/gchat/events", json={}).status_code == 401

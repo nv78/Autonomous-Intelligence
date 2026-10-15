@@ -162,9 +162,11 @@ def _check_auto_join(store: Store, user_id: int, org: dict[str, Any], domain: st
         raise OrgError("Set your company domain before turning on automatic joining.")
     if domain in PUBLIC_EMAIL_DOMAINS:
         raise OrgError(f"{domain} is a public email provider, so automatic joining would let anyone in.")
-    m = membership(store, user_id) or {}
-    if str(m.get("email") or "").split("@")[-1].lower() != domain:
-        raise OrgError(f"Only an admin with an @{domain} address can turn on automatic joining for it.", "forbidden", 403)
+    from coworker import identity
+
+    if domain not in identity.managed_domains(store, user_id):
+        raise OrgError(f"To turn on automatic joining, sign in with your @{domain} Google Workspace or Microsoft work "
+                       "account first: that's how we know the domain is yours.", "forbidden", 403)
     others = store.query("SELECT id, policies FROM cw_orgs WHERE domain = %s AND id != %s", (domain, org["id"]))
     if any((o.get("policies") or {}).get("domain_auto_join") for o in others):
         raise OrgError(f"Another organization already has automatic joining for {domain}.", "conflict", 409)
@@ -294,8 +296,11 @@ def on_sso_login(store: Store, user_id: int, email: str, managed_domain: str) ->
     domain = email.split("@")[-1]
     if "@" not in email or membership(store, user_id):
         return None
-    invited = store.one("SELECT * FROM cw_org_members WHERE email = %s AND status = 'invited' ORDER BY id LIMIT 1", (email,))
-    if invited:  # an admin (or SCIM) invited this exact, provider-verified address: signing in accepts it
+    invited = next((r for r in store.query(
+        "SELECT m.*, o.domain AS org_domain FROM cw_org_members m JOIN cw_orgs o ON o.id = m.org_id "
+        "WHERE m.email = %s AND m.status = 'invited' ORDER BY m.id", (email,))
+        if managed_domain and r.get("org_domain") == managed_domain.strip().lower() == domain), None)
+    if invited:  # the company's own org invited its own managed account: signing in accepts it. Others accept the link.
         store.update("cw_org_members", int(invited["id"]), None, {"user_id": user_id, "status": "active", "joined_at": iso()})
         org = store.get("cw_orgs", int(invited["org_id"]))
         assert org is not None

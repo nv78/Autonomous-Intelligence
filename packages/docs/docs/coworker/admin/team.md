@@ -31,7 +31,7 @@ Under **Team rules → Sign-in**:
 - **Automatic joining**: anyone who signs in with Google or Microsoft at your company domain joins as a member, with no invite needed. Guards against someone taking over your domain:
   - It only counts accounts your company manages: Google Workspace accounts on your domain, or Microsoft accounts in a tenant that verified the domain. A personal Google account registered on a work address doesn't count.
   - Public email domains (gmail.com, outlook.com, and so on) can't use it.
-  - Only an admin whose own address is on the domain can turn it on, and only one organization can claim each domain.
+  - Only an admin who has signed in with a Google Workspace or Microsoft work account on that domain can turn it on, and only one organization can claim each domain.
   - People an admin removed can't rejoin this way.
 
 ## Provisioning with SCIM (Okta, Microsoft Entra)
@@ -46,7 +46,7 @@ Let your identity provider add and remove people automatically:
 3. Assign people to the app.
 
 **What each action does**
-- **Assigning someone** invites them. They join when they accept, or the first time they sign in with Google or Microsoft as that address.
+- **Assigning someone** invites them. They join when they accept the invite. If your organization's domain is set, they also join the first time they sign in with their company Google Workspace or Microsoft account.
 - **Unassigning or deactivating someone** removes them: their coworker is paused and every connection is revoked.
 - **Reactivating someone** invites them again.
 

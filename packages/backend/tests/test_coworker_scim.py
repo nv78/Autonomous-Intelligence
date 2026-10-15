@@ -56,7 +56,8 @@ def test_provision_then_sso_joins_then_deprovision(s):
         scim.list_users(s, org, 'name.familyName co "x"')
 
     s.create_coworker(2, "Blake", "blake@acme.com", mode="demo")
-    joined = orgs.on_sso_login(s, 2, "blake@acme.com", "")  # a provisioned (invited) address joins on SSO
+    assert orgs.on_sso_login(s, 2, "blake@acme.com", "") is None  # a personal account doesn't accept it silently
+    joined = orgs.on_sso_login(s, 2, "blake@acme.com", "acme.com")  # the company's managed account does
     assert joined and joined["name"] == "Acme" and orgs.membership(s, 2)["status"] == "active"
 
     member = scim._member(s, org, user["id"])

@@ -4,7 +4,7 @@ from __future__ import annotations
 import bcrypt
 import pytest
 
-from coworker import orgs
+from coworker import identity, orgs
 from coworker.store import Store, get_store
 from tests.test_auth import _FakeDB, _patch_db
 
@@ -14,6 +14,7 @@ def s(tmp_path):
     store = Store(f"sqlite:///{tmp_path}/sso.db")
     store.create_coworker(1, "Avery Admin", "avery@acme.com", mode="demo")
     store.create_coworker(2, "Blake New", "blake@acme.com", mode="demo")
+    identity.record(store, 1, "google", "sub-avery", "avery@acme.com", "acme.com")  # Avery signed in with Workspace
     return store
 
 
@@ -31,6 +32,10 @@ def test_auto_join_needs_a_real_company_domain(s):
 
     s.create_coworker(5, "Squatter", "sam@acme.com", mode="demo")  # a second org can't claim the same domain
     orgs.create(s, 5, "Acme Rival", "acme.com", "sam@acme.com")
+    with pytest.raises(orgs.OrgError) as unverified:
+        orgs.update(s, 5, new_policies={"domain_auto_join": True})  # typing an @acme.com address proves nothing
+    assert unverified.value.status == 403
+    identity.record(s, 5, "google", "sub-sam", "sam@acme.com", "acme.com")
     with pytest.raises(orgs.OrgError) as exc:
         orgs.update(s, 5, new_policies={"domain_auto_join": True})
     assert exc.value.code == "conflict"
@@ -103,9 +108,13 @@ def _state(app):
 
 
 def _callback(client, app, monkeypatch, profile, token_ok=True):
+    import jwt as pyjwt
+
     from api_endpoints.auth import handler
 
-    monkeypatch.setattr(handler.http_requests, "post", lambda url, data, timeout: _Resp({"access_token": "at"}, ok=token_ok, status=400))
+    id_token = pyjwt.encode({"tid": "tenant-acme"}, "k", algorithm="HS256")
+    monkeypatch.setattr(handler.http_requests, "post",
+                        lambda url, data, timeout: _Resp({"access_token": "at", "id_token": id_token}, ok=token_ok, status=400))
     monkeypatch.setattr(handler.http_requests, "get", lambda url, timeout, headers: _Resp(profile))
     return client.get(f"/auth/microsoft/callback?code=abc&state={_state(app)}")
 
@@ -116,9 +125,11 @@ def test_microsoft_login_urls(client, monkeypatch):
     assert client.get("/auth/microsoft/login").status_code == 503
     monkeypatch.setenv("MICROSOFT_CLIENT_ID", "ms-client")
     monkeypatch.setenv("MICROSOFT_CLIENT_SECRET", "ms-secret")
-    url = client.get("/auth/microsoft/url").get_json()["url"]
-    assert url.startswith("https://login.microsoftonline.com/common/oauth2/v2.0/authorize?") and "User.Read" in url
-    assert client.get("/auth/microsoft/login").status_code == 302
+    assert client.get("/auth/microsoft/url").get_json()["url"].endswith("/auth/microsoft/login")
+    start = client.get("/auth/microsoft/login")
+    assert start.status_code == 302 and "User.Read" in start.location
+    assert start.location.startswith("https://login.microsoftonline.com/common/oauth2/v2.0/authorize?")
+    assert "cw_login_nonce=" in start.headers.get("Set-Cookie", "")
 
 
 def test_microsoft_callback_errors(client, app, monkeypatch, ms):
@@ -144,12 +155,13 @@ def test_microsoft_callback_signs_in_and_auto_joins(client, app, monkeypatch, ms
         store = get_store()
         store.create_coworker(1, "Avery", "avery@acme.com", mode="demo")
         orgs.create(store, 1, "Acme", "acme.com", "avery@acme.com")
+        identity.record(store, 1, "microsoft", "oid-avery", "avery@acme.com", "acme.com", "tenant-acme")
         orgs.update(store, 1, new_policies={"domain_auto_join": True})
 
     resp = _callback(client, app, monkeypatch, {"userPrincipalName": "Blake@Acme.com", "mail": "ceo@acme.com",
                                                 "givenName": "Blake"})
     location = resp.headers["Location"]
-    assert location.startswith("http://localhost:3000/oauth/callback?token=") and "isNewUser=1" in location
+    assert location.startswith("http://localhost:3000/oauth/callback#token=") and "isNewUser=1" in location
     new_id = fake.get_user_by_email(None, "blake@acme.com")["id"]  # the UPN, never the unverified mail field
     assert fake.get_user_by_email(None, "ceo@acme.com") is None
     with app.app_context():
@@ -163,6 +175,7 @@ def test_google_sign_in_auto_joins_only_workspace_accounts(client, app, monkeypa
         store = get_store()
         store.create_coworker(1, "Avery", "avery@acme.com", mode="demo")
         orgs.create(store, 1, "Acme", "acme.com", "avery@acme.com")
+        identity.record(store, 1, "google", "sub-avery", "avery@acme.com", "acme.com")
         orgs.update(store, 1, new_policies={"domain_auto_join": True})
     fake = _FakeDB({"avery@acme.com": {"id": 1, "email": "avery@acme.com"}})
     _setup_google_callback(client, app, monkeypatch, "blake@acme.com", fake)  # no hd claim: personal account
@@ -173,6 +186,8 @@ def test_google_sign_in_auto_joins_only_workspace_accounts(client, app, monkeypa
 
     monkeypatch.setattr(handler.google_id_token, "verify_oauth2_token", lambda *a, **k: {
         "email": "casey@acme.com", "email_verified": True, "hd": "acme.com"})
+    assert "invalid_state" in client.get(f"/callback?code=abc&state={_google_state(app)}").location  # nonce is single-use
+    client.set_cookie("cw_login_nonce", "nonce")  # a new sign-in from this browser
     client.get(f"/callback?code=abc&state={_google_state(app)}")
     with app.app_context():
         assert orgs.membership(get_store(), fake.get_user_by_email(None, "casey@acme.com")["id"])["email"] == "casey@acme.com"

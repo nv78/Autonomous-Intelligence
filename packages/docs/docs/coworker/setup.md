@@ -24,7 +24,8 @@ Open `http://localhost:3000`, create an account, and you land in coworker onboar
 | `RECALL_API_KEY` | Meeting bot for Zoom, Meet, and Teams |
 | `TAVUS_API_KEY`, `TAVUS_REPLICA_ID` | Real-time video avatar |
 | `STRIPE_PRICE_COWORKER*`, `COWORKER_ENFORCE_PLANS=1` | Paid plans and plan gating |
-| `PILOT_SLACK_WEBHOOK_URL`, `PILOT_BOOKING_URL`, `PILOT_ADMIN_EMAILS` | Founder pilot applications from ourogen.ai |
+| `PILOT_SLACK_WEBHOOK_URL`, `PILOT_BOOKING_URL`, `PILOT_ADMIN_EMAILS` | Founder pilot applications from ourogen.ai. Admins must have signed in with Google or Microsoft at least once as that address (a typed-in email doesn't count) |
+| `JWT_ACCESS_TOKEN_DAYS` | How long a sign-in lasts (default 14 days) |
 | `SMTP_URL`, `SMTP_FROM` | Relay for approval and digest emails when the user's Gmail can't send (`smtp://user:pass@host:587` or `smtps://…:465`) |
 | `NOTIFY_BATCH_SECONDS`, `NOTIFY_MIN_INTERVAL_SECONDS` | Approval email batching (default 300s) and rate limit (default 1800s) |
 | `HUBSPOT_CLIENT_ID`, `HUBSPOT_CLIENT_SECRET` | HubSpot OAuth. Approved CRM updates from calls upsert the company and contact and log a note. Without OAuth, users can paste a private app token (`pat-…`) with contact and company scopes. |

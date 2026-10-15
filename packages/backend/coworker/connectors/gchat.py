@@ -80,7 +80,7 @@ def handle(store: Store, event: dict[str, Any]) -> dict[str, Any]:
     user = event.get("user") or {}
     email = str(user.get("email") or "").lower()
     domain = email.split("@")[-1]
-    owner = chatbots.owner_by_email(store, email)
+    owner = chatbots.owner_for_google(store, email)
     if owner is not None:
         dm = (event.get("space") or {}).get("type") in ("DM", "DIRECT_MESSAGE") or (event.get("space") or {}).get("singleUserBotDm")
         chatbots.remember(store, "gchat", user.get("name", email), owner, domain, email,

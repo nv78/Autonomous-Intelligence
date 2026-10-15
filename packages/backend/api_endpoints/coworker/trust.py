@@ -138,13 +138,19 @@ def pilot_application() -> tuple:
     return jsonify({"ok": True, "id": app_id, "bookingUrl": os.environ.get("PILOT_BOOKING_URL", "")}), 201
 
 
+def _is_pilot_admin(user_id: int) -> bool:
+    """PILOT_ADMIN_EMAILS, matched against addresses Google or Microsoft verified (sign in with one once)."""
+    from coworker import identity
+
+    admins = {e.strip().lower() for e in os.environ.get("PILOT_ADMIN_EMAILS", "").split(",") if e.strip()}
+    return bool(admins & identity.verified_emails(store(), user_id))
+
+
 @coworker_bp.get("/pilot/applications")
 @require_auth
 def list_pilot_applications() -> tuple:
     """Internal: only users listed in PILOT_ADMIN_EMAILS can read applications."""
-    admins = {e.strip().lower() for e in os.environ.get("PILOT_ADMIN_EMAILS", "").split(",") if e.strip()}
-    coworker = store().get_coworker(uid()) or {}
-    if (coworker.get("owner_email") or "").lower() not in admins:
+    if not _is_pilot_admin(uid()):
         return error("Not allowed", 403, "forbidden")
     rows = store().query("SELECT * FROM cw_pilot_applications ORDER BY id DESC LIMIT 500")
     return jsonify({"applications": rows}), 200
@@ -156,7 +162,6 @@ def vendor_status() -> tuple:
     """Internal: read-only checks of every configured vendor (admins only)."""
     from coworker import vendor_check
 
-    admins = {e.strip().lower() for e in os.environ.get("PILOT_ADMIN_EMAILS", "").split(",") if e.strip()}
-    if ((store().get_coworker(uid()) or {}).get("owner_email") or "").lower() not in admins:
+    if not _is_pilot_admin(uid()):
         return error("Not allowed", 403, "forbidden")
     return jsonify({"vendors": vendor_check.run_all()}), 200
