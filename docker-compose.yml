@@ -67,6 +67,14 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI:-http://127.0.0.1:5000/callback}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      BACKEND_URL: ${BACKEND_URL:-http://localhost:5000}
+      COWORKER_MODEL: ${COWORKER_MODEL:-claude-opus-5-5}
+      COWORKER_EFFORT: ${COWORKER_EFFORT:-medium}
+      COWORKER_OFFLINE: ${COWORKER_OFFLINE:-0}
+      GOOGLE_COWORKER_REDIRECT_URI: ${GOOGLE_COWORKER_REDIRECT_URI:-http://localhost:5000/api/coworker/connections/google/callback}
+      SLACK_CLIENT_ID: ${SLACK_CLIENT_ID:-}
+      SLACK_CLIENT_SECRET: ${SLACK_CLIENT_SECRET:-}
+      SLACK_REDIRECT_URI: ${SLACK_REDIRECT_URI:-}
     depends_on:
       db:
         condition: service_healthy
