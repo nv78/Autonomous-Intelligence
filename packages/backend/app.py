@@ -42,6 +42,10 @@ def create_app(config: dict[str, object] | None = None) -> Flask:
     )
     if config:
         app.config.update(config)
+    if not app.config.get("TESTING"):
+        from coworker.config import enforce
+
+        enforce()
 
     CORS(app, resources={r"/*": {"origins": "*"}})
     JWTManager(app)

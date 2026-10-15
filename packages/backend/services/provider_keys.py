@@ -5,19 +5,25 @@ import base64
 import hashlib
 import os
 
-from cryptography.fernet import Fernet, InvalidToken
+from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 
 PROVIDERS = ("anthropic", "openai", "google")
 
 
-def _fernet() -> Fernet:
-    key = os.environ.get("PROVIDER_KEY_ENCRYPTION_KEY", "")
-    if not key:
-        # Derive a stable key from JWT_SECRET_KEY so local/dev setups don't
-        # need a second secret configured — production should set its own.
-        secret = os.environ.get("JWT_SECRET_KEY", "change-me-in-production")
-        key = base64.urlsafe_b64encode(hashlib.sha256(secret.encode()).digest()).decode()
-    return Fernet(key.encode())
+def _derived_key() -> str:
+    # Stable key derived from JWT_SECRET_KEY so local/dev setups don't need a
+    # second secret. Production must set PROVIDER_KEY_ENCRYPTION_KEY.
+    secret = os.environ.get("JWT_SECRET_KEY", "change-me-in-production")
+    return base64.urlsafe_b64encode(hashlib.sha256(secret.encode()).digest()).decode()
+
+
+def _fernet() -> MultiFernet:
+    """Encrypt with the configured key; still decrypt values written with the
+    JWT-derived fallback key, so setting PROVIDER_KEY_ENCRYPTION_KEY later
+    doesn't strand keys that were stored before it existed."""
+    keys = [k for k in (os.environ.get("PROVIDER_KEY_ENCRYPTION_KEY", ""), _derived_key()) if k]
+    unique = list(dict.fromkeys(keys))
+    return MultiFernet([Fernet(k.encode()) for k in unique])
 
 
 def encrypt_key(plaintext: str) -> str:

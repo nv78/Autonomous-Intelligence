@@ -150,3 +150,26 @@ SPA picks up the JWT.
   default VPC's public subnets for simplicity.
 - CI/CD bootstrapping of the Terraform state bucket itself (chicken-and-egg —
   create that bucket manually once, by hand).
+
+## AI coworker
+
+`coworker.tf` adds what the coworker needs in production:
+
+- **Twin bucket.** A private S3 bucket for voice/video samples and consent recordings. It has KMS encryption, versioning, all public access blocked, and a TLS-only policy. Noncurrent versions expire after 7 days. Revoking a twin deletes every version right away.
+- **Worker service.** One `coworker-worker` Fargate task running `python -m coworker.worker`. It uses the backend image, environment, and secrets.
+- **Config.** `BACKEND_URL` drives the Google and Slack OAuth callback URLs. Integration keys go in Secrets Manager: `slack_client_secret`, `elevenlabs_api_key`, `recall_api_key`, `tavus_api_key`, `pilot_slack_webhook_url`.
+
+With `APP_ENV=production` the backend refuses to start on a default or short `JWT_SECRET_KEY`, a missing `PROVIDER_KEY_ENCRYPTION_KEY`, or a SQLite coworker store. Generate the encryption key with:
+
+```bash
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+Keys stored before you set it still decrypt. `ALLOW_UNSAFE_CONFIG=1` bypasses the check; use it only to recover a broken deploy.
+
+CI deploys roll the backend service. To roll the worker onto a new image too:
+
+```bash
+aws ecs update-service --cluster "$(terraform output -raw ecs_cluster_name)" \
+  --service "$(terraform output -raw coworker_worker_service_name)" --force-new-deployment
+```

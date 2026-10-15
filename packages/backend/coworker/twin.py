@@ -21,23 +21,15 @@ from __future__ import annotations
 import os
 import re
 import secrets
-import shutil
 from typing import Any
 
-from coworker import voice
+from coworker import blobstore, voice
 from coworker.store import Store, iso
 
 KINDS = ("voice_sample", "video_sample", "photo", "consent_recording")
 MAX_BYTES = 60 * 1024 * 1024
 ALLOWED_MIME = re.compile(r"^(audio|video|image)/")
 CONSENT_TYPES = ("voice_clone", "video_likeness")
-
-
-def folder(user_id: int) -> str:
-    base = os.environ.get("TWIN_FOLDER", "/tmp/ourogen_twin")
-    path = os.path.join(base, str(int(user_id)))
-    os.makedirs(path, exist_ok=True)
-    return path
 
 
 def save_asset(store: Store, user_id: int, kind: str, filename: str, mime: str, data: bytes) -> dict[str, Any]:
@@ -48,9 +40,7 @@ def save_asset(store: Store, user_id: int, kind: str, filename: str, mime: str, 
     if len(data) > MAX_BYTES:
         raise ValueError("File is too large (60 MB max)")
     safe = re.sub(r"[^\w.-]", "_", os.path.basename(filename or "upload"))[:120]
-    path = os.path.join(folder(user_id), f"{secrets.token_hex(6)}-{safe}")
-    with open(path, "wb") as fh:
-        fh.write(data)
+    path = blobstore.put(user_id, f"{secrets.token_hex(6)}-{safe}", data, mime)
     aid = store.insert("cw_twin_assets", {
         "user_id": user_id, "kind": kind, "filename": safe, "path": path, "mime": mime, "size_bytes": len(data),
         "created_at": iso(),
@@ -69,10 +59,7 @@ def delete_asset(store: Store, user_id: int, asset_id: int) -> bool:
     row = store.get("cw_twin_assets", asset_id, user_id)
     if not row:
         return False
-    try:
-        os.remove(row["path"])
-    except OSError:
-        pass
+    blobstore.delete(row["path"])
     store.execute("DELETE FROM cw_twin_assets WHERE id = %s AND user_id = %s", (asset_id, user_id))
     return True
 
@@ -145,8 +132,7 @@ def create_voice(store: Store, user_id: int) -> str:
     coworker = store.get_coworker(user_id) or {}
     files = []
     for a in samples[:10]:
-        with open(a["path"], "rb") as fh:
-            files.append((a["filename"], fh.read(), a["mime"]))
+        files.append((a["filename"], blobstore.get(a["path"]), a["mime"]))
     voice_id = voice.clone(f"{coworker.get('owner_name') or 'Owner'} (Ourogen twin)", files,
                            "Disclosed AI coworker voice, created with recorded consent.")
     settings = {**(coworker.get("settings") or {}), "voice_id": voice_id}
@@ -177,7 +163,9 @@ def revoke(store: Store, user_id: int) -> dict[str, Any]:
     settings.pop("voice_id", None)
     store.update_coworker(user_id, settings=settings)
     count = len(assets(store, user_id))
-    shutil.rmtree(folder(user_id), ignore_errors=True)
+    for a in assets(store, user_id):
+        blobstore.delete(a["path"])
+    blobstore.delete_user(user_id)
     store.execute("DELETE FROM cw_twin_assets WHERE user_id = %s", (user_id,))
     store.execute("UPDATE cw_consents SET status = 'revoked', revoked_at = %s WHERE user_id = %s AND revoked_at IS NULL",
                   (iso(), user_id))
