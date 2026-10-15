@@ -326,11 +326,12 @@ export default function SettingsTab() {
         </Card>
       </Section>}
 
-      <Section title="Notifications" subtitle="Emails to you, sent from your own Gmail when I have send access.">
+      <Section title="Notifications" subtitle="Emails to you, sent from your own mailbox when I have send access.">
         <Card className="divide-y divide-gray-100 dark:divide-gray-700/70">
           {[
             ['notify_approvals', 'Email me when actions are waiting for approval', 'At most one email every 30 minutes, batched.', true],
             ['digest_email', 'Email me the daily digest', 'What I did, what is waiting, and what needs you, around 5pm.', false],
+            ['weekly_report', 'Email me a weekly report', 'Monday morning: time saved, what I did, and what I could take on next.', true],
           ].map(([key, label, help, dflt]) => {
             const on = (coworker.settings || {})[key as string] ?? dflt;
             return (

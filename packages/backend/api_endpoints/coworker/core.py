@@ -22,7 +22,7 @@ from middleware.auth import require_auth
 ALLOWED_SETTINGS = {
     "company_name", "company_domain", "timezone", "working_hours", "disclosure_text",
     "disclose_on_approved", "send_delay_seconds", "slack_channels", "meeting_join_policy",
-    "recording_consent", "digest_email", "notify_approvals", "model",
+    "recording_consent", "digest_email", "notify_approvals", "model", "weekly_report",
 }
 
 

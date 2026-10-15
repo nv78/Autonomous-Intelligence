@@ -294,6 +294,9 @@ def run_tick(user_id: int, force: bool = False, inline_sync: bool = False) -> di
     results = responsibilities.run_all(s, user_id) if coworker.get("status") == "active" else []
     due = executor.run_due(s, user_id)
     notified = notify.maybe_notify_approvals(s, user_id)
+    from coworker import weekly
+
+    weekly.maybe_send(s, user_id)
     return {"synced": synced, "results": results, "notified": notified, **due}
 
 
