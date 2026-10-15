@@ -48,12 +48,16 @@ def refresh_knowledge(user_id: int) -> dict[str, Any]:
 def get_coworker() -> tuple:
     user_id = uid()
     row = _require_coworker(user_id)
-    from coworker.connectors import google, slack
+    from coworker import voice
+    from coworker.connectors import google, recall, slack, tavus
 
     capabilities = {
         "llm": llm_available(user_id),
         "google": google.is_configured(),
         "slack_oauth": slack.is_configured(),
+        "voice": voice.is_configured(),
+        "avatar": tavus.is_configured(),
+        "meeting_bot": recall.is_configured(),
     }
     if not row:
         return jsonify({"coworker": None, "capabilities": capabilities, "scenarios": _scenarios()}), 200
