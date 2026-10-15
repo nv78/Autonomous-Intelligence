@@ -1,9 +1,31 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../App';
 import { coworkerApi, errorMessage, timeAgo } from '../api';
 import { useCoworker } from '../CoworkerContext';
 import type { Responsibility, Suggestion } from '../types';
 import { Card, Empty, Pill, Section, ghostBtn, inputCls, primaryBtn } from '../ui';
+import ScheduleEditor, { type ScheduleSpec } from '../ScheduleEditor';
+
+/** One-click recurring jobs (each one is a scheduled task you can edit afterwards). */
+const RECIPES: { name: string; instruction: string; schedule: ScheduleSpec }[] = [
+  { name: 'Morning briefing', instruction: "Tell me what's on my plate today: meetings with prep notes, emails waiting on me, and anything overdue.",
+    schedule: { freq: 'weekdays', time: '08:00' } },
+  { name: 'Inbox sweep', instruction: 'Reply to my emails that are waiting on me.', schedule: { freq: 'weekdays', time: '10:00' } },
+  { name: 'Weekly pipeline report', instruction: 'Summarize my open deals: what moved this week, what is stuck, and who I should follow up with.',
+    schedule: { freq: 'weekly', days: ['mon'], time: '09:00' } },
+  { name: 'Friday status update', instruction: 'Draft my weekly status update to my team: what got done, what is next, and blockers.',
+    schedule: { freq: 'weekly', days: ['fri'], time: '16:00' } },
+  { name: 'Follow-up check', instruction: "List people I haven't followed up with this week and draft a short nudge to each.",
+    schedule: { freq: 'weekly', days: ['thu'], time: '14:00' } },
+  { name: 'Month-start review', instruction: 'Recap last month: meetings held, deals moved, emails handled, and time I saved.',
+    schedule: { freq: 'monthly', day: 1, time: '09:00' } },
+];
+
+function when(iso: string | null) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
 
 const AUTONOMY_HELP: Record<string, string> = {
   suggest: 'I prepare it, you send it',
@@ -21,6 +43,9 @@ export default function ResponsibilitiesTab() {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [custom, setCustom] = useState('');
   const [msg, setMsg] = useState('');
+  const [editing, setEditing] = useState<number | null>(null);
+  const [newTask, setNewTask] = useState('');
+  const nav = useNavigate();
 
   const load = async () => {
     const d = await api.get('/responsibilities');
@@ -36,7 +61,9 @@ export default function ResponsibilitiesTab() {
     setMsg('');
     try {
       const d = await api.post('/responsibilities', body);
-      setMsg(d.results?.length ? `Started: ${d.results.join('; ')}. Check Approvals.` : 'Added. I’ll act when something matches.');
+      setMsg(d.results?.length ? `Started: ${d.results.join('; ')}. Check Approvals.`
+        : d.responsibility?.schedule ? `Scheduled: ${d.responsibility.schedule.description}. First run ${when(d.responsibility.schedule.nextRun)}.`
+          : 'Added. I’ll act when something matches.');
       setCustom('');
       load();
       tick(true);
@@ -45,8 +72,14 @@ export default function ResponsibilitiesTab() {
     }
   };
   const update = async (id: number, body: any) => {
-    await api.patch(`/responsibilities/${id}`, body);
-    load();
+    setMsg('');
+    try {
+      await api.patch(`/responsibilities/${id}`, body);
+      setEditing(null);
+      load();
+    } catch (e) {
+      setMsg(errorMessage(e));
+    }
   };
   const remove = async (id: number) => {
     await api.del(`/responsibilities/${id}`);
@@ -59,6 +92,7 @@ export default function ResponsibilitiesTab() {
   };
 
   const owned = new Set(items.map((i) => i.template));
+  const ownedNames = new Set(items.map((i) => i.name));
   return (
     <div>
       {msg && <p className="mb-4 text-sm rounded-lg bg-[#F7F7F8] dark:bg-[#2F2F2F] px-3 py-2">{msg}</p>}
@@ -90,9 +124,23 @@ export default function ResponsibilitiesTab() {
                       {r.enabled ? <Pill tone="green">On</Pill> : <Pill>Paused</Pill>}
                     </div>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{r.instruction}</p>
-                    <p className="text-xs text-gray-400 mt-1.5">
-                      {r.runs} actions so far{r.lastRunAt ? ` · last checked ${timeAgo(r.lastRunAt)}` : ''} · {r.escalation}
-                    </p>
+                    {r.schedule ? (
+                      <div className="mt-1.5 space-y-1">
+                        <p className="text-xs text-gray-600 dark:text-gray-300">
+                          ⏰ {r.schedule.description}{r.enabled && r.schedule.nextRun ? ` · next ${when(r.schedule.nextRun)}` : ''}
+                          {r.schedule.deliver.filter((d) => d !== 'chat').length > 0 && ` · also by ${r.schedule.deliver.filter((d) => d !== 'chat').join(' and ')}`}
+                        </p>
+                        {r.schedule.runs.slice(0, 3).map((run, i) => (
+                          <p key={i} className="text-xs text-gray-400 truncate">
+                            {run.status === 'failed' ? '⚠️' : '✓'} {timeAgo(run.at)}: {run.summary}
+                          </p>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-400 mt-1.5">
+                        {r.runs} actions so far{r.lastRunAt ? ` · last checked ${timeAgo(r.lastRunAt)}` : ''} · {r.escalation}
+                      </p>
+                    )}
                   </div>
                   <label className="flex items-center gap-2 text-xs">
                     <input type="checkbox" checked={r.enabled} onChange={(e) => update(r.id, { enabled: e.target.checked })} />
@@ -104,12 +152,34 @@ export default function ResponsibilitiesTab() {
                     {Object.entries(AUTONOMY_HELP).map(([k, v]) => <option key={k} value={k}>{k}: {v}</option>)}
                   </select>
                   <button className={ghostBtn} onClick={() => runNow(r.id)}>Run now</button>
+                  {r.schedule && <button className={ghostBtn} onClick={() => setEditing(editing === r.id ? null : r.id)}>Edit schedule</button>}
+                  {r.schedule?.chatId && <button className={ghostBtn} onClick={() => nav(`/app/chat/${r.schedule!.chatId}`)}>Open its chat</button>}
                   <button className={`${ghostBtn} text-red-600 dark:text-red-400`} onClick={() => remove(r.id)}>Remove</button>
                 </div>
+                {editing === r.id && (
+                  <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700/70">
+                    <ScheduleEditor initial={r.trigger} onSave={(schedule) => update(r.id, { schedule })} onCancel={() => setEditing(null)} />
+                  </div>
+                )}
               </Card>
             ))}
           </div>
         )}
+      </Section>
+
+      <Section title="Scheduled tasks" subtitle="Recurring work I do on a clock, in your time zone. Or just tell me in chat: “Every Monday at 9, post the pipeline in #sales.”">
+        <div className="flex flex-wrap gap-2 mb-4">
+          {RECIPES.filter((r) => !ownedNames.has(r.name)).map((r) => (
+            <button key={r.name} className={ghostBtn} title={r.instruction}
+              onClick={() => add({ name: r.name, instruction: r.instruction, schedule: r.schedule, runNow: false })}>⏰ {r.name}</button>
+          ))}
+        </div>
+        <Card className="p-4 space-y-3">
+          <input className={inputCls} placeholder="What should I do each time? e.g. Summarize new support tickets and post them in #support"
+            value={newTask} onChange={(e) => setNewTask(e.target.value)} />
+          <ScheduleEditor saveLabel="Add scheduled task"
+            onSave={(schedule) => newTask.trim() && add({ instruction: newTask, schedule, runNow: false }).then(() => setNewTask(''))} />
+        </Card>
       </Section>
 
       <Section title="Add a responsibility">

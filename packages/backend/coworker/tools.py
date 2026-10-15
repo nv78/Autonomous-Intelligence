@@ -29,6 +29,7 @@ class ToolContext:
     user_id: int
     chat_id: int | None = None
     cards: list[dict[str, Any]] = field(default_factory=list)
+    responsibility: dict[str, Any] | None = None  # set during a scheduled task's run
 
 
 def _obj(props: dict[str, Any], required: list[str]) -> dict[str, Any]:
@@ -180,7 +181,7 @@ def run(name: str, args: dict[str, Any], ctx: ToolContext) -> tuple[Any, str]:
 
         actions = delegate.reply_to_emails(s, uid, chat_id=ctx.chat_id, category=args.get("category", ""),
                                            who=args.get("who", ""), instruction=args.get("instruction", ""),
-                                           limit=int(args.get("limit") or 5))
+                                           limit=int(args.get("limit") or 5), responsibility=ctx.responsibility)
         for a in actions:
             _card(ctx, a)
         return [_action_result(a) for a in actions], f"Drafted {len(actions)} repl{'y' if len(actions) == 1 else 'ies'}"
@@ -209,14 +210,14 @@ def run(name: str, args: dict[str, Any], ctx: ToolContext) -> tuple[Any, str]:
             source = next((t["id"] for t in reversed(thread) if t["direction"] == "inbound"), None)
         action = executor.propose(s, uid, "email.send", payload, title=f"Email {', '.join(payload['to'])}: {payload['subject']}",
                                   reasoning=args.get("reasoning", "You asked for this in chat."), source_item_id=source,
-                                  chat_id=ctx.chat_id, requested_in_chat=True)
+                                  chat_id=ctx.chat_id, requested_in_chat=True, responsibility=ctx.responsibility)
         _card(ctx, action)
         return _action_result(action), f"Prepared an email to {', '.join(payload['to'])}"
     if name == "post_slack":
         channel = str(args.get("channel", "")).lstrip("#")
         action = executor.propose(s, uid, "slack.post", {"channel": channel, "text": args.get("text", "")},
                                   title=f"Slack #{channel}", reasoning="You asked for this in chat.", chat_id=ctx.chat_id,
-                                  requested_in_chat=True)
+                                  requested_in_chat=True, responsibility=ctx.responsibility)
         _card(ctx, action)
         return _action_result(action), f"Prepared a Slack message to #{channel}"
     if name == "schedule_meeting":
@@ -229,7 +230,7 @@ def run(name: str, args: dict[str, Any], ctx: ToolContext) -> tuple[Any, str]:
         tz = scheduling.tz_for(s.get_coworker(uid) or {})
         action = executor.propose(s, uid, "calendar.create", payload,
                                   title=f"Invite {', '.join(payload['attendees'])}: {payload['title']} ({scheduling.label(start, tz)})",
-                                  reasoning="You asked for this in chat.", chat_id=ctx.chat_id, requested_in_chat=True)
+                                  reasoning="You asked for this in chat.", chat_id=ctx.chat_id, requested_in_chat=True, responsibility=ctx.responsibility)
         _card(ctx, action)
         return _action_result(action), "Prepared a calendar invite"
     if name == "meeting_brief":
@@ -240,9 +241,11 @@ def run(name: str, args: dict[str, Any], ctx: ToolContext) -> tuple[Any, str]:
         ctx.cards.append({"type": "brief", "title": event["subject"]})
         return brief, f"Prepared a brief for {event['subject']}"
     if name == "propose_responsibility":
+        if ctx.responsibility:
+            return {"error": "A scheduled run can't create responsibilities."}, "Skipped creating a responsibility"
         spec = responsibilities.proposal_payload(args.get("request", ""))
         action = executor.propose(s, uid, "responsibility.create", spec, title=f"New responsibility: {spec['name']}",
-                                  reasoning=spec["description"], chat_id=ctx.chat_id, requested_in_chat=True)
+                                  reasoning=spec["description"], chat_id=ctx.chat_id, requested_in_chat=True, responsibility=ctx.responsibility)
         _card(ctx, action)
         return {**_action_result(action), "spec": spec}, f"Proposed a responsibility: {spec['name']}"
     if name == "list_responsibilities":

@@ -43,6 +43,7 @@ How you work:
 - Do the work, don't just describe it. Look things up with tools before answering questions about people, deals, or threads.
 - Write tools (send_email, post_slack, schedule_meeting, propose_responsibility) create proposals. Most wait for {first}'s approval as a card in this chat. Never say something was sent unless the tool result says it was executed.
 - When {first} asks you to take something off their plate going forward ("from now on", "handle", "every time"), use propose_responsibility.
+- Recurring work on a clock ("every Monday at 9…", "each weekday morning…", "on the 1st of every month…") is a scheduled task: use propose_responsibility with the request as written, schedule included.
 - "Join my call / go to the meeting / take my 2pm" means join_meeting, with {first}'s instructions as context. You'll post the summary here afterward.
 - Files people emailed (PDF, Word, Excel, PowerPoint) are searchable with search_memory and cited by file name. To attach one to a reply, pass its id in send_email's attachments; a file never goes out without {first}'s approval.
 - "Join all my external calls / take every intro call from now on" is a standing job: use propose_responsibility (it auto-joins matching meetings, with a brief and a skip link before each).
@@ -66,8 +67,10 @@ def strip_markers(content: str) -> str:
 
 
 def run_turn(store: Store, user_id: int, chat_id: int | None, message: str,
-             history: list[dict[str, str]] | None = None) -> Generator[Event, None, None]:
-    ctx = tools.ToolContext(store=store, user_id=user_id, chat_id=chat_id)
+             history: list[dict[str, str]] | None = None,
+             responsibility: dict[str, Any] | None = None) -> Generator[Event, None, None]:
+    """``responsibility`` is set for a scheduled task's run: its autonomy level applies to what it proposes."""
+    ctx = tools.ToolContext(store=store, user_id=user_id, chat_id=chat_id, responsibility=responsibility)
     if llm.available(user_id):
         yield from _llm_turn(ctx, message, history or [])
     else:
@@ -197,7 +200,18 @@ def _offline_turn(ctx: tools.ToolContext, message: str) -> Generator[Event, None
                        "disclosed AI coworker and post the summary there when it ends.")
         return
 
-    # 0a. Send the coworker to a meeting
+    # 0. Recurring work on a clock ("every Monday at 9 post the pipeline in #sales")
+    from coworker import schedules
+
+    if not ctx.responsibility and schedules.parse(m):
+        result = yield from _call(ctx, "propose_responsibility", {"request": m})
+        spec = result["spec"]
+        yield ("text", f"I'll make that a scheduled task. Confirm the card to turn it on.\n\n"
+                       f"**{spec['name']}**: {spec['description']}\n\n"
+                       "Each run gets its own chat, so you can see what I did every time. Anything that goes out waits "
+                       f"for your approval (autonomy: *{spec['autonomy']}*). Change the schedule anytime in **Coworker → Responsibilities**.")
+        return
+
     if re.search(r"\b(join|attend|take|sit in on|go to|cover)\b.{0,40}\b(meeting|call|zoom|meet|teams|standup|qbr|demo)\b", low) \
             or re.search(r"https://\S*(zoom\.us|meet\.google|teams\.microsoft)", low):
         url = (re.search(r"https://\S+", m) or [""])[0]
@@ -251,8 +265,9 @@ def _offline_turn(ctx: tools.ToolContext, message: str) -> Generator[Event, None
         return
 
     # 1. Standing responsibilities
-    if re.search(r"\b(from now on|going forward|every time|whenever|each time|take over|take care of|own )|"
-                 r"^(?:please )?handle\b|\bhandle (?:all|my|every|any|first|inbound|the)\b", low):
+    if not ctx.responsibility and re.search(
+            r"\b(from now on|going forward|every time|whenever|each time|take over|take care of|own )|"
+            r"^(?:please )?handle\b|\bhandle (?:all|my|every|any|first|inbound|the)\b", low):
         result = yield from _call(ctx, "propose_responsibility", {"request": m})
         spec = result["spec"]
         yield ("text", f"Here's how I understood that. Confirm the card and I'll start right away.\n\n"

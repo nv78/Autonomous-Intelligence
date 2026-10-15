@@ -305,11 +305,16 @@ def run_tick(user_id: int, force: bool = False, inline_sync: bool = False) -> di
 # ---------------------------------------------------------------------------
 
 def _serialize_resp(r: dict[str, Any]) -> dict[str, Any]:
-    return {
+    out = {
         "id": r["id"], "name": r["name"], "template": r["template"], "instruction": r.get("instruction") or "",
         "trigger": r.get("trigger_spec") or {}, "autonomy": r["autonomy"], "escalation": r.get("escalation") or "",
         "enabled": bool(r["enabled"]), "runs": r["runs"], "lastRunAt": r.get("last_run_at"), "createdAt": r["created_at"],
     }
+    if r.get("template") == "scheduled":
+        from coworker import schedules
+
+        out["schedule"] = schedules.state(store(), int(r["user_id"]), r)
+    return out
 
 
 @coworker_bp.get("/responsibilities")
@@ -335,7 +340,13 @@ def create_responsibility() -> tuple:
         return error("Unknown template")
     if not template and not data.get("instruction"):
         return error("template or instruction is required")
-    spec = responsibilities.proposal_payload(data["instruction"]) if not template else {"template": template}
+    if isinstance(data.get("schedule"), dict):
+        try:
+            spec = responsibilities.scheduled_spec(str(data["instruction"]), data["schedule"], str(data.get("name") or ""))
+        except ValueError as exc:
+            return error(str(exc))
+    else:
+        spec = responsibilities.proposal_payload(data["instruction"]) if not template else {"template": template}
     if data.get("autonomy") in policy.LEVELS:
         spec["autonomy"] = data["autonomy"]
     if data.get("name"):
@@ -359,6 +370,16 @@ def update_responsibility(resp_id: int) -> tuple:
     for key in ("name", "instruction", "escalation"):
         if key in data:
             values[key] = str(data[key])[:4000]
+    if isinstance(data.get("schedule"), dict):
+        from coworker import schedules
+
+        row = store().get("cw_responsibilities", resp_id, user_id)
+        if not row or row["template"] != "scheduled":
+            return error("Only scheduled tasks have a schedule", 400, "bad_request")
+        try:
+            values["trigger_spec"] = schedules.clean({**(row.get("trigger_spec") or {}), **data["schedule"]})
+        except ValueError as exc:
+            return error(str(exc))
     if not values or not store().update("cw_responsibilities", resp_id, user_id, values):
         return error("Not found or nothing to update", 404, "not_found")
     return jsonify({"responsibility": _serialize_resp(store().get("cw_responsibilities", resp_id, user_id) or {})}), 200
@@ -379,7 +400,12 @@ def run_responsibility(resp_id: int) -> tuple:
     row = store().get("cw_responsibilities", resp_id, user_id)
     if not row:
         return error("Not found", 404, "not_found")
-    results = responsibilities.run_one(store(), user_id, row)
+    if row["template"] == "scheduled":  # "Run now": don't wait for the next occurrence
+        from coworker import schedules
+
+        results = schedules.run(store(), user_id, row, force=True)
+    else:
+        results = responsibilities.run_one(store(), user_id, row)
     executor.run_due(store(), user_id)
     return jsonify({"results": results}), 200
 

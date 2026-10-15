@@ -111,7 +111,7 @@ def create(store: Store, user_id: int, spec: dict[str, Any]) -> dict[str, Any]:
     rid = store.insert("cw_responsibilities", {
         "user_id": user_id,
         "name": (spec.get("name") or base.get("name") or "Custom responsibility")[:255],
-        "template": template if template in TEMPLATES else "custom",
+        "template": template if template in TEMPLATES or template == "scheduled" else "custom",
         "instruction": spec.get("instruction") or base.get("instruction", ""),
         "trigger_spec": spec.get("trigger") or base.get("trigger") or {"type": "email", "keywords": _keywords(spec.get("instruction", ""))},
         "tools": spec.get("tools") or [],
@@ -131,9 +131,29 @@ def _keywords(instruction: str) -> list[str]:
     return [w for w in re.findall(r"[a-z]{4,}", instruction.lower()) if w not in stop][:8]
 
 
+def scheduled_spec(instruction: str, schedule: dict[str, Any], name: str = "") -> dict[str, Any]:
+    from coworker import schedules
+
+    trigger = schedules.clean(schedule)
+    return {
+        "template": "scheduled",
+        "name": (name or schedules.name_for(instruction))[:255],
+        "instruction": instruction.strip(),
+        "trigger": trigger,
+        "autonomy": "approve",
+        "escalation": "Escalate to me when you're unsure, when money or contracts are involved, or when someone asks for a human.",
+        "description": f"{schedules.describe(trigger)}: {instruction.strip()}",
+    }
+
+
 def proposal_payload(text: str) -> dict[str, Any]:
     """Turn a chat request into a responsibility spec for the user to confirm."""
+    from coworker import schedules
+
     template = match_template(text)
+    schedule = schedules.parse(text) if template != "auto_join" else None
+    if schedule:  # recurring work on a clock: "every Monday at 9am post the pipeline in #sales"
+        return scheduled_spec(schedules.strip_schedule(text), schedule)
     base = TEMPLATES.get(template, {})
     trigger = base.get("trigger") or {"type": "email", "keywords": _keywords(text)}
     if template == "auto_join":
@@ -340,6 +360,12 @@ def _daily_digest(store: Store, user_id: int, resp: dict[str, Any]) -> list[str]
     return ["Posted the daily digest"]
 
 
+def _scheduled(store: Store, user_id: int, resp: dict[str, Any]) -> list[str]:
+    from coworker import schedules
+
+    return schedules.run(store, user_id, resp)
+
+
 def _auto_join(store: Store, user_id: int, resp: dict[str, Any]) -> list[str]:
     from coworker import autojoin
 
@@ -356,6 +382,7 @@ HANDLERS = {
     "slack_answers": _slack_answers,
     "meeting_followup": _meeting_followup,
     "daily_digest": _daily_digest,
+    "scheduled": _scheduled,
     "custom": _custom,
 }
 

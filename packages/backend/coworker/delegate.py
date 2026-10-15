@@ -115,7 +115,8 @@ def run_demo_call(store: Store, user_id: int, *, chat_id: int | None, context: s
 
 
 def reply_to_emails(store: Store, user_id: int, *, chat_id: int | None, category: str = "", limit: int = 5,
-                    instruction: str = "", who: str = "") -> list[dict[str, Any]]:
+                    instruction: str = "", who: str = "",
+                    responsibility: dict[str, Any] | None = None) -> list[dict[str, Any]]:
     """Draft and propose a reply for each waiting thread. Returns the actions."""
     rows = memory.needs_reply(store, user_id, include_internal=False)
     if category:
@@ -138,7 +139,7 @@ def reply_to_emails(store: Store, user_id: int, *, chat_id: int | None, category
             store, user_id, "email.send",
             {"to": draft["to"], "subject": draft["subject"], "body": draft["body"], "thread_id": draft["thread_id"]},
             title=f"Reply to {r.get('from') or draft['to'][0]}: {draft['subject']}"[:200], reasoning=draft["reasoning"],
-            source_item_id=r["id"], chat_id=chat_id, requested_in_chat=True,
+            source_item_id=r["id"], chat_id=chat_id, requested_in_chat=True, responsibility=responsibility,
         ))
     return actions
 
