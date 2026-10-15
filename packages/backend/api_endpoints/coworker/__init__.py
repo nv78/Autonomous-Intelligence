@@ -5,6 +5,7 @@ all of them on ``coworker_bp``.
 """
 from api_endpoints.coworker import (  # noqa: F401  (route registration)
     calls,
+    chatbot_routes,
     connections,
     core,
     delegation,

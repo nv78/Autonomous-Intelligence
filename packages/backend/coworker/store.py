@@ -30,7 +30,7 @@ from typing import Any
 JSON_COLUMNS = {
     "autonomy", "settings", "onboarding", "style_profile", "recipients", "meta",
     "trigger_spec", "tools", "payload", "result", "detail", "transcript",
-    "metrics", "playbook", "answers", "risk", "counts", "policies", "prefs",
+    "metrics", "playbook", "answers", "risk", "counts", "policies", "prefs", "conversation",
 }
 
 
@@ -314,6 +314,17 @@ TABLES: dict[str, str] = {
         user_id INT NOT NULL UNIQUE,
         handle VARCHAR(64) NOT NULL UNIQUE,
         created_at VARCHAR(40) NOT NULL
+    """,
+    "cw_bot_identities": """
+        id {pk},
+        platform VARCHAR(20) NOT NULL,
+        external_id VARCHAR(255) NOT NULL,
+        user_id INT NOT NULL,
+        tenant VARCHAR(255) NOT NULL DEFAULT '',
+        email VARCHAR(255) NOT NULL DEFAULT '',
+        conversation {text},
+        created_at VARCHAR(40) NOT NULL,
+        UNIQUE (platform, external_id)
     """,
     "cw_channel_threads": """
         id {pk},
