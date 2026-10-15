@@ -98,3 +98,30 @@ def ask(store: Store, user_id: int, message: str, *, chat_id: int | None = None,
     first = next((line.strip(" #*-") for line in text.splitlines() if line.strip(" #*-")), "Done.")
     return {"text": text or "Done.", "summary": first[:200], "actions": [executor.serialize(a) for a in actions],
             "chat_id": chat_id}
+
+
+def thread_chat(store: Store, user_id: int, channel: str, key: str) -> int | None:
+    """The web chat that holds this outside conversation (a Slack thread, a phone number), if any."""
+    row = store.one("SELECT chat_id FROM cw_channel_threads WHERE user_id = %s AND channel = %s AND thread_key = %s",
+                    (user_id, channel, key[:255]))
+    return int(row["chat_id"]) if row and row.get("chat_id") else None
+
+
+def remember_thread(store: Store, user_id: int, channel: str, key: str, chat_id: int | None) -> None:
+    if not chat_id:
+        return
+    from coworker.store import IntegrityError, iso
+
+    try:
+        store.insert("cw_channel_threads", {"user_id": user_id, "channel": channel, "thread_key": key[:255],
+                                            "chat_id": chat_id, "created_at": iso()})
+    except IntegrityError:
+        store.execute("UPDATE cw_channel_threads SET chat_id = %s WHERE user_id = %s AND channel = %s AND thread_key = %s",
+                      (chat_id, user_id, channel, key[:255]))
+
+
+def converse(store: Store, user_id: int, channel: str, key: str, message: str, chat_name: str) -> dict[str, Any]:
+    """``ask`` inside the chat that belongs to this outside conversation, so follow-ups have context."""
+    answer = ask(store, user_id, message, chat_id=thread_chat(store, user_id, channel, key), chat_name=chat_name)
+    remember_thread(store, user_id, channel, key, answer["chat_id"])
+    return answer

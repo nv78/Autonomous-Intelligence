@@ -113,6 +113,24 @@ With the signing secret set, Slack pushes each message and the coworker answers 
 
 To install in someone else's workspace, either turn on public distribution, or have them paste a user token (`xoxp-…`) in **Settings**.
 
+### @mention the coworker (Slack bot)
+
+With the bot, anyone can talk to the coworker in Slack: "@Ourogen what did Acme say about pricing?" in a channel, or a DM to the bot.
+- **The owner's messages are commands**, the same as the web chat. Proposed actions come back with **Approve / Skip** buttons.
+- **A teammate's question** is answered in the thread from the owner's memory and docs.
+  - It's posted right away only when the owner's Slack autonomy is "notify" or "silent".
+  - Otherwise the owner gets the answer to approve by DM, or a question when the coworker doesn't know.
+
+1. In the same Slack app, open **App Home**:
+   - Add a bot user (display name e.g. "Ourogen").
+   - Turn on the **Messages tab** and "Allow users to send messages".
+2. Under **OAuth & Permissions**, add these **bot** token scopes: `app_mentions:read`, `chat:write`, `im:history`, `im:read`, `im:write`, `users:read`.
+3. Under **Event Subscriptions → Subscribe to bot events**, add `app_mention` and `message.im`.
+4. Under **Interactivity & Shortcuts**:
+   - Turn it on.
+   - Set the Request URL to `https://chat.ourogen.ai/api/coworker/slack/interactive`.
+5. Set `SLACK_BOT_ENABLED=1`. Each user reconnects Slack once (**Settings → Slack → Add the bot**).
+
 ## 5. Meetings (Recall.ai) and voice (ElevenLabs)
 
 1. Set `RECALL_API_KEY`. If your Recall workspace isn't in us-east-1, also set `RECALL_API_BASE` to your region's URL.

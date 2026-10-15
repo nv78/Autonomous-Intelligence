@@ -34,6 +34,8 @@ export interface Connection {
   error: string;
   lastSyncedAt: string | null;
   scopes: string;
+  bot?: boolean; // Slack: the @mentionable bot is installed
+  botAvailable?: boolean; // Slack: this server has the bot turned on
 }
 
 export interface Capabilities {

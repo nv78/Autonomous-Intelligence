@@ -283,6 +283,15 @@ TABLES: dict[str, str] = {
         joined_at VARCHAR(40),
         UNIQUE (org_id, email)
     """,
+    "cw_channel_threads": """
+        id {pk},
+        user_id INT NOT NULL,
+        channel VARCHAR(20) NOT NULL,
+        thread_key VARCHAR(255) NOT NULL,
+        chat_id INT,
+        created_at VARCHAR(40) NOT NULL,
+        UNIQUE (user_id, channel, thread_key)
+    """,
     "cw_turns": """
         id {pk},
         user_id INT NOT NULL,

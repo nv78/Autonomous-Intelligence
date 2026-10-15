@@ -242,7 +242,12 @@ def undo(store: Store, user_id: int, action_id: int) -> dict[str, Any]:
     elif action["status"] == "executed":
         undo_info = (action.get("result") or {}).get("undo") or {}
         try:
-            done = workspace_for(user_id, store).undo(action["type"], undo_info)
+            if undo_info.get("via") == "bot":
+                from coworker import slackbot
+
+                done = slackbot.delete(store, user_id, undo_info)
+            else:
+                done = workspace_for(user_id, store).undo(action["type"], undo_info)
         except ConnectorError as exc:
             raise ActionError(str(exc), exc.code) from exc
         if not done:
@@ -275,6 +280,10 @@ def _execute(store: Store, user_id: int, action: dict[str, Any], coworker: dict[
         res = ws.send_email(payload.get("to") or [], payload.get("subject", ""), body, payload.get("thread_id", ""),
                             payload.get("cc") or [], files)
         return {"external_id": res.external_id, "thread_id": res.thread_id, "undo": res.undo}
+    if kind == "slack.post" and payload.get("via") == "bot":  # an answer in a teammate's thread, from the bot
+        from coworker import slackbot
+
+        return slackbot.send(store, user_id, payload)
     if kind == "slack.post":
         res = ws.post_slack(payload.get("channel", ""), payload.get("text", ""))
         return {"external_id": res.external_id, "undo": res.undo}
