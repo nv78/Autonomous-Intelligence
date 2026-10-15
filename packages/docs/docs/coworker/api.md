@@ -5,7 +5,7 @@ All routes live under `/api/coworker` and need a JWT (`Authorization: Bearer <to
 | Area | Routes |
 |---|---|
 | Setup | `GET /`, `POST /` (`{"mode": "demo" \| "live"}`), `PATCH /`, `POST /demo/simulate`, `POST /demo/reset` |
-| Connections | `GET /connections`, `POST /connections/google/start`, `GET /connections/google/callback`, `POST /connections/slack/start`, `GET /connections/slack/callback`, `POST /connections/slack/token`, `POST /connections/hubspot/start`, `GET /connections/hubspot/callback`, `POST /connections/hubspot/token`, `DELETE /connections/<provider>`, `POST /sync` (queues a background sync, returns `202`), `GET /sync/status` |
+| Connections | `GET /connections`, `POST /connections/google/start`, `GET /connections/google/callback`, `POST /connections/microsoft/start`, `GET /connections/microsoft/callback`, `POST /connections/slack/start`, `GET /connections/slack/callback`, `POST /connections/slack/token`, `POST /slack/events` (Slack Events API, signed), `POST /connections/hubspot/start`, `GET /connections/hubspot/callback`, `POST /connections/hubspot/token`, `DELETE /connections/<provider>`, `POST /sync` (queues a background sync, returns `202`), `GET /sync/status` |
 | Memory | `POST /memory/rebuild`, `GET /memory/learned`, `GET /memory/people`, `PATCH`/`DELETE /memory/people/<id>`, `GET /memory/timeline`, `DELETE /memory/<id>`, `GET /memory/recall?q=`, `GET /memory/status?name=`, `GET /inbox`, `GET /items/<id>` |
 | Style | `GET /style`, `POST /style/rules`, `DELETE /style/rules` |
 | Chat | `POST /chat/stream` (SSE events: `session_id`, `text`, `tool`, `card`, `title`, `error`, `done`) |

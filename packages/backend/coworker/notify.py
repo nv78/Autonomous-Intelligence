@@ -84,13 +84,14 @@ def deliver(store: Store, user_id: int, subject: str, body: str) -> str:
         return "demo"
     if not owner:
         return ""
-    google = Workspace(store, user_id)._live("google")
-    if google is not None and google.has_scope("gmail.send"):
+    mailbox = Workspace(store, user_id).email_connector()
+    if mailbox is not None and mailbox.has_scope("gmail.send"):
+        channel = "gmail" if mailbox.provider == "google" else "outlook"
         try:
-            google.send_email(store, user_id, to=[owner], subject=subject, body=body)
-            return "gmail"
+            mailbox.send_email(store, user_id, to=[owner], subject=subject, body=body)
+            return channel
         except ConnectorError as exc:
-            log.warning("gmail notification failed for user %s: %s", user_id, exc)
+            log.warning("%s notification failed for user %s: %s", channel, user_id, exc)
     if os.environ.get("SMTP_URL"):
         try:
             _smtp_send(owner, subject, body)

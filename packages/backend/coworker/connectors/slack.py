@@ -8,11 +8,18 @@ Two ways to connect:
 * Paste a user token (``xoxp-...``) from a Slack app you installed to your
   own workspace. Simplest for a personal prototype.
 
+New messages arrive two ways: the worker polls ``conversations.history``
+every minute, and, when the Slack app subscribes to events on behalf of
+users (``SLACK_SIGNING_SECRET`` set), Slack pushes each message to
+``/api/coworker/slack/events`` so the coworker can answer in seconds.
+
 Every message the coworker posts is prefixed with a visible marker so
 teammates can tell it apart from the human.
 """
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
 import os
 import time
@@ -80,12 +87,47 @@ def exchange_code(code: str) -> dict[str, Any]:
     return {
         "access_token": user.get("access_token", ""), "scope": user.get("scope", ""),
         "user_id": user.get("id", ""), "team": (data.get("team") or {}).get("name", ""),
+        "team_id": (data.get("team") or {}).get("id", ""),
     }
 
 
 def verify_token(token: str) -> dict[str, Any]:
     info = _call("auth.test", token)
-    return {"access_token": token, "user_id": info.get("user_id", ""), "team": info.get("team", ""), "scope": ""}
+    return {"access_token": token, "user_id": info.get("user_id", ""), "team": info.get("team", ""),
+            "team_id": info.get("team_id", ""), "scope": ""}
+
+
+def events_enabled() -> bool:
+    return bool(os.environ.get("SLACK_SIGNING_SECRET"))
+
+
+def verify_signature(body: bytes, timestamp: str, signature: str, now: float | None = None) -> bool:
+    """Slack signs every event request with the app's signing secret (v0 HMAC-SHA256)."""
+    secret = os.environ.get("SLACK_SIGNING_SECRET", "")
+    if not secret or not timestamp or not signature:
+        return False
+    try:
+        if abs((now or time.time()) - int(timestamp)) > 300:  # replayed or very late
+            return False
+    except ValueError:
+        return False
+    base = b"v0:" + timestamp.encode() + b":" + body
+    expected = "v0=" + hmac.new(secret.encode(), base, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, signature)
+
+
+def message_item(me: str, cid: str, channel_name: str, is_dm: bool, shared: bool,
+                 m: dict[str, Any], author: dict[str, str]) -> dict[str, Any]:
+    text = m.get("text", "")
+    return {
+        "provider": "slack", "external_id": f"{cid}:{m['ts']}", "thread_id": f"slack-{channel_name}",
+        "kind": "slack", "direction": "outbound" if m.get("user") == me else "inbound",
+        "author_name": author["name"], "author_email": author["email"], "recipients": [],
+        "body": text, "channel": channel_name,
+        "occurred_at": iso(datetime.fromtimestamp(float(m["ts"]), UTC)),
+        "meta": {"dm": is_dm, "mentions_owner": is_dm or f"<@{me}>" in text, "channel_id": cid, "ts": m["ts"],
+                 "shared": shared},
+    }
 
 
 def revoke(token: dict[str, Any]) -> None:
@@ -150,25 +192,53 @@ class SlackConnector:
             except ConnectorError:
                 continue
             newest = oldest
+            shared = bool(conv.get("is_ext_shared") or conv.get("is_shared"))
             for m in history.get("messages", []):
                 if m.get("subtype"):
                     continue
-                author = self._user(m.get("user", ""))
-                text = m.get("text", "")
-                if store.add_item(user_id, {
-                    "provider": "slack", "external_id": f"{cid}:{m['ts']}", "thread_id": f"slack-{channel_name}",
-                    "kind": "slack", "direction": "outbound" if m.get("user") == me else "inbound",
-                    "author_name": author["name"], "author_email": author["email"], "recipients": [],
-                    "body": text, "channel": channel_name,
-                    "occurred_at": iso(datetime.fromtimestamp(float(m["ts"]), UTC)),
-                    "meta": {"dm": is_dm, "mentions_owner": is_dm or f"<@{me}>" in text, "channel_id": cid, "ts": m["ts"],
-                             "shared": bool(conv.get("is_ext_shared") or conv.get("is_shared"))},
-                }):
+                item = message_item(me, cid, channel_name, is_dm, shared, m, self._user(m.get("user", "")))
+                if store.add_item(user_id, item):
                     count += 1
                 newest = max(newest, m["ts"])
             self.cursor[cid] = newest
         store.upsert_connection(user_id, "slack", sync_cursor=json.dumps(self.cursor))
         return count
+
+    def ingest_event(self, store: Store, user_id: int, event: dict[str, Any]) -> int | None:
+        """Store one pushed ``message`` event exactly as a sync would; None if skipped or seen."""
+        if event.get("type") != "message" or event.get("subtype") or not event.get("ts") or not event.get("channel"):
+            return None  # edits, deletes, joins, bot posts
+        if AI_PREFIX in (event.get("text") or ""):
+            return None  # our own replies, echoed back
+        cid = event["channel"]
+        is_dm = event.get("channel_type") == "im"
+        shared = False
+        if is_dm:
+            other = event.get("user", "") if event.get("user") != self.token.get("user_id") else ""
+            channel_name = self._dm_name(store, user_id, cid, other)
+        else:
+            try:
+                info = _call("conversations.info", self._tok, channel=cid).get("channel", {})
+            except ConnectorError:
+                info = {}
+            channel_name = info.get("name", cid)
+            shared = bool(info.get("is_ext_shared") or info.get("is_shared"))
+        item = message_item(self.token.get("user_id", ""), cid, channel_name, is_dm, shared, event,
+                            self._user(event.get("user", "")))
+        return store.add_item(user_id, item)
+
+    def _dm_name(self, store: Store, user_id: int, cid: str, other: str) -> str:
+        """Same name the poller gives this DM, so threads line up."""
+        row = store.one("SELECT channel FROM cw_items WHERE user_id = %s AND provider = 'slack' AND meta LIKE %s "
+                        "ORDER BY id DESC LIMIT 1", (user_id, f'%"channel_id": "{cid}"%'))
+        if row and row.get("channel"):
+            return str(row["channel"])
+        if not other:
+            try:
+                other = _call("conversations.info", self._tok, channel=cid).get("channel", {}).get("user", "")
+            except ConnectorError:
+                other = ""
+        return f"dm-{self._user(other)['name'].split()[0].lower()}" if other else f"dm-{cid.lower()}"
 
     def _channel_id(self, store: Store, user_id: int, channel: str) -> str:
         row = store.one(

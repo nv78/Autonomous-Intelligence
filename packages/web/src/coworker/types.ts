@@ -39,6 +39,7 @@ export interface Connection {
 export interface Capabilities {
   llm: boolean;
   google: boolean;
+  microsoft?: boolean;
   slack_oauth: boolean;
   hubspot_oauth?: boolean;
   voice?: boolean;

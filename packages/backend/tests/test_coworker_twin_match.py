@@ -128,9 +128,10 @@ def _resp(status: int, body: dict | None = None) -> MagicMock:
 def test_vendor_checks(monkeypatch):
     for k in ("ANTHROPIC_API_KEY", "ELEVENLABS_API_KEY", "RECALL_API_KEY", "TAVUS_API_KEY", "TAVUS_REPLICA_ID",
               "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "SLACK_CLIENT_ID", "SLACK_CLIENT_SECRET", "SMTP_URL",
-              "TWIN_S3_BUCKET", "REDIS_URL", "RATE_LIMIT_REDIS_URL", "APP_ENV"):
+              "TWIN_S3_BUCKET", "REDIS_URL", "RATE_LIMIT_REDIS_URL", "APP_ENV", "MICROSOFT_CLIENT_ID",
+              "MICROSOFT_CLIENT_SECRET", "SLACK_SIGNING_SECRET", "BACKEND_URL"):
         monkeypatch.delenv(k, raising=False)
-    assert {r["status"] for r in vendor_check.run_all()[:-1]} == {"skipped"}
+    assert {r["status"] for r in vendor_check.run_all() if r["name"] != "Voice match"} == {"skipped"}
 
     monkeypatch.setenv("ANTHROPIC_API_KEY", "k")
     monkeypatch.setenv("ELEVENLABS_API_KEY", "k")
@@ -169,6 +170,31 @@ def test_vendor_checks(monkeypatch):
     assert vendor_check.check_slack()["status"] == "fail"
     monkeypatch.setenv("SLACK_CLIENT_SECRET", "y")
     assert vendor_check.check_slack()["status"] == "ok"
+    assert "polling" in vendor_check.check_slack()["detail"]
+    monkeypatch.setenv("SLACK_SIGNING_SECRET", "z")
+    assert "real-time" in vendor_check.check_slack()["detail"]
+
+    monkeypatch.delenv("MICROSOFT_CLIENT_ID", raising=False)
+    monkeypatch.delenv("MICROSOFT_CLIENT_SECRET", raising=False)
+    assert vendor_check.check_microsoft()["status"] == "skipped"
+    monkeypatch.setenv("MICROSOFT_CLIENT_ID", "m")
+    assert vendor_check.check_microsoft()["status"] == "fail"
+    monkeypatch.setenv("MICROSOFT_CLIENT_SECRET", "ms")
+    monkeypatch.setenv("MICROSOFT_REDIRECT_URI", "http://localhost:5000/cb")
+    assert vendor_check.check_microsoft()["status"] == "fail"  # production needs https
+    monkeypatch.setenv("MICROSOFT_REDIRECT_URI", "https://chat.ourogen.ai/cb")
+    assert vendor_check.check_microsoft()["status"] == "ok"
+
+    monkeypatch.setenv("BACKEND_URL", "http://localhost:5000")
+    assert vendor_check.check_public_url()["status"] == "fail"
+    monkeypatch.setenv("BACKEND_URL", "http://chat.ourogen.ai")
+    assert vendor_check.check_public_url()["status"] == "fail"
+    monkeypatch.setenv("BACKEND_URL", "https://chat.ourogen.ai")
+    assert vendor_check.check_public_url()["status"] == "ok"
+    monkeypatch.setenv("APP_ENV", "local")
+    monkeypatch.setenv("BACKEND_URL", "http://localhost:5000")
+    assert vendor_check.check_public_url()["status"] == "skipped"
+    monkeypatch.setenv("APP_ENV", "production")
 
     monkeypatch.setenv("SMTP_URL", "smtp://u:p@mail.test:2525")
     with patch("smtplib.SMTP"):

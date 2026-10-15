@@ -1,0 +1,127 @@
+# Launching a real pilot user
+
+This is the checklist for putting one real person (say, a friend who runs a company) on Ourogen in production: their own inbox, calendar, Slack, and meetings.
+
+It assumes production is `https://chat.ourogen.ai`, deployed by `.github/workflows/deploy.yml` when `develop` is merged into `main`. Substitute your domain wherever you see it.
+
+**Time:** about half a day of setup on your side, then 10 minutes for the pilot user.
+
+---
+
+## 1. Ship the code and run the worker
+
+1. Merge `develop` into `main`. The deploy workflow builds the backend image (it includes ffmpeg for voice checks), restarts the stack on the EC2 host, and publishes the web app.
+2. On the EC2 host, open the compose file in `APP_DIR`. Check two things:
+   - It has a **`coworker-worker`** service: `python -m coworker.worker --interval 60`, with the same image and environment as the backend. See `docker-compose.yml` in this repo. Without the worker, the coworker only works while the user has the web app open.
+   - Its environment passes through every variable in steps 2–7 below.
+3. Set `BACKEND_URL=https://chat.ourogen.ai` and `FRONTEND_URL=https://chat.ourogen.ai`. Meeting bots and Slack push events to `BACKEND_URL`, so it must be public and use HTTPS.
+4. Set `ANTHROPIC_API_KEY`. Without it, the coworker falls back to a scripted planner.
+5. Set `PROVIDER_KEY_ENCRYPTION_KEY`. It encrypts OAuth tokens at rest. Generate it once and never change it, or every connection breaks.
+6. When everything below is set, run this on the host:
+
+   ```bash
+   docker compose exec backend python -m coworker.vendor_check
+   ```
+
+   Every vendor you configured should show `ok`.
+
+## 2. Google (Gmail, Calendar, Drive)
+
+1. In Google Cloud Console, enable the Gmail, Calendar, and Drive APIs.
+2. On the OAuth client, add this authorized redirect URI:
+   `https://chat.ourogen.ai/api/coworker/connections/google/callback`
+3. On the **OAuth consent screen**, leave the app in **Testing** and add the pilot user's Google address as a **test user**. Up to 100 test users can connect without Google's verification.
+4. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_COWORKER_REDIRECT_URI` (the URI above).
+
+> **Testing-mode caveat:** while the app is in Testing, Google expires refresh tokens after **7 days**. The coworker then stops reading and sending. It emails and pushes the user a **Reconnect Google** link, and Settings shows a Reconnect button. Reconnecting takes one click.
+>
+> To remove the weekly reconnect, publish the app. Gmail's restricted scopes require Google's verification and a third-party security assessment (CASA). Plan on several weeks; this is tracked in #381.
+
+## 3. Microsoft 365 (Outlook mail and calendar)
+
+1. In the Azure portal, go to **Microsoft Entra ID → App registrations → New registration**.
+   - Supported account types: **any organizational directory and personal Microsoft accounts**.
+   - Redirect URI: platform **Web**, `https://chat.ourogen.ai/api/coworker/connections/microsoft/callback`
+2. Under **Certificates & secrets**, create a client secret.
+3. Under **API permissions**, add these Microsoft Graph **delegated** permissions:
+   - `User.Read`
+   - `Mail.Read`, `Mail.ReadWrite`, `Mail.Send`
+   - `Calendars.Read`, `Calendars.ReadWrite`
+   - `offline_access`
+4. Set these environment variables:
+   - `MICROSOFT_CLIENT_ID`
+   - `MICROSOFT_CLIENT_SECRET`
+   - `MICROSOFT_TENANT=common`
+   - `MICROSOFT_REDIRECT_URI` (the URI above)
+
+> If the pilot user's company blocks user consent for unverified apps, their IT admin must approve the app once. They can grant admin consent from the app's **API permissions** page. Completing **Publisher verification** (it needs a Microsoft Partner Network ID) removes the "unverified" warning for everyone.
+
+## 4. Slack (real time)
+
+1. Create a Slack app at https://api.slack.com/apps.
+2. Under **OAuth & Permissions**, add these **user** token scopes:
+   - `channels:history`, `groups:history`, `im:history`, `mpim:history`
+   - `channels:read`, `groups:read`, `im:read`
+   - `users:read`, `users:read.email`
+   - `chat:write`
+3. Add the redirect URL: `https://chat.ourogen.ai/api/coworker/connections/slack/callback`
+4. Under **Event Subscriptions**:
+   - Turn it on.
+   - Set the Request URL to `https://chat.ourogen.ai/api/coworker/slack/events`. Slack verifies it immediately, so deploy first.
+   - Under **Subscribe to events on behalf of users**, add `message.im`, `message.mpim`, `message.channels`, and `message.groups`.
+5. Set `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET`, `SLACK_REDIRECT_URI`, and `SLACK_SIGNING_SECRET` (from **Basic Information**).
+
+With the signing secret set, Slack pushes each message and the coworker answers in seconds. Without it, Slack is polled every minute.
+
+To install in someone else's workspace, either turn on public distribution, or have them paste a user token (`xoxp-…`) in **Settings**.
+
+## 5. Meetings (Recall.ai) and voice (ElevenLabs)
+
+1. Set `RECALL_API_KEY`. If your Recall workspace isn't in us-east-1, also set `RECALL_API_BASE` to your region's URL.
+2. Set `ELEVENLABS_API_KEY` so the coworker can speak in the user's cloned voice. Without it, the bot speaks in a stock voice.
+3. Set `VOICEPRINT_BACKEND=resemblyzer` before you open sign-ups to people you don't know. The built-in voice match only catches clearly different voices.
+
+How the user sends the coworker to a meeting: in chat, *"Join my 2pm with Northwind. Find out their budget and timeline."* Here is what happens:
+
+1. A bot named "<Name>'s AI coworker (Ourogen)" joins and posts an AI and recording disclosure in the meeting chat.
+2. It asks for recording consent, then follows the call from live captions.
+3. It answers out loud or in the meeting chat.
+4. When the call ends, it posts a summary, a lead score, and a drafted follow-up into the chat the user asked from.
+
+**Expect** a pause of a few seconds before each spoken answer (captions, then the model, then speech). It works for intro and qualification calls. It isn't yet natural for fast back-and-forth; streaming voice is on the roadmap.
+
+## 6. Notifications
+
+| Setting | Purpose |
+|---|---|
+| `SMTP_URL`, `SMTP_FROM` | Approval and "reconnect" emails when the user's own mailbox can't send |
+| `EXPO_ACCESS_TOKEN` | Optional. Push approvals to the mobile app |
+| `SENTRY_DSN`, `ALERT_SLACK_WEBHOOK_URL` | Errors and failed sends reach you before the user notices |
+
+## 7. Billing (optional for a friend)
+
+Leave `COWORKER_ENFORCE_PLANS=0` to run the pilot free. To charge, create the three coworker prices in Stripe, set `STRIPE_PRICE_COWORKER`, `STRIPE_PRICE_COWORKER_CALLS`, and `STRIPE_PRICE_COWORKER_TEAM`, then set `COWORKER_ENFORCE_PLANS=1`.
+
+---
+
+## The pilot user's first 10 minutes
+
+1. Sign up at `https://chat.ourogen.ai`, then open **Coworker**. Onboarding starts.
+2. **Connect Google** or **Connect Outlook**. This grants read access only. Then add Slack.
+3. The coworker reads 90 days of history and shows what it learned: people, deals, and how they write. Correct anything wrong.
+4. Click **Allow sending** in **Settings**. Keep every autonomy level on **Ask me first** for the first week.
+5. **Twin** tab: record the consent sentence and a short voice sample, so calls can use their voice.
+6. Install the mobile app and sign in, so approvals arrive as notifications with Approve and Reject buttons.
+7. Try two hand-offs in chat:
+   - *"Reply to my unanswered emails from today."* It drafts the replies and asks for approval. After sending, it posts exactly what went out.
+   - *"Join my next call and qualify them."*
+
+**What they can always do:** pause everything from the header or the phone, reply STOP to any email the coworker sends, and disconnect a source. Disconnecting deletes everything synced from it.
+
+## Before you invite them, check
+
+- [ ] `vendor_check` is all `ok` for what you configured.
+- [ ] You connected your own account end to end: Google or Outlook, Slack, and one real meeting.
+- [ ] A test email approval arrived, and approving it sent the email.
+- [ ] Pausing the coworker stopped a scheduled send.
+- [ ] They're on the Google test-user list, or their Microsoft tenant allows the app.

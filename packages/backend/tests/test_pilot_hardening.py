@@ -179,3 +179,23 @@ def test_failed_action_and_sync_error_alert(s):
         from_row.return_value.sync.side_effect = ConnectorError("500 from Gmail", "upstream")
         Workspace(s, 1).sync()
     assert alert.call_args.args[0] == "sync-error:google:1"
+
+
+def test_expired_access_tells_the_owner_once(s):
+    from coworker.connectors.base import ConnectorError, Workspace
+
+    s.update_coworker(1, mode="live")
+    s.upsert_connection(1, "google", status="connected", token_enc="")
+    with patch("coworker.connectors.google.GoogleConnector.from_row") as from_row, \
+            patch("coworker.push.send") as push_send, patch("coworker.notify.deliver") as deliver, \
+            patch("observability.alert") as alert:
+        from_row.return_value.sync.side_effect = ConnectorError("expired", "reauth_required")
+        Workspace(s, 1).sync()
+        assert s.get_connection_row(1, "google")["status"] == "reauth_required"
+        s.upsert_connection(1, "google", status="connected")  # still expired on the next pass
+        s.upsert_connection(1, "google", status="reauth_required")
+        Workspace(s, 1).sync()  # not connected any more, so it isn't retried or re-announced
+    assert push_send.call_count == 1 and deliver.call_count == 1
+    assert "/coworker/settings" in deliver.call_args.args[3]
+    alert.assert_not_called()
+    assert any(a["kind"] == "connection.reauth" for a in s.activity(1))

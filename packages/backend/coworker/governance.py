@@ -36,9 +36,10 @@ def work_domain(store: Store, user_id: int) -> str:
     """The company domain the coworker acts in, or '' for personal accounts."""
     coworker = store.get_coworker(user_id) or {}
     emails = [coworker.get("owner_email") or ""]
-    google = store.get_connection_row(user_id, "google")
-    if google:
-        emails.insert(0, google.get("account_label") or "")
+    for provider in ("microsoft", "google"):
+        row = store.get_connection_row(user_id, provider)
+        if row:
+            emails.insert(0, row.get("account_label") or "")
     for e in emails:
         d = _domain(e)
         if d and d not in PUBLIC_DOMAINS:

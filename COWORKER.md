@@ -114,7 +114,8 @@ Add keys to `packages/backend/.env`, then `docker compose up --build` again.
 |---|---|
 | `ANTHROPIC_API_KEY=sk-ant-…` | Claude (`claude-opus-5-5`) for chat, drafting, Slack answers, and calls. It reasons freely instead of following the offline planner. |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | **Your real Gmail, Calendar, and Drive.** See below. |
-| Slack user token | Paste an `xoxp-…` token in **Settings → Connections**, or set `SLACK_CLIENT_ID` and `SLACK_CLIENT_SECRET` for OAuth. Slack requires an HTTPS redirect, so use a tunnel for local OAuth. |
+| `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET` | **Your real Outlook mail and calendar** (Microsoft 365 or a personal Microsoft account). Setup is in [PILOT_LAUNCH.md](PILOT_LAUNCH.md#3-microsoft-365-outlook-mail-and-calendar). |
+| Slack user token | Paste an `xoxp-…` token in **Settings → Connections**, or set `SLACK_CLIENT_ID` and `SLACK_CLIENT_SECRET` for OAuth. Slack requires an HTTPS redirect, so use a tunnel for local OAuth. Add `SLACK_SIGNING_SECRET` and Event Subscriptions for real-time answers instead of a one-minute poll. |
 | `ELEVENLABS_API_KEY` | Your cloned voice on calls |
 | `RECALL_API_KEY` | **Join a real meeting:** paste a Zoom, Meet, or Teams link in Calls. The bot needs a public `BACKEND_URL` (e.g. an ngrok URL) to receive live transcripts. |
 | `TAVUS_API_KEY`, `TAVUS_REPLICA_ID` | Live video avatar sessions from the Twin tab |
@@ -134,6 +135,8 @@ Connecting a real account replaces the demo data, so demo and real data never mi
 > Real sends wait out a 20-second undo window (Settings → Undo window). Start with everything on **approve** autonomy.
 
 ---
+
+Putting a real person on production (Google test users, Microsoft app registration, Slack events, the worker, the meeting bot)? Follow **[PILOT_LAUNCH.md](PILOT_LAUNCH.md)**.
 
 ## Mobile
 
@@ -166,8 +169,9 @@ python -m coworker.admin revoke-all --user 1    # incident response
 - Without `ANTHROPIC_API_KEY`, chat runs an offline planner that understands the common requests in this guide. Free-form questions fall back to memory search.
 - Voice input in the browser needs Chrome or Edge.
 - The default voice match (consent recording vs. samples) is a local pitch and spectral check. It catches clearly different voices. Set `VOICEPRINT_BACKEND=resemblyzer` before general availability.
-- The Recall.ai and Tavus adapters follow their published APIs but haven't been exercised against live accounts here.
-- Gmail's restricted scopes need Google verification before anyone outside your test users can connect.
+- The Recall.ai, Tavus, Microsoft Graph, and Slack Events adapters follow the vendors' published APIs, but they haven't been exercised against live accounts here.
+- Gmail's restricted scopes need Google verification before anyone outside your test users can connect. Until then, test users reconnect Google every 7 days, and the coworker emails and pushes them a reconnect link when that happens.
+- On calls, spoken answers come a few seconds after the other person stops talking (captions, then the model, then speech).
 - Prices in Settings are hypotheses for the pilot, not published prices.
 - Push notifications need a physical device and an EAS project ID.
-- `scripts/demo/record_demo.py` re-records the 2-minute product video against your local stack.
+- `scripts/demo/record_demo.py` re-records the 2-minute product video against your local stack. The current video and the pitch deck are in [`materials/ourogen-coworker/`](materials/ourogen-coworker/).
