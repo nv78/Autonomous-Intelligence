@@ -30,7 +30,7 @@ from typing import Any
 JSON_COLUMNS = {
     "autonomy", "settings", "onboarding", "style_profile", "recipients", "meta",
     "trigger_spec", "tools", "payload", "result", "detail", "transcript",
-    "metrics", "playbook", "answers",
+    "metrics", "playbook", "answers", "risk",
 }
 
 

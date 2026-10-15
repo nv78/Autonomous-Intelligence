@@ -11,10 +11,8 @@ export default function OAuthCallbackPage() {
     const token = searchParams.get("token");
     if (token) {
       setToken(token);
-      if (searchParams.get("isNewUser") === "1") {
-        localStorage.setItem("ourogen_show_onboarding", "1");
-      }
-      nav("/app", { replace: true });
+      // New accounts go straight into coworker onboarding.
+      nav(searchParams.get("isNewUser") === "1" ? "/app/onboarding" : "/app", { replace: true });
     } else {
       nav("/login?error=missing_code", { replace: true });
     }

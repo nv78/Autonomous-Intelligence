@@ -67,7 +67,8 @@ def create_message(
     try:
         from services.usage import record_usage
 
-        record_usage(user_id, "/api/coworker", model, usage.get("input_tokens", 0), usage.get("output_tokens", 0))
+        record_usage(user_id, "/api/coworker", model, usage.get("input_tokens", 0), usage.get("output_tokens", 0),
+                     credits_used=0)
     except Exception:  # pragma: no cover - metering must never break the agent
         pass
     return data
