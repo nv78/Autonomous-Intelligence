@@ -35,6 +35,18 @@ RELATIONSHIP_KEYWORDS: dict[str, list[str]] = {
     "partner": ["partnership", "integration", "co-marketing", "embedding", "reseller"],
 }
 
+# Extra triage-only cues (relationship inference keeps the narrower list above).
+TRIAGE_KEYWORDS: dict[str, list[str]] = {
+    "investor": ["lp letter", "runway", "pro rata", "cap table", "the round", "board deck", "investor update",
+                 "monthly update", "the deck and the metrics"],
+    "candidate": ["apply", "applying", "internship", "the offer", "engineer role", "backend role", "designer role",
+                  "ml engineer", "role still open"],
+    "customer": ["can't log in", "cannot log in", "error", "crash", "stuck", "broken", "password reset", "how do i",
+                 "is something down", "never received", "isn't working", "doesn't work"],
+    "prospect": ["purchase", "licenses", "buy ", "plans?", "what are the plans", "enterprise pricing", "evaluating"],
+    "partner": ["marketplace", "partner program", "strategic partnership", "webinar together", "consultancy"],
+}
+
 TITLE_WORDS = r"(?:Head|VP|Vice President|Director|Manager|Chief|CEO|CTO|COO|CFO|CMO|Founder|Co-founder|Partner|Engineer|Lead|President|Principal|Associate|Analyst)"
 
 DECISION_RE = re.compile(
@@ -120,16 +132,20 @@ def classify(item: dict[str, Any], ctx: dict[str, str]) -> str:
     if ctx.get("domain") and sender_domain == ctx["domain"]:
         return "internal"
     text = f"{item.get('subject', '')}\n{item.get('body', '')}".lower()
-    if re.search(r"\b(reschedul\w*|move (?:the|our) (?:call|meeting)|find (?:\d+|thirty) ?min\w*|"
-                 r"(?:a|any) \d+[- ]minute slot|availability|what times? work|calendar invite|book a time)\b", text):
+    if re.search(r"\b(reschedul\w*|postpone\w*|push (?:our|the) (?:call|meeting))\b", text):
+        return "scheduling"
+    if re.search(r"\b(move (?:the|our|tomorrow'?s) (?:call|meeting)|find (?:\d+|thirty) ?min\w*|"
+                 r"(?:a|any) \d+[- ]minute slot|availability|available (?:on |for |this |next |\w+day)|what times? works?|"
+                 r"calendar invite|book a (?:time|\d+[- ]minute slot|slot)|coffee|good time to (?:sync|meet|talk|chat)|"
+                 r"schedule (?:a|the) (?:call|meeting)|free (?:for|on) (?:a |\w+day)|meeting (?:on|time))\b", text):
         if not re.search(r"\b(pricing|seats|demo)\b", text):
             return "scheduling"
     scores: Counter[str] = Counter()
     for rel, words in RELATIONSHIP_KEYWORDS.items():
-        scores[rel] = sum(1 for w in words if w in text)
+        scores[rel] = sum(1 for w in words + TRIAGE_KEYWORDS.get(rel, []) if w in text)
     if scores["prospect"] and scores["prospect"] >= scores["customer"]:
         return "sales_lead"
-    if scores["investor"]:
+    if scores["investor"] and scores["investor"] >= scores["candidate"]:
         return "investor"
     if scores["candidate"]:
         return "candidate"
@@ -354,7 +370,7 @@ def recall(store: Store, user_id: int, query: str, k: int = 6) -> list[dict[str,
         boost = 1.3 if meta["type"] == "decision" else 1.0
         ranked.append((float(score) * (0.75 + 0.25 * recency) * boost, meta))
     ranked.sort(key=lambda x: x[0], reverse=True)
-    return [cite(meta, score) for score, meta in ranked[:k]]
+    return [cite(meta, score, query) for score, meta in ranked[:k]]
 
 
 def _stem(word: str) -> str:
@@ -365,7 +381,25 @@ def _stem(word: str) -> str:
     return word
 
 
-def cite(meta: dict[str, Any], score: float = 0.0) -> dict[str, Any]:
+def _snippet(body: str, query: str, size: int = 280) -> str:
+    """The window of ``body`` that best covers the query's words."""
+    if len(body) <= size or not query:
+        return body[:size]
+    terms = [t[:5] for t in re.findall(r"[a-z0-9%$]{3,}", query.lower())]
+    if not terms:
+        return body[:size]
+    low = body.lower()
+    best, best_hits = 0, -1
+    for start in range(0, len(body) - size // 2, 40):
+        window = low[start:start + size]
+        hits = sum(1 for t in terms if t in window)
+        if hits > best_hits:
+            best, best_hits = start, hits
+    text = body[best:best + size]
+    return ("…" if best else "") + text + ("…" if best + size < len(body) else "")
+
+
+def cite(meta: dict[str, Any], score: float = 0.0, query: str = "") -> dict[str, Any]:
     if meta.get("type") == "decision":
         return {
             "type": "decision", "id": meta["id"], "title": meta["title"], "detail": meta.get("detail") or "",
@@ -377,7 +411,7 @@ def cite(meta: dict[str, Any], score: float = 0.0) -> dict[str, Any]:
         "type": meta.get("kind", "item"), "id": meta["id"], "provider": meta.get("provider"),
         "thread_id": meta.get("thread_id"), "title": meta.get("subject") or (f"#{meta.get('channel')}" if meta.get("channel") else ""),
         "from": meta.get("author_name"), "from_email": meta.get("author_email"), "direction": meta.get("direction"),
-        "date": meta.get("occurred_at"), "snippet": body[:280], "score": round(score, 3),
+        "date": meta.get("occurred_at"), "snippet": _snippet(body, query), "score": round(score, 3),
     }
 
 

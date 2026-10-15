@@ -42,6 +42,21 @@ jobs:
           DB_HOST: localhost
           JWT_SECRET_KEY: test-secret
 
+      - name: Coworker evals (blocks on regressions)
+        run: |
+          python -m coworker.evals.run --json > eval-results.json || (python -m coworker.evals.run; exit 1)
+          python -m coworker.evals.run
+        env:
+          COWORKER_OFFLINE: "1"
+
+      - name: Upload eval results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coworker-eval-results
+          path: packages/backend/eval-results.json
+          if-no-files-found: ignore
+
       - name: Test release smoke tooling
         working-directory: .
         run: python -m unittest discover -s scripts/tests
