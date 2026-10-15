@@ -32,7 +32,22 @@ The stream includes a `card` event with the proposed email. Approve it:
 curl -X POST http://localhost:5000/api/coworker/actions/12/approve -H "Authorization: Bearer $TOKEN"
 ```
 
-## Example: sync and watch progress
+## Example: a scheduled task
+
+Create a recurring job. `freq` is `daily`, `weekdays`, `weekly` (with `days`), `monthly` (with `day`), or `hourly` (with `every_hours`). Times are in the owner's time zone.
+
+```bash
+curl -X POST http://localhost:5000/api/coworker/responsibilities \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"instruction": "Summarize my open deals and who I should follow up with",
+       "schedule": {"freq": "weekly", "days": ["mon"], "time": "09:00", "deliver": ["email"]}}'
+```
+
+The response includes `schedule.description` ("Every Monday at 9 AM"), `schedule.nextRun`, and the last runs. `PATCH /responsibilities/<id>` with `{"schedule": {...}}` changes it. `POST /responsibilities/<id>/run` runs it now. In chat, "every Monday at 9 summarize my open deals" proposes the same task.
+
+Each occurrence runs once, even with several workers. A run missed by up to 2 hours (for example during a deploy) still runs; older ones are skipped. A run uses the same tools as chat, and anything it sends follows the task's autonomy level and your organization's limits.
+
+
 
 `POST /sync` returns in well under a second. The sync runs in the background:
 

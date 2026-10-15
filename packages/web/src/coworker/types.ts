@@ -91,6 +91,15 @@ export interface Responsibility {
   runs: number;
   lastRunAt: string | null;
   createdAt: string;
+  schedule?: TaskSchedule;
+}
+
+export interface TaskSchedule {
+  description: string;
+  nextRun: string | null;
+  deliver: string[];
+  chatId: number | null;
+  runs: { at: string; status: string; summary: string }[];
 }
 
 export interface Suggestion {
