@@ -21,6 +21,14 @@ posts every message to ``/api/coworker/email/inbound?token=<COWORKER_INBOUND_TOK
 * The answer goes back to the owner by email, and the exchange is kept as
   a chat ("✉️ Email") in the web app, one per subject, so a reply in the
   same thread keeps its context.
+
+**Free alternative (no inbound provider)**: the owner writes to or CCs the
+plus-address of their own connected mailbox, ``you+coworker@gmail.com``.
+Gmail and Outlook deliver it to the same inbox, and each mailbox sync picks
+up messages the owner *sent* there (``scan_mailbox``). Only the owner's Sent
+mail counts (Gmail's SENT label, Outlook's Sent Items folder; never a
+matching From header, which anyone can forge), so nobody else can instruct
+the coworker this way.
 """
 from __future__ import annotations
 
@@ -31,10 +39,11 @@ import os
 import re
 import secrets
 from dataclasses import dataclass, field
+from datetime import timedelta
 from email.utils import getaddresses, parseaddr
 from typing import Any
 
-from coworker.store import IntegrityError, Store, iso
+from coworker.store import IntegrityError, Store, iso, utcnow
 
 log = logging.getLogger("coworker.inbound_email")
 
@@ -223,14 +232,17 @@ def require_auth() -> bool:
     return os.environ.get("COWORKER_INBOUND_REQUIRE_AUTH", "1") != "0"
 
 
-def handle(store: Store, msg: Inbound) -> str:
-    """Process one inbound email. Returns what happened (for logs and tests)."""
+def handle(store: Store, msg: Inbound, found: tuple[int, str] | None = None) -> str:
+    """Process one inbound email. Returns what happened (for logs and tests).
+
+    ``found`` is (user, coworker address) when the caller already knows them (the mailbox scan).
+    """
     from coworker import notify
 
     if (msg.headers.get("auto-submitted", "no").lower() != "no" or msg.subject.startswith(notify.SUBJECT_PREFIX)
-            or msg.sender.endswith(f"@{domain()}")):
+            or (bool(domain()) and msg.sender.endswith(f"@{domain()}"))):
         return "ignored: automatic or our own"
-    found = owner_of(store, msg.to + msg.cc)
+    found = found or owner_of(store, msg.to + msg.cc)
     if not found:
         return "ignored: no coworker address"
     user_id, address = found
@@ -267,6 +279,65 @@ def handle(store: Store, msg: Inbound) -> str:
     lines.append(f"Reply or forward to {address} anytime.")
     notify.deliver(store, user_id, f"Re: {msg.subject}", "\n".join(lines))
     return "cc" if others else "note"
+
+
+# -- free mode: the owner's own mailbox plus-address ------------------------------------------
+
+PLUS_WINDOW_HOURS = 24  # never act on old mail the first sync brings in
+
+
+def plus_tag() -> str:
+    return re.sub(r"[^a-z0-9._-]", "", (os.environ.get("COWORKER_PLUS_TAG") or "coworker").lower()) or "coworker"
+
+
+def plus_addresses(store: Store, user_id: int) -> list[str]:
+    """``you+coworker@domain`` for each connected mailbox."""
+    out = []
+    for provider in ("google", "microsoft"):
+        row = store.get_connection_row(user_id, provider)
+        label = str((row or {}).get("account_label") or "").lower().strip()
+        if row and row.get("status") in ("connected", "syncing") and "@" in label:
+            local, at_domain = label.split("@", 1)
+            out.append(f"{local.split('+', 1)[0]}+{plus_tag()}@{at_domain}")
+    return out
+
+
+def scan_mailbox(store: Store, user_id: int) -> int:
+    """Act on mail the owner sent (or CC'd) to their own plus-address since the last sync. Returns how many."""
+    addresses = plus_addresses(store, user_id)
+    if not addresses:
+        return 0
+    since = iso(utcnow() - timedelta(hours=PLUS_WINDOW_HOURS))
+    rows = store.query("SELECT * FROM cw_items WHERE user_id = %s AND kind = 'email' AND direction = 'outbound' "
+                       "AND occurred_at >= %s AND recipients LIKE %s", (user_id, since, f"%+{plus_tag()}@%"))
+    mine = owner_addresses(store, user_id)
+    handled = 0
+    for row in rows:
+        recipients = row.get("recipients") or []
+        if isinstance(recipients, str):
+            try:
+                recipients = json.loads(recipients)
+            except ValueError:
+                continue
+        emails = [str(r.get("email") or "").lower() for r in recipients if isinstance(r, dict)]
+        address = next((a for a in addresses if a in emails), "")
+        sender = str(row.get("author_email") or "").lower()
+        if not address or sender not in mine:
+            continue  # only the owner's own Sent mail
+        meta = row.get("meta") or {}
+        if isinstance(meta, str):
+            try:
+                meta = json.loads(meta)
+            except ValueError:
+                meta = {}
+        if meta.get("sent") is not True:
+            continue  # a From header can be forged; the provider's Sent flag can't
+        msg = Inbound(sender=sender, sender_name=str(row.get("author_name") or ""), to=emails, cc=[],
+                      subject=str(row.get("subject") or ""), text=str(row.get("body") or ""),
+                      message_id=str(meta.get("message_id") or f"item-{row['id']}"), auth=True)
+        out = handle(store, msg, (user_id, address))
+        handled += out in ("note", "cc")
+    return handled
 
 
 def _run(store: Store, user_id: int, msg: Inbound, others: list[str]) -> dict[str, Any]:

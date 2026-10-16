@@ -39,7 +39,10 @@ def test_catalog_availability_and_selection(s, monkeypatch):
     monkeypatch.setenv("GOOGLE_API_KEY", "g")
     assert llm.key_for("google") == "g"
     monkeypatch.setenv("OLLAMA_BASE_URL", "http://localhost:11434")
-    assert llm.key_for("ollama") == "ollama"
+    with patch("coworker.llm.ollama_up", return_value=True):
+        assert llm.key_for("ollama") == "ollama"
+    with patch("coworker.llm.ollama_up", return_value=False):
+        assert llm.key_for("ollama") == ""  # configured but not running: not available
     with patch("services.provider_keys.get_user_provider_key", return_value="user-key"):
         assert llm.key_for("anthropic", 1) == "user-key"
 

@@ -9,6 +9,7 @@ Every channel leads to the same coworker, with the same memory, tools, and appro
 | Slack bot | Asking or delegating in a channel or DM; teammates' questions | Admin turns the bot on; you click **Settings → Slack → Add the bot** |
 | Microsoft Teams / Google Chat | The same as Slack: DM the bot, or @mention it in a channel or space | Your admin installs the app. Sign in to Ourogen once with Microsoft (for Teams) or Google (for Chat), then send the bot a direct message |
 | Text (SMS or WhatsApp) | Quick asks and approvals from your phone, no app needed | **Settings → Text messages**: add your number and confirm the code |
+| Telegram | The same as text, free, with Approve / Skip buttons | **Settings → Telegram → Connect Telegram**, then press **Start** in Telegram |
 | Email it | CC it on a thread, or forward something with a note | **Settings → Email your coworker** shows your address (e.g. `natan@coworker.ourogen.ai`) |
 | Email from it | Approval notices, digests, weekly report | On by default; **Settings → Notifications** |
 
@@ -47,3 +48,10 @@ Your coworker has its own address, like `natan@coworker.ourogen.ai`:
 - **Forward something** with a note on top: "Summarize this and draft a reply." It treats your note as the instruction and the forwarded email as context. It never follows instructions written inside the forwarded part.
 
 The answer comes back to you by email, and the conversation is kept as a chat in the web app. Only mail from your own address, verified by SPF or DKIM, is acted on. Anything else is ignored and logged.
+
+If your server has no inbound-email provider, **Settings → Email your coworker** shows your own inbox's plus-address instead, like `natan+coworker@gmail.com`. Send or CC it from your connected mailbox and your coworker picks it up on its next sync (within a few minutes). Only mail you send yourself counts.
+
+## Telegram
+
+Press **Settings → Telegram → Connect Telegram**, open the link and press **Start**. The link works once, for 15 minutes, and links only that private chat. Then message the bot as you would text your coworker. Proposals arrive with **Approve** and **Skip** buttons, and `YES 12`, `NO 12`, `PAUSE` and `RESUME` work too. You choose whether new approvals are sent to you there.
+

@@ -290,6 +290,10 @@ def run_tick(user_id: int, force: bool = False, inline_sync: bool = False) -> di
             sync_jobs.start(s, job)
             synced = {"queued": int(job["id"])}
     s.update_coworker(user_id, settings=settings)
+    if coworker.get("mode") == "live" and coworker.get("status") == "active":
+        from coworker import inbound_email
+
+        inbound_email.scan_mailbox(s, user_id)  # free "email your coworker": you+coworker@ your own mailbox
     from coworker import governance
 
     if coworker.get("status") == "active" and governance.org_disabled(coworker.get("owner_email") or ""):

@@ -128,6 +128,7 @@ nav:
       - Meetings and Your Voice: coworker/guide/meetings.md
       - FAQ: coworker/guide/faq.md
     - Team Admin: coworker/admin/team.md
+    - Free Mode (No API Keys): coworker/free-mode.md
     - Operations:
       - Set Up: coworker/setup.md
       - Operator Runbook: coworker/operations/runbook.md

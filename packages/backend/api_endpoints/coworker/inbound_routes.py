@@ -14,9 +14,10 @@ from middleware.auth import require_auth
 @coworker_bp.get("/inbound-address")
 @require_auth
 def inbound_address() -> tuple:
+    plus = inbound_email.plus_addresses(store(), uid())  # free: works without an inbound-email provider
     if not inbound_email.is_configured():
-        return jsonify({"configured": False, "address": ""}), 200
-    return jsonify({"configured": True, "address": inbound_email.address_for(store(), uid())}), 200
+        return jsonify({"configured": False, "address": plus[0] if plus else "", "mailbox": bool(plus)}), 200
+    return jsonify({"configured": True, "address": inbound_email.address_for(store(), uid()), "mailbox": False}), 200
 
 
 @coworker_bp.post("/email/inbound")
