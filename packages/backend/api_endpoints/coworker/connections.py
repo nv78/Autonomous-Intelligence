@@ -3,8 +3,9 @@ from __future__ import annotations
 
 import os
 from typing import Any
+from urllib.parse import urlencode
 
-from flask import current_app, jsonify, redirect, request
+from flask import current_app, g, jsonify, redirect, request
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 from api_endpoints.coworker.common import coworker_bp, error, frontend_url, store, uid
@@ -39,6 +40,38 @@ def _back(provider: str, ok: bool, message: str = "") -> Any:
     return redirect(f"{frontend_url()}{target}?{qs}")
 
 
+def _args() -> Any:
+    """The provider's redirect parameters, as handed back by the web app to /finish."""
+    return g.oauth_args
+
+
+@coworker_bp.get("/connections/<provider>/callback")
+def oauth_callback(provider: str) -> Any:
+    """The provider redirects the browser here. Nothing is exchanged yet: the web app finishes the
+    connection with the signed-in user's token (POST /finish), so a consent link someone else
+    started can never attach this account's mailbox to theirs."""
+    if provider not in COMPLETE:
+        return _back(provider, False, "unknown provider")
+    params = {k: v for k, v in request.args.items() if k in ("code", "state", "error", "error_description")}
+    return redirect(f"{frontend_url()}/app/connect/finish?{urlencode({'provider': provider, **params})}")
+
+
+@coworker_bp.post("/connections/<provider>/finish")
+@require_auth
+def oauth_finish(provider: str) -> tuple:
+    if provider not in COMPLETE:
+        return error("Unknown provider", 404, "not_found")
+    data = request.get_json(silent=True) or {}
+    params = {k: str(data.get(k) or "") for k in ("code", "state", "error", "error_description") if data.get(k)}
+    state = _read_state(params.get("state", ""), provider)
+    if state and int(state.get("uid") or 0) != uid():
+        store().log(uid(), "security", f"Refused a {provider} connection that another account started.")
+        return error("This connection was started by a different account. Start it again from Settings.", 403, "wrong_account")
+    g.oauth_args = params
+    resp = COMPLETE[provider]()
+    return jsonify({"next": resp.location.removeprefix(frontend_url())}), 200
+
+
 @coworker_bp.get("/connections")
 @require_auth
 def list_connections() -> tuple:
@@ -61,15 +94,14 @@ def google_start() -> tuple:
     return jsonify({"url": google.auth_url(_state(uid(), "google", level), level)}), 200
 
 
-@coworker_bp.get("/connections/google/callback")
 def google_callback() -> Any:
-    state = _read_state(request.args.get("state", ""), "google")
+    state = _read_state(_args().get("state", ""), "google")
     if not state:
         return _back("google", False, "invalid or expired state")
-    if request.args.get("error"):
-        return _back("google", False, request.args["error"])
+    if _args().get("error"):
+        return _back("google", False, _args()["error"])
     try:
-        token = google.exchange_code(request.args.get("code", ""))
+        token = google.exchange_code(_args().get("code", ""))
     except ConnectorError as exc:
         return _back("google", False, str(exc))
     user_id = int(state["uid"])
@@ -78,6 +110,10 @@ def google_callback() -> Any:
     if not token.get("refresh_token") and previous.get("refresh_token"):
         token["refresh_token"] = previous["refresh_token"]
     email = google.fetch_account_email(token.get("access_token", ""))
+    if email:  # Google just proved this user controls the mailbox
+        from coworker import identity
+
+        identity.record(s, user_id, "google", f"mailbox:{email.lower()}", email)
     s.upsert_connection(user_id, "google", account_label=email, token_enc=encrypt_token(token),
                         scopes=token.get("scope", ""), status="connected", error="")
     coworker = s.get_coworker(user_id)
@@ -110,15 +146,14 @@ def microsoft_start() -> tuple:
     return jsonify({"url": microsoft.auth_url(_state(uid(), "microsoft", level), level)}), 200
 
 
-@coworker_bp.get("/connections/microsoft/callback")
 def microsoft_callback() -> Any:
-    state = _read_state(request.args.get("state", ""), "microsoft")
+    state = _read_state(_args().get("state", ""), "microsoft")
     if not state:
         return _back("microsoft", False, "invalid or expired state")
-    if request.args.get("error"):
-        return _back("microsoft", False, request.args.get("error_description") or request.args["error"])
+    if _args().get("error"):
+        return _back("microsoft", False, _args().get("error_description") or _args()["error"])
     try:
-        token = microsoft.exchange_code(request.args.get("code", ""))
+        token = microsoft.exchange_code(_args().get("code", ""))
     except ConnectorError as exc:
         return _back("microsoft", False, str(exc))
     user_id = int(state["uid"])
@@ -144,13 +179,12 @@ def slack_start() -> tuple:
     return jsonify({"url": slack.auth_url(_state(uid(), "slack"))}), 200
 
 
-@coworker_bp.get("/connections/slack/callback")
 def slack_callback() -> Any:
-    state = _read_state(request.args.get("state", ""), "slack")
+    state = _read_state(_args().get("state", ""), "slack")
     if not state:
         return _back("slack", False, "invalid or expired state")
     try:
-        token = slack.exchange_code(request.args.get("code", ""))
+        token = slack.exchange_code(_args().get("code", ""))
     except ConnectorError as exc:
         return _back("slack", False, str(exc))
     _save_slack(int(state["uid"]), token)
@@ -202,13 +236,12 @@ def hubspot_start() -> tuple:
     return jsonify({"url": hubspot.auth_url(_state(uid(), "hubspot"))}), 200
 
 
-@coworker_bp.get("/connections/hubspot/callback")
 def hubspot_callback() -> Any:
-    state = _read_state(request.args.get("state", ""), "hubspot")
+    state = _read_state(_args().get("state", ""), "hubspot")
     if not state:
         return _back("hubspot", False, "invalid or expired state")
     try:
-        token = hubspot.exchange_code(request.args.get("code", ""))
+        token = hubspot.exchange_code(_args().get("code", ""))
     except ConnectorError as exc:
         return _back("hubspot", False, str(exc))
     _save_hubspot(int(state["uid"]), token)
@@ -249,15 +282,14 @@ def salesforce_start() -> tuple:
     return jsonify({"url": salesforce.auth_url(_state(uid(), "salesforce"))}), 200
 
 
-@coworker_bp.get("/connections/salesforce/callback")
 def salesforce_callback() -> Any:
-    state = _read_state(request.args.get("state", ""), "salesforce")
+    state = _read_state(_args().get("state", ""), "salesforce")
     if not state:
         return _back("salesforce", False, "invalid or expired state")
-    if request.args.get("error"):
-        return _back("salesforce", False, request.args.get("error_description") or request.args["error"])
+    if _args().get("error"):
+        return _back("salesforce", False, _args().get("error_description") or _args()["error"])
     try:
-        token = salesforce.exchange_code(request.args.get("code", ""))
+        token = salesforce.exchange_code(_args().get("code", ""))
     except ConnectorError as exc:
         return _back("salesforce", False, str(exc))
     _save_crm(int(state["uid"]), "salesforce", token, token.get("org", "Salesforce"))
@@ -273,13 +305,12 @@ def pipedrive_start() -> tuple:
     return jsonify({"url": pipedrive.auth_url(_state(uid(), "pipedrive"))}), 200
 
 
-@coworker_bp.get("/connections/pipedrive/callback")
 def pipedrive_callback() -> Any:
-    state = _read_state(request.args.get("state", ""), "pipedrive")
+    state = _read_state(_args().get("state", ""), "pipedrive")
     if not state:
         return _back("pipedrive", False, "invalid or expired state")
     try:
-        token = pipedrive.exchange_code(request.args.get("code", ""))
+        token = pipedrive.exchange_code(_args().get("code", ""))
     except ConnectorError as exc:
         return _back("pipedrive", False, str(exc))
     _save_crm(int(state["uid"]), "pipedrive", token, token.get("company", "Pipedrive"))
@@ -356,3 +387,6 @@ def sync_status() -> tuple:
     from coworker import sync_jobs
 
     return jsonify(sync_jobs.status(store(), uid())), 200
+
+
+COMPLETE = {"google": google_callback, "microsoft": microsoft_callback, "slack": slack_callback, "hubspot": hubspot_callback, "salesforce": salesforce_callback, "pipedrive": pipedrive_callback}

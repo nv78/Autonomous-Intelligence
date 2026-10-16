@@ -10,6 +10,7 @@ import pytest
 from coworker import memory, security, style
 from coworker.connectors.demo import DemoConnector
 from coworker.store import IntegrityError, Store, iso, parse_iso
+from tests.conftest import oauth_return
 
 
 @pytest.fixture(autouse=True)
@@ -376,19 +377,19 @@ def test_google_oauth_flow(client, auth_headers, demo, monkeypatch):
     token = {"access_token": "at", "refresh_token": "rt", "scope": "gmail.send", "expires_in": 3600}
     with patch("coworker.connectors.google.exchange_code", return_value={**token, "expires_at": 9e9}), \
          patch("coworker.connectors.google.fetch_account_email", return_value="natan@anote.ai"):
-        resp = client.get(f"/api/coworker/connections/google/callback?state={state}&code=abc")
+        resp = oauth_return(client, f"/api/coworker/connections/google/callback?state={state}&code=abc")
     assert resp.status_code == 302 and "connected=google" in resp.location
     cw = client.get("/api/coworker", headers=auth_headers).get_json()
     assert cw["coworker"]["mode"] == "live"
     assert {c["provider"] for c in cw["connections"]} == {"google"}
-    bad = client.get("/api/coworker/connections/google/callback?state=forged&code=abc")
+    bad = oauth_return(client, "/api/coworker/connections/google/callback?state=forged&code=abc")
     assert "connect_error=google" in bad.location
-    denied = client.get(f"/api/coworker/connections/google/callback?state={state}&error=access_denied")
+    denied = oauth_return(client, f"/api/coworker/connections/google/callback?state={state}&error=access_denied")
     assert "connect_error" in denied.location
     from coworker.connectors.base import ConnectorError
 
     with patch("coworker.connectors.google.exchange_code", side_effect=ConnectorError("nope")):
-        failed = client.get(f"/api/coworker/connections/google/callback?state={state}&code=abc")
+        failed = oauth_return(client, f"/api/coworker/connections/google/callback?state={state}&code=abc")
     assert "connect_error" in failed.location
     with patch("coworker.connectors.google.revoke") as revoke:
         assert client.delete("/api/coworker/connections/google", headers=auth_headers).status_code == 200
@@ -410,8 +411,8 @@ def test_slack_token_and_oauth(client, auth_headers, demo, monkeypatch):
 
     state = parse_qs(urlparse(url).query)["state"][0]
     with patch("coworker.connectors.slack.exchange_code", return_value={"access_token": "xoxp-2", "team": "Anote"}):
-        assert "connected=slack" in client.get(f"/api/coworker/connections/slack/callback?state={state}&code=c").location
-    assert "connect_error" in client.get("/api/coworker/connections/slack/callback?state=x").location
+        assert "connected=slack" in oauth_return(client, f"/api/coworker/connections/slack/callback?state={state}&code=c").location
+    assert "connect_error" in oauth_return(client, "/api/coworker/connections/slack/callback?state=x").location
     with patch("coworker.connectors.slack.revoke"):
         assert client.delete("/api/coworker/connections/slack", headers=h).status_code == 200
     assert client.get("/api/coworker/connections", headers=h).get_json()["connections"] == []

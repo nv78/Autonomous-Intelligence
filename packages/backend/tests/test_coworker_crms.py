@@ -12,6 +12,7 @@ from coworker import executor, reports, vendor_check
 from coworker.connectors import crm, pipedrive, salesforce
 from coworker.connectors.base import ConnectorError, decrypt_token, encrypt_token
 from coworker.store import Store
+from tests.conftest import oauth_return
 
 PAYLOAD = {"company": "Northwind", "name": "Dana Lee", "email": "Dana@Northwind.com", "summary": "Wants a pilot in Q1",
            "fields": {"budget": "$30k", "timeline": "Q1", "empty": ""}}
@@ -206,20 +207,20 @@ def test_crm_routes(client, auth_headers, monkeypatch):
     state = parse_qs(urlparse(url).query)["state"][0]
     with patch("coworker.connectors.salesforce.exchange_code",
                return_value={"access_token": "a", "refresh_token": "r", "instance_url": "https://acme", "org": "acme"}):
-        assert "connected=salesforce" in client.get(f"/api/coworker/connections/salesforce/callback?state={state}&code=c").location
-    assert "connect_error" in client.get(f"/api/coworker/connections/salesforce/callback?state={state}&error=denied").location
-    assert "connect_error" in client.get("/api/coworker/connections/salesforce/callback?state=bad").location
+        assert "connected=salesforce" in oauth_return(client, f"/api/coworker/connections/salesforce/callback?state={state}&code=c").location
+    assert "connect_error" in oauth_return(client, f"/api/coworker/connections/salesforce/callback?state={state}&error=denied").location
+    assert "connect_error" in oauth_return(client, "/api/coworker/connections/salesforce/callback?state=bad").location
     with patch("coworker.connectors.salesforce.exchange_code", side_effect=ConnectorError("no")):
-        assert "connect_error" in client.get(f"/api/coworker/connections/salesforce/callback?state={state}&code=c").location
+        assert "connect_error" in oauth_return(client, f"/api/coworker/connections/salesforce/callback?state={state}&code=c").location
 
     url = client.post("/api/coworker/connections/pipedrive/start", headers=h).get_json()["url"]
     state = parse_qs(urlparse(url).query)["state"][0]
     with patch("coworker.connectors.pipedrive.exchange_code", return_value={"kind": "oauth", "access_token": "a",
                                                                               "expires_at": time.time() + 99, "company": "Acme"}):
-        assert "connected=pipedrive" in client.get(f"/api/coworker/connections/pipedrive/callback?state={state}&code=c").location
-    assert "connect_error" in client.get("/api/coworker/connections/pipedrive/callback?state=bad").location
+        assert "connected=pipedrive" in oauth_return(client, f"/api/coworker/connections/pipedrive/callback?state={state}&code=c").location
+    assert "connect_error" in oauth_return(client, "/api/coworker/connections/pipedrive/callback?state=bad").location
     with patch("coworker.connectors.pipedrive.exchange_code", side_effect=ConnectorError("no")):
-        assert "connect_error" in client.get(f"/api/coworker/connections/pipedrive/callback?state={state}&code=c").location
+        assert "connect_error" in oauth_return(client, f"/api/coworker/connections/pipedrive/callback?state={state}&code=c").location
 
     accounts = {c["provider"]: c["account"] for c in client.get("/api/coworker/connections", headers=h).get_json()["connections"]
                 if c["provider"] != "demo"}

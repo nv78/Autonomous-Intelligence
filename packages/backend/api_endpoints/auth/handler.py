@@ -18,7 +18,7 @@ auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
-MICROSOFT_ME_URL = "https://graph.microsoft.com/v1.0/me?$select=userPrincipalName,displayName,givenName"
+MICROSOFT_ME_URL = "https://graph.microsoft.com/v1.0/me?$select=id,userPrincipalName,displayName,givenName"
 
 
 def _hash_password(password: str) -> str:
@@ -94,8 +94,33 @@ def _state_serializer() -> URLSafeTimedSerializer:
     return URLSafeTimedSerializer(current_app.config["JWT_SECRET_KEY"], salt="google-oauth-state")
 
 
-def _build_google_auth_url(client_id: str) -> str:
-    state = _state_serializer().dumps(secrets.token_urlsafe(16))
+LOGIN_NONCE_COOKIE = "cw_login_nonce"
+
+
+def _start_login(url_for_nonce: Any) -> Any:
+    """Redirect to the provider, with a one-time nonce in both the state and a cookie in this browser.
+
+    The callback only accepts a state whose nonce matches this browser's cookie, so a sign-in
+    link someone else started can't log you into their account (login CSRF).
+    """
+    nonce = secrets.token_urlsafe(16)
+    resp = redirect(url_for_nonce(nonce))
+    resp.set_cookie(LOGIN_NONCE_COOKIE, nonce, max_age=600, httponly=True, samesite="Lax", path="/",
+                    secure=request.is_secure or os.environ.get("APP_ENV") == "production")
+    return resp
+
+
+def _nonce_ok(nonce: str) -> bool:
+    cookie = request.cookies.get(LOGIN_NONCE_COOKIE, "")
+    return bool(cookie) and secrets.compare_digest(cookie, str(nonce))
+
+
+def _backend_url() -> str:
+    return os.environ.get("BACKEND_URL", request.url_root).rstrip("/")
+
+
+def _build_google_auth_url(client_id: str, nonce: str) -> str:
+    state = _state_serializer().dumps(nonce)
     params = {
         "client_id": client_id,
         "redirect_uri": _google_oauth_redirect_uri(),
@@ -119,17 +144,15 @@ def google_login_start():
     if not client_id:
         return jsonify({"error": "Google sign-in is not configured"}), 503
 
-    return redirect(_build_google_auth_url(client_id))
+    return _start_login(lambda nonce: _build_google_auth_url(client_id, nonce))
 
 
 @auth_bp.get("/google/url")
 def google_login_url():
-    """Return Google's OAuth consent screen URL as JSON, for client-driven redirects."""
-    client_id = os.environ.get("GOOGLE_CLIENT_ID", "")
-    if not client_id:
+    """Where to send the browser to sign in. It goes through /auth/google/login so the nonce cookie is set."""
+    if not os.environ.get("GOOGLE_CLIENT_ID", ""):
         return jsonify({"error": "Google sign-in is not configured"}), 503
-
-    return jsonify({"url": _build_google_auth_url(client_id)}), 200
+    return jsonify({"url": f"{_backend_url()}/auth/google/login"}), 200
 
 
 def google_oauth_callback():
@@ -150,8 +173,10 @@ def google_oauth_callback():
         return redirect(f"{frontend_url}/login?error=missing_code")
 
     try:
-        _state_serializer().loads(state, max_age=600)
+        nonce = _state_serializer().loads(state, max_age=600)
     except BadData:
+        return redirect(f"{frontend_url}/login?error=invalid_state")
+    if not _nonce_ok(nonce):
         return redirect(f"{frontend_url}/login?error=invalid_state")
 
     client_id = os.environ.get("GOOGLE_CLIENT_ID", "")
@@ -196,7 +221,8 @@ def google_oauth_callback():
         return redirect(f"{frontend_url}/login?error=unverified_email")
     # ``hd`` is set only for Google Workspace accounts the domain's admin manages;
     # a personal Google account registered on a company address has none.
-    return _finish_sso(email, claims.get("given_name") or claims.get("name") or "", str(claims.get("hd") or ""))
+    return _finish_sso(email, claims.get("given_name") or claims.get("name") or "", str(claims.get("hd") or ""),
+                       "google", str(claims.get("sub") or email))
 
 
 def _sso_required(email: str) -> bool:
@@ -210,7 +236,7 @@ def _sso_required(email: str) -> bool:
         return False
 
 
-def _finish_sso(email: str, name: str, managed_domain: str) -> Any:
+def _finish_sso(email: str, name: str, managed_domain: str, provider: str, subject: str, tenant: str = "") -> Any:
     """Sign in (or sign up) a user whose address the identity provider verified.
 
     ``managed_domain`` is the domain the provider says the account's
@@ -218,7 +244,7 @@ def _finish_sso(email: str, name: str, managed_domain: str) -> Any:
     """
     frontend_url = _frontend_url()
     try:
-        from database.db import create_user, get_connection, get_user_by_email
+        from database.db import create_user, get_connection, get_user_by_email, set_password_hash
         cnx = get_connection()
         user = get_user_by_email(cnx, email)
         is_new_user = not user
@@ -227,6 +253,12 @@ def _finish_sso(email: str, name: str, managed_domain: str) -> Any:
             user_id = create_user(cnx, email, random_password, name)
         else:
             user_id = user["id"]
+        first_verified = _record_identity(int(user_id), provider, subject, email, managed_domain, tenant)
+        if first_verified and not is_new_user:
+            # Anyone could have registered this address with a password before its owner showed up.
+            # The first proof of ownership replaces that password and ends every earlier session.
+            set_password_hash(cnx, int(user_id), _hash_password(secrets.token_urlsafe(32)))
+            _revoke_sessions(int(user_id))
         cnx.close()
     except Exception:
         return redirect(f"{frontend_url}/login?error=service_unavailable")
@@ -245,9 +277,28 @@ def _finish_sso(email: str, name: str, managed_domain: str) -> Any:
 
     token = create_access_token(identity=str(user_id))
     new_user_param = "&isNewUser=1" if is_new_user else ""
-    return redirect(
-        f"{frontend_url}/oauth/callback?token={urllib.parse.quote(token)}{new_user_param}"
-    )
+    # In the fragment, not the query: fragments aren't sent to servers or kept in their logs.
+    resp = redirect(f"{frontend_url}/oauth/callback#token={urllib.parse.quote(token)}{new_user_param}")
+    resp.delete_cookie(LOGIN_NONCE_COOKIE, path="/")
+    return resp
+
+
+def _record_identity(user_id: int, provider: str, subject: str, email: str, managed_domain: str, tenant: str) -> bool:
+    try:
+        from coworker import identity
+        from coworker.store import get_store
+
+        return identity.record(get_store(), user_id, provider, subject, email, managed_domain, tenant)
+    except Exception:
+        current_app.logger.exception("Couldn't record the verified identity")
+        return False
+
+
+def _revoke_sessions(user_id: int) -> None:
+    from coworker import identity
+    from coworker.store import get_store
+
+    identity.revoke_sessions(get_store(), user_id)
 
 
 # -- Microsoft (Entra ID) sign-in --------------------------------------------------
@@ -263,7 +314,7 @@ def _microsoft_state_serializer() -> URLSafeTimedSerializer:
     return URLSafeTimedSerializer(current_app.config["JWT_SECRET_KEY"], salt="microsoft-login-state")
 
 
-def _build_microsoft_auth_url() -> str:
+def _build_microsoft_auth_url(nonce: str) -> str:
     from coworker.connectors import microsoft
 
     params = {
@@ -272,7 +323,7 @@ def _build_microsoft_auth_url() -> str:
         "response_type": "code",
         "response_mode": "query",
         "scope": "openid email profile User.Read",
-        "state": _microsoft_state_serializer().dumps(secrets.token_urlsafe(16)),
+        "state": _microsoft_state_serializer().dumps(nonce),
         "prompt": "select_account",
     }
     return f"{microsoft._authority()}/authorize?{urllib.parse.urlencode(params)}"
@@ -284,7 +335,7 @@ def microsoft_login_start():
 
     if not microsoft.is_configured():
         return jsonify({"error": "Microsoft sign-in is not configured"}), 503
-    return redirect(_build_microsoft_auth_url())
+    return _start_login(_build_microsoft_auth_url)
 
 
 @auth_bp.get("/microsoft/url")
@@ -293,7 +344,7 @@ def microsoft_login_url():
 
     if not microsoft.is_configured():
         return jsonify({"error": "Microsoft sign-in is not configured"}), 503
-    return jsonify({"url": _build_microsoft_auth_url()}), 200
+    return jsonify({"url": f"{_backend_url()}/auth/microsoft/login"}), 200
 
 
 @auth_bp.get("/microsoft/callback")
@@ -313,8 +364,10 @@ def microsoft_login_callback():
     if not code or not state:
         return redirect(f"{frontend_url}/login?error=missing_code")
     try:
-        _microsoft_state_serializer().loads(state, max_age=600)
+        nonce = _microsoft_state_serializer().loads(state, max_age=600)
     except BadData:
+        return redirect(f"{frontend_url}/login?error=invalid_state")
+    if not _nonce_ok(nonce):
         return redirect(f"{frontend_url}/login?error=invalid_state")
     if not microsoft.is_configured():
         return redirect(f"{frontend_url}/login?error=not_configured")
@@ -334,6 +387,7 @@ def microsoft_login_callback():
             current_app.logger.error("Microsoft profile lookup failed (status %s)", me.status_code)
             return redirect(f"{frontend_url}/login?error=microsoft_auth_failed")
         profile = me.json()
+        tenant = _token_tenant(token_resp.json().get("id_token", ""))
     except (http_requests.RequestException, ValueError):
         current_app.logger.exception("Microsoft sign-in failed")
         return redirect(f"{frontend_url}/login?error=microsoft_auth_failed")
@@ -341,7 +395,23 @@ def microsoft_login_callback():
     if "@" not in email or "#ext#" in email:
         return redirect(f"{frontend_url}/login?error=unverified_email")
     # A tenant can only issue UPNs on domains it verified, so the UPN's domain is managed.
-    return _finish_sso(email, str(profile.get("givenName") or profile.get("displayName") or ""), email.split("@")[-1])
+    # Personal Microsoft accounts can have a UPN at any company's domain; only a work tenant manages one.
+    managed = "" if tenant in ("", MICROSOFT_PERSONAL_TENANT) else email.split("@")[-1]
+    return _finish_sso(email, str(profile.get("givenName") or profile.get("displayName") or ""), managed,
+                       "microsoft", str(profile.get("id") or email), tenant)
+
+
+MICROSOFT_PERSONAL_TENANT = "9188040d-6c67-4c5b-b112-36a304b66dad"
+
+
+def _token_tenant(id_token: str) -> str:
+    """The ``tid`` claim of the ID token we just received from Microsoft's token endpoint over TLS."""
+    import jwt
+
+    try:
+        return str(jwt.decode(id_token, options={"verify_signature": False}).get("tid") or "")
+    except jwt.PyJWTError:
+        return ""
 
 
 @auth_bp.post("/refresh")

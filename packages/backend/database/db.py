@@ -62,6 +62,12 @@ def create_user(cnx: Any, email: str, password_hash: str, name: str = "") -> int
     return user_id
 
 
+def set_password_hash(cnx: Any, user_id: int, password_hash: str) -> None:
+    cursor = cnx.cursor()
+    cursor.execute("UPDATE users SET password_hash = %s WHERE id = %s", (password_hash, user_id))
+    cursor.close()
+
+
 # ---------------------------------------------------------------------------
 # Folders
 # ---------------------------------------------------------------------------

@@ -7,7 +7,7 @@ Every channel leads to the same coworker, with the same memory, tools, and appro
 | Web chat | Delegating, reviewing, settings | Nothing |
 | Mobile app | Approving from a notification, watching a live call | Install the app and sign in |
 | Slack bot | Asking or delegating in a channel or DM; teammates' questions | Admin turns the bot on; you click **Settings → Slack → Add the bot** |
-| Microsoft Teams / Google Chat | The same as Slack: DM the bot, or @mention it in a channel or space | Your admin installs the app; you send it one direct message to link yourself |
+| Microsoft Teams / Google Chat | The same as Slack: DM the bot, or @mention it in a channel or space | Your admin installs the app. Sign in to Ourogen once with Microsoft (for Teams) or Google (for Chat), then send the bot a direct message |
 | Text (SMS or WhatsApp) | Quick asks and approvals from your phone, no app needed | **Settings → Text messages**: add your number and confirm the code |
 | Email it | CC it on a thread, or forward something with a note | **Settings → Email your coworker** shows your address (e.g. `natan@coworker.ourogen.ai`) |
 | Email from it | Approval notices, digests, weekly report | On by default; **Settings → Notifications** |

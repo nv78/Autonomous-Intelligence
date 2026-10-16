@@ -11,6 +11,7 @@ from coworker import executor
 from coworker.connectors import hubspot
 from coworker.connectors.base import ConnectorError, decrypt_token, encrypt_token
 from coworker.store import Store, iso, utcnow
+from tests.conftest import oauth_return
 
 
 def _resp(status: int = 200, data: dict | None = None) -> MagicMock:
@@ -199,11 +200,11 @@ def test_hubspot_routes(client, auth_headers, monkeypatch):
         monkeypatch.setenv("HUBSPOT_CLIENT_SECRET", "sec")
         url = client.post("/api/coworker/connections/hubspot/start", headers=auth_headers).get_json()["url"]
         state = url.split("state=")[1]
-        bad = client.get("/api/coworker/connections/hubspot/callback?state=nope&code=c")
+        bad = oauth_return(client, "/api/coworker/connections/hubspot/callback?state=nope&code=c")
         assert "connect_error=hubspot" in bad.headers["Location"]
         with patch("coworker.connectors.hubspot.exchange_code", side_effect=ConnectorError("denied", "oauth_failed")):
-            assert "connect_error" in client.get(f"/api/coworker/connections/hubspot/callback?state={state}&code=c").headers["Location"]
+            assert "connect_error" in oauth_return(client, f"/api/coworker/connections/hubspot/callback?state={state}&code=c").headers["Location"]
         with patch("coworker.connectors.hubspot.exchange_code",
                    return_value={"access_token": "a", "kind": "oauth", "portal": "nw", "scope": "oauth"}):
-            done = client.get(f"/api/coworker/connections/hubspot/callback?state={state}&code=c")
+            done = oauth_return(client, f"/api/coworker/connections/hubspot/callback?state={state}&code=c")
         assert "connected=hubspot" in done.headers["Location"]

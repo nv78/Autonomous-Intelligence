@@ -220,6 +220,11 @@ def test_admin_vendor_route_and_hubspot_revoke(client, auth_headers, monkeypatch
         client.post("/api/coworker", json={"mode": "demo"}, headers=auth_headers)
         monkeypatch.setenv("PILOT_ADMIN_EMAILS", "someone@else.com")
         assert client.get("/api/coworker/admin/vendors", headers=auth_headers).status_code == 403
+        from coworker import identity
+        from coworker.store import get_store
+
+        with client.application.app_context():
+            identity.record(get_store(), 1, "google", "sub-natan", "natan@anote.ai")
         monkeypatch.setenv("PILOT_ADMIN_EMAILS", "natan@anote.ai")
         with patch("coworker.vendor_check.run_all", return_value=[{"name": "x", "status": "ok", "detail": ""}]):
             assert client.get("/api/coworker/admin/vendors", headers=auth_headers).get_json()["vendors"][0]["name"] == "x"

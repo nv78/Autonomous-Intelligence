@@ -327,6 +327,23 @@ TABLES: dict[str, str] = {
         created_at VARCHAR(40) NOT NULL,
         UNIQUE (platform, external_id)
     """,
+    "cw_verified_identities": """
+        id {pk},
+        user_id INT NOT NULL,
+        provider VARCHAR(20) NOT NULL,
+        subject VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL DEFAULT '',
+        managed_domain VARCHAR(255) NOT NULL DEFAULT '',
+        tenant VARCHAR(255) NOT NULL DEFAULT '',
+        created_at VARCHAR(40) NOT NULL,
+        last_seen_at VARCHAR(40),
+        UNIQUE (provider, subject)
+    """,
+    "cw_auth_epochs": """
+        id {pk},
+        user_id INT NOT NULL UNIQUE,
+        tokens_valid_after VARCHAR(40) NOT NULL
+    """,
     "cw_channel_threads": """
         id {pk},
         user_id INT NOT NULL,
@@ -378,6 +395,7 @@ INDEXES: list[tuple[str, str, str]] = [
     ("idx_cw_turns_meeting", "cw_turns", "meeting_id, status"),
     ("idx_cw_org_members_user", "cw_org_members", "user_id, status"),
     ("idx_cw_phones_number", "cw_phones", "number, verified"),
+    ("idx_cw_verified_user", "cw_verified_identities", "user_id"),
 ]
 
 

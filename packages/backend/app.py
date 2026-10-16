@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+from datetime import timedelta
 
 from flask import Flask, Response, jsonify
 from flask_cors import CORS
@@ -26,7 +27,8 @@ def create_app(config: dict[str, object] | None = None) -> Flask:
     app.config.update(
         SECRET_KEY=os.environ.get("JWT_SECRET_KEY", "dev-secret-change-me"),
         JWT_SECRET_KEY=os.environ.get("JWT_SECRET_KEY", "dev-secret-change-me"),
-        JWT_ACCESS_TOKEN_EXPIRES=False,
+        # Sessions last JWT_ACCESS_TOKEN_DAYS (default 14), and can be ended early (coworker/identity.py).
+        JWT_ACCESS_TOKEN_EXPIRES=timedelta(days=int(os.environ.get("JWT_ACCESS_TOKEN_DAYS", "14") or 14)),
         TESTING=False,
         DB_HOST=os.environ.get("DB_HOST", "localhost"),
         DB_NAME=os.environ.get("DB_NAME", "anote"),
@@ -51,7 +53,17 @@ def create_app(config: dict[str, object] | None = None) -> Flask:
         observability.init("worker" if os.environ.get("COWORKER_PROCESS") == "worker" else "web")
 
     CORS(app, resources={r"/*": {"origins": "*"}})
-    JWTManager(app)
+    jwt = JWTManager(app)
+
+    @jwt.token_in_blocklist_loader
+    def _revoked(_header: dict, payload: dict) -> bool:
+        try:
+            from coworker import identity
+            from coworker.store import get_store
+
+            return identity.token_revoked(get_store(), payload)
+        except Exception:  # an unreachable store must not lock everyone out
+            return False
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(chat_bp)

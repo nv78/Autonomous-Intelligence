@@ -172,6 +172,11 @@ def test_pilot_applications(client, auth_headers, demo, monkeypatch):
     assert client.post("/api/coworker/pilot/applications", json={**body, "email": "nope"}).status_code == 400
     assert client.post("/api/coworker/pilot/applications", json={**body, "website": "spam.com"}).get_json() == {"ok": True}
     assert client.get("/api/coworker/pilot/applications", headers=auth_headers).status_code == 403
+    from coworker import identity
+    from coworker.store import get_store
+
+    with client.application.app_context():
+        identity.record(get_store(), 1, "google", "sub-natan", "natan@example.com")
     monkeypatch.setenv("PILOT_ADMIN_EMAILS", "natan@example.com")
     apps = client.get("/api/coworker/pilot/applications", headers=auth_headers).get_json()["applications"]
     assert apps[0]["answers"]["handOff"] == ["inbound sales", "scheduling"]
