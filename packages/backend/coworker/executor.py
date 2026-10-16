@@ -83,6 +83,7 @@ def propose(
     responsibility: dict[str, Any] | None = None,
     chat_id: int | None = None,
     requested_in_chat: bool = False,
+    extra_risks: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     if action_type not in policy.ACTION_TYPES:
         raise ActionError(f"Unknown action type {action_type}")
@@ -93,6 +94,7 @@ def propose(
         risks = security.assess_outbound(
             action_type, payload, owner_email=coworker.get("owner_email", ""), requested_in_chat=requested_in_chat, **ctx,
         )
+    risks += extra_risks or []
     from coworker import orgs
 
     level = orgs.cap_level(store, user_id, action_type, policy.level_for(coworker, action_type, responsibility))
@@ -119,7 +121,7 @@ def propose(
     else:
         store.log(user_id, "proposed", f"Needs approval: {title}", {"reason": decision["reason"]}, action_id=action_id,
                   chat_id=chat_id)
-        if not requested_in_chat:  # the user is looking at the chat already
+        if responsibility is not None or chat_id is None:  # otherwise the card is in the chat the user is looking at
             from coworker import push
 
             fresh = store.get("cw_actions", action_id, user_id)

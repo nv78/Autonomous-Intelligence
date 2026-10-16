@@ -181,7 +181,7 @@ def _command(store: Store, user_id: int, token: dict[str, Any], channel: str, th
 
 def _question(store: Store, user_id: int, token: dict[str, Any], event: dict[str, Any], channel: str,
               thread_ts: str | None, text: str) -> str:
-    from coworker import drafting, executor, orgs, policy, security
+    from coworker import drafting, executor, governance, orgs, policy, security
 
     coworker = store.get_coworker(user_id) or {}
     owner = drafting.first_name(coworker.get("owner_name", "")) or "my owner"
@@ -194,7 +194,7 @@ def _question(store: Store, user_id: int, token: dict[str, Any], event: dict[str
     level = orgs.cap_level(store, user_id, "slack.post", policy.level_for(coworker, "slack.post"))
     # Someone from another company in a Slack Connect channel never gets an unreviewed answer from private memory.
     external = bool(event.get("user_team")) and event.get("user_team") != token.get("team_id")
-    if answer["confident"] and level in ("notify", "silent") and not external:
+    if answer["confident"] and level in ("notify", "silent") and not external and not governance.needs_employer_ok(store, user_id):
         post(token, channel, f"{answer['text']}\n_({owner}'s AI coworker)_", thread_ts)
         store.log(user_id, "executed", f"Answered <@{asker}> on Slack: {text[:120]}", {"answer": answer["text"]})
         return "answered"

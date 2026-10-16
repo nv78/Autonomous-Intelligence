@@ -70,7 +70,8 @@ def run_turn(store: Store, user_id: int, chat_id: int | None, message: str,
              history: list[dict[str, str]] | None = None,
              responsibility: dict[str, Any] | None = None) -> Generator[Event, None, None]:
     """``responsibility`` is set for a scheduled task's run: its autonomy level applies to what it proposes."""
-    ctx = tools.ToolContext(store=store, user_id=user_id, chat_id=chat_id, responsibility=responsibility)
+    ctx = tools.ToolContext(store=store, user_id=user_id, chat_id=chat_id, responsibility=responsibility,
+                            owner_message="" if responsibility else message)
     if llm.available(user_id):
         yield from _llm_turn(ctx, message, history or [])
     else:
