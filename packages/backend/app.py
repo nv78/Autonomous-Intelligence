@@ -41,6 +41,8 @@ def create_app(config: dict[str, object] | None = None) -> Flask:
         STRIPE_SECRET_KEY=os.environ.get("STRIPE_SECRET_KEY", ""),
         UPLOAD_FOLDER=os.environ.get("UPLOAD_FOLDER", "/tmp/anote_uploads"),
         COWORKER_DB_URL=os.environ.get("COWORKER_DB_URL", ""),
+        # The largest legitimate upload is a 60 MB voice/video sample for the twin.
+        MAX_CONTENT_LENGTH=int(os.environ.get("MAX_REQUEST_MB", "64") or 64) * 1024 * 1024,
     )
     if config:
         app.config.update(config)

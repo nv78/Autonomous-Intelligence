@@ -89,10 +89,15 @@ def test_gmail_oidc_verification(monkeypatch):
     monkeypatch.setenv("GMAIL_PUSH_AUDIENCE", "https://chat.ourogen.ai/api/coworker/google/push")
     assert not mail_push.verify_gmail({}, {})
     assert not mail_push.verify_gmail({"Authorization": "Bearer bad"}, {})
-    with patch("google.oauth2.id_token.verify_oauth2_token", return_value={"email": "push@p.iam.gserviceaccount.com"}):
+    claims = {"email": "push@p.iam.gserviceaccount.com", "email_verified": True}
+    with patch("google.oauth2.id_token.verify_oauth2_token", return_value=claims):
+        assert not mail_push.verify_gmail({"Authorization": "Bearer good"}, {})  # no pinned service account: refuse
+        monkeypatch.setenv("GMAIL_PUSH_SERVICE_ACCOUNT", "push@p.iam.gserviceaccount.com")
         assert mail_push.verify_gmail({"Authorization": "Bearer good"}, {})
         monkeypatch.setenv("GMAIL_PUSH_SERVICE_ACCOUNT", "other@p.iam.gserviceaccount.com")
         assert not mail_push.verify_gmail({"Authorization": "Bearer good"}, {})
+    with patch("google.oauth2.id_token.verify_oauth2_token", return_value={"email": "other@p.iam.gserviceaccount.com"}):
+        assert not mail_push.verify_gmail({"Authorization": "Bearer good"}, {})  # email not verified
     assert mail_push.parse_gmail({"message": {"data": base64.b64encode(b"[1]").decode()}}) == ""
 
 
@@ -144,19 +149,31 @@ def test_graph_notify_endpoint(client, app):
         st.create_coworker(1, "Natan", "natan@contoso.com", mode="live")
         st.upsert_connection(1, "microsoft", status="connected", account_label="natan@contoso.com",
                              token_enc=encrypt_token({"access_token": "at", "expires_at": 9e9}),
-                             sync_cursor=json.dumps({"graph_sub": {"id": "sub-1", "client_state": "secret"}}))
-    note = {"value": [{"subscriptionId": "sub-1", "clientState": "secret", "changeType": "created"}]}
+                             sync_cursor=json.dumps({"graph_sub": {"id": "00000000-0000-0000-0000-000000000001", "client_state": "secret"}}))
+    note = {"value": [{"subscriptionId": "00000000-0000-0000-0000-000000000001", "clientState": "secret", "changeType": "created"}]}
     with patch("coworker.connectors.microsoft.MicrosoftConnector.sync", return_value=1) as sync, \
             patch("api_endpoints.coworker.slack_events.react"):
         assert client.post("/api/coworker/microsoft/notify", json=note).get_json() == {"ok": True, "users": 1}
-        forged = {"value": [{"subscriptionId": "sub-1", "clientState": "guess"}, {"subscriptionId": "", "clientState": "x"}]}
+        forged = {"value": [{"subscriptionId": "00000000-0000-0000-0000-000000000001", "clientState": "guess"}, {"subscriptionId": "", "clientState": "x"}]}
         assert client.post("/api/coworker/microsoft/notify", json=forged).get_json()["users"] == 0
     sync.assert_called_once()
 
 
+def test_users_for_graph_rejects_odd_ids_and_caps(s):
+    s.upsert_connection(1, "microsoft", status="connected",
+                        sync_cursor=json.dumps({"graph_sub": {"id": "00000000-0000-0000-0000-000000000001", "client_state": "secret"}}))
+    assert mail_push.users_for_graph(s, [{"subscriptionId": "%", "clientState": "secret"}, "junk"]) == []
+    many = [{"subscriptionId": "00000000-0000-0000-0000-000000000001", "clientState": "secret"}] * 5000
+    assert mail_push.users_for_graph(s, many) == [1]
+    spread = [{"subscriptionId": f"00000000-0000-0000-0000-{i:012d}", "clientState": "x"} for i in range(5000)]
+    with patch.object(s, "query", wraps=s.query) as q:
+        mail_push.users_for_graph(s, spread)
+    assert q.call_count == mail_push.MAX_GRAPH_NOTIFICATIONS
+
+
 def test_users_for_graph_skips_bad_cursor(s):
-    s.upsert_connection(1, "microsoft", status="connected", sync_cursor="not json sub-1")
-    assert mail_push.users_for_graph(s, [{"subscriptionId": "sub-1", "clientState": "x"}]) == []
+    s.upsert_connection(1, "microsoft", status="connected", sync_cursor="not json 00000000-0000-0000-0000-000000000001")
+    assert mail_push.users_for_graph(s, [{"subscriptionId": "00000000-0000-0000-0000-000000000001", "clientState": "x"}]) == []
     assert mail_push.users_for_gmail(s, "") == []
 
 

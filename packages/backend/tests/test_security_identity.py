@@ -143,3 +143,11 @@ def test_personal_microsoft_accounts_manage_no_domain(client, app, monkeypatch):
             state = handler._microsoft_state_serializer().dumps("nonce")
         client.get(f"/auth/microsoft/callback?code=c&state={state}")
     assert joined.call_args.args[3] == ""  # managed domain: none, so no automatic joining
+
+
+def test_oversized_request_is_rejected(client, app, monkeypatch):
+    monkeypatch.setenv("COWORKER_INBOUND_DOMAIN", "coworker.example.com")
+    monkeypatch.setenv("COWORKER_INBOUND_TOKEN", "sekrit")
+    app.config["MAX_CONTENT_LENGTH"] = 1024
+    assert client.post("/api/coworker/email/inbound?token=sekrit", data="x" * 4096,
+                       content_type="application/json").status_code == 413
