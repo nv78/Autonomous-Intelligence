@@ -13,5 +13,19 @@ resource "aws_secretsmanager_secret_version" "backend" {
     STRIPE_WEBHOOK_SECRET       = var.stripe_webhook_secret
     PROVIDER_KEY_ENCRYPTION_KEY = var.provider_key_encryption_key
     GOOGLE_CLIENT_SECRET        = var.google_client_secret
+    SLACK_CLIENT_SECRET         = var.slack_client_secret
+    ELEVENLABS_API_KEY          = var.elevenlabs_api_key
+    RECALL_API_KEY              = var.recall_api_key
+    TAVUS_API_KEY               = var.tavus_api_key
+    PILOT_SLACK_WEBHOOK_URL     = var.pilot_slack_webhook_url
+    SMTP_URL                    = var.smtp_url
+    SENTRY_DSN                  = var.sentry_dsn
+    ALERT_SLACK_WEBHOOK_URL     = var.alert_slack_webhook_url
+    HUBSPOT_CLIENT_SECRET       = var.hubspot_client_secret
+    SALESFORCE_CLIENT_SECRET    = var.salesforce_client_secret
+    PIPEDRIVE_CLIENT_SECRET     = var.pipedrive_client_secret
+    MICROSOFT_CLIENT_SECRET     = var.microsoft_client_secret
+    SLACK_SIGNING_SECRET        = var.slack_signing_secret
+    EXPO_ACCESS_TOKEN           = var.expo_access_token
   })
 }

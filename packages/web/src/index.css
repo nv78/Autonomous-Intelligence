@@ -51,3 +51,14 @@ button:disabled { cursor: not-allowed; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }
+
+/* Minimal markdown styling for chat replies (no typography plugin). */
+.prose p { margin: 0.5em 0; }
+.prose ul { list-style: disc; padding-left: 1.25em; margin: 0.5em 0; }
+.prose ol { list-style: decimal; padding-left: 1.25em; margin: 0.5em 0; }
+.prose li { margin: 0.2em 0; }
+.prose strong { font-weight: 600; }
+.prose a { text-decoration: underline; }
+.prose h1, .prose h2, .prose h3 { font-weight: 600; margin: 0.8em 0 0.4em; }
+.prose code { font-size: 0.85em; background: rgba(127, 127, 127, 0.15); padding: 0.1em 0.3em; border-radius: 4px; }
+.not-prose p { margin: 0; }

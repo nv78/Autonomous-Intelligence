@@ -43,6 +43,11 @@ class _FakeDB:
     def get_user_by_email(self, cnx, email):
         return self._users.get(email)
 
+    def set_password_hash(self, cnx, user_id, password_hash):
+        for u in self._users.values():
+            if u["id"] == user_id:
+                u["password_hash"] = password_hash
+
     def create_user(self, cnx, email, password_hash, name=""):
         user_id = self._next_id
         self._next_id += 1
@@ -55,6 +60,7 @@ def _patch_db(monkeypatch, fake_db):
     monkeypatch.setattr(db_module, "get_connection", fake_db.get_connection)
     monkeypatch.setattr(db_module, "get_user_by_email", fake_db.get_user_by_email)
     monkeypatch.setattr(db_module, "create_user", fake_db.create_user)
+    monkeypatch.setattr(db_module, "set_password_hash", fake_db.set_password_hash)
 
 
 def test_register_success_new_user_is_flagged(client, monkeypatch):
@@ -217,7 +223,7 @@ def test_callback_creates_account_for_new_google_user(client, app, monkeypatch):
 
     assert resp.status_code == 302
     location = resp.headers["Location"]
-    assert location.startswith("http://localhost:3000/oauth/callback?token=")
+    assert location.startswith("http://localhost:3000/oauth/callback#token=")
     assert "isNewUser=1" in location
 
 
@@ -227,5 +233,5 @@ def test_callback_signs_in_existing_google_user_without_new_user_flag(client, ap
 
     assert resp.status_code == 302
     location = resp.headers["Location"]
-    assert location.startswith("http://localhost:3000/oauth/callback?token=")
+    assert location.startswith("http://localhost:3000/oauth/callback#token=")
     assert "isNewUser" not in location

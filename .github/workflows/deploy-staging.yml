@@ -1,0 +1,143 @@
+name: Deploy staging
+
+# Every push to develop deploys to staging, so the dry run and reviews happen on a real
+# URL without touching production. All settings come from the GitHub "staging" environment
+# (Settings → Environments → staging). Until STAGING_INSTANCE_ID is set there, this
+# workflow skips with a notice instead of failing. See STAGING.md.
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Staging configured?
+    runs-on: ubuntu-latest
+    environment: staging
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - id: check
+        env:
+          INSTANCE_ID: ${{ secrets.STAGING_INSTANCE_ID }}
+          AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+          APP_DIR: ${{ vars.STAGING_APP_DIR }}
+          S3_BUCKET: ${{ vars.STAGING_S3_BUCKET }}
+          CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.STAGING_CLOUDFRONT_DISTRIBUTION_ID }}
+          STAGING_URL: ${{ vars.STAGING_URL }}
+        run: |
+          missing=()
+          for name in INSTANCE_ID AWS_ROLE_ARN AWS_REGION ECR_REPOSITORY APP_DIR S3_BUCKET CLOUDFRONT_DISTRIBUTION_ID STAGING_URL; do
+            [[ -n "${!name}" ]] || missing+=("$name")
+          done
+          if (( ${#missing[@]} )); then
+            echo "::notice::Staging isn't set up yet (missing: ${missing[*]}). Skipping. See STAGING.md."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  backend:
+    name: Build and deploy backend
+    needs: check
+    if: needs.check.outputs.ready == 'true'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Build and push (tagged staging, never latest)
+        id: image
+        working-directory: packages/backend
+        env:
+          REPO: ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}
+        run: |
+          docker build --platform linux/amd64 --build-arg BUILD_SHA=$GITHUB_SHA -t $REPO:staging-$GITHUB_SHA .
+          docker tag $REPO:staging-$GITHUB_SHA $REPO:staging
+          docker push $REPO:staging-$GITHUB_SHA
+          docker push $REPO:staging
+          echo "uri=$REPO:staging-$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+      - name: Deploy on the staging host (SSM)
+        env:
+          IMAGE_URI: ${{ steps.image.outputs.uri }}
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          INSTANCE_ID: ${{ secrets.STAGING_INSTANCE_ID }}
+          APP_DIR: ${{ vars.STAGING_APP_DIR }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          COMPOSE="docker compose -f docker-compose.yml -f deploy/staging/compose.override.yml --env-file .env.staging"
+          COMMAND_ID=$(aws ssm send-command --instance-ids "$INSTANCE_ID" --document-name "AWS-RunShellScript" \
+            --comment "Staging ${GITHUB_SHA::12}" \
+            --parameters commands="[
+              'set -e',
+              'cd $APP_DIR',
+              'git fetch --quiet origin develop && git checkout --quiet --force $GITHUB_SHA',
+              'aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REGISTRY',
+              'BACKEND_IMAGE=$IMAGE_URI $COMPOSE up -d --remove-orphans',
+              'sleep 20',
+              'BACKEND_IMAGE=$IMAGE_URI $COMPOSE exec -T backend python -m coworker.config',
+              'docker image prune -f'
+            ]" --query "Command.CommandId" --output text)
+          echo "SSM command $COMMAND_ID"
+          aws ssm wait command-executed --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" || true
+          STATUS=$(aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" --query Status --output text)
+          aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" \
+            --query "[StandardOutputContent, StandardErrorContent]" --output text | tail -40
+          [[ "$STATUS" == "Success" ]] || { echo "::error::Staging deploy failed ($STATUS)"; exit 1; }
+
+  frontend:
+    name: Build and deploy web app
+    needs: [check, backend]
+    if: needs.check.outputs.ready == 'true'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.19.0"
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - name: Build against the staging API
+        env:
+          VITE_API_BASE_URL: ${{ vars.STAGING_URL }}
+        run: npm run build --workspace=packages/web
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Upload and invalidate
+        env:
+          S3_BUCKET: ${{ vars.STAGING_S3_BUCKET }}
+          DIST: ${{ vars.STAGING_CLOUDFRONT_DISTRIBUTION_ID }}
+        run: |
+          aws s3 sync packages/web/dist/ s3://$S3_BUCKET --delete --exclude "index.html"
+          aws s3 cp packages/web/dist/index.html s3://$S3_BUCKET/index.html --cache-control "no-cache, no-store, must-revalidate"
+          aws cloudfront create-invalidation --distribution-id $DIST --paths "/*"
+      - name: Smoke test
+        env:
+          STAGING_URL: ${{ vars.STAGING_URL }}
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            python3 scripts/release_smoke.py --frontend-url "$STAGING_URL/" --api-url "$STAGING_URL" \
+              --expected-sha "$GITHUB_SHA" && exit 0
+            sleep 10
+          done
+          exit 1

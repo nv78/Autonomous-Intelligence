@@ -26,3 +26,11 @@ output "ecs_cluster_name" {
 output "ecs_service_name" {
   value = aws_ecs_service.backend.name
 }
+
+output "coworker_worker_service_name" {
+  value = aws_ecs_service.coworker_worker.name
+}
+
+output "twin_bucket_name" {
+  value = aws_s3_bucket.twin.bucket
+}

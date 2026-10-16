@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ourogen Coworker Walkthrough</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: a chapter rail on the left, one framed app screen per step on the right; stacks on phones. */
+:root {
+  --bg: #FFFFFF;
+  --panel: #F7F7F8;
+  --fg: #0D0D0D;
+  --muted: #5D5D66;
+  --line: #E3E3E8;
+  --accent: #0D0D0D;
+  --accent-fg: #FFFFFF;
+  --chip: #EDEDF0;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #212121; --panel: #2F2F2F; --fg: #F5F5F5; --muted: #A9A9B2; --line: #3D3D42;
+    --accent: #F5F5F5; --accent-fg: #171717; --chip: #3A3A3F; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #212121; --panel: #2F2F2F; --fg: #F5F5F5; --muted: #A9A9B2; --line: #3D3D42;
+  --accent: #F5F5F5; --accent-fg: #171717; --chip: #3A3A3F; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 40px;
+}
+.wrap { max-width: 1240px; margin: 0 auto; display: grid; gap: 28px; grid-template-columns: 250px minmax(0, 1fr); }
+header.top { max-width: 1240px; margin: 0 auto 22px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; }
+header.top h1 { font-size: 22px; font-weight: 600; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+header.top p { margin: 0; color: var(--muted); font-size: 14px; }
+nav.rail { display: flex; flex-direction: column; gap: 18px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); align-self: start; }
+.chapter h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 6px; font-weight: 600; }
+.chapter ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.chapter button {
+  width: 100%; text-align: left; border: 0; background: transparent; color: var(--fg); font: inherit; font-size: 14px;
+  padding: 6px 10px; border-radius: 8px; cursor: pointer; display: flex; gap: 10px; align-items: baseline;
+}
+.chapter button .n { font-family: var(--font-mono); font-size: 11px; color: var(--muted); min-width: 18px; font-variant-numeric: tabular-nums; }
+.chapter button:hover { background: var(--panel); }
+.chapter button[aria-current="step"] { background: var(--chip); font-weight: 500; }
+.chapter button:focus-visible, .ctrl button:focus-visible, .shot:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+main { min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.frame { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel); }
+.chrome { display: flex; align-items: center; gap: 6px; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+.chrome i { width: 10px; height: 10px; border-radius: 50%; background: var(--line); display: block; }
+.chrome .url { margin-left: 10px; font-family: var(--font-mono); font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.shot { display: block; width: 100%; max-width: 100%; aspect-ratio: 1280 / 820; object-fit: cover; object-position: top; cursor: pointer; background: var(--bg); }
+.caption { display: grid; gap: 6px; max-width: 70ch; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.caption h3 { margin: 0; font-size: 20px; font-weight: 600; text-wrap: balance; }
+.caption p { margin: 0; color: var(--fg); }
+.caption .note { color: var(--muted); font-size: 14px; }
+.ctrl { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.ctrl button {
+  font: inherit; font-size: 14px; padding: 8px 16px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--bg); color: var(--fg); cursor: pointer;
+}
+.ctrl button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.ctrl button:disabled { opacity: 0.4; cursor: default; }
+.ctrl .hint { color: var(--muted); font-size: 13px; margin-left: auto; }
+.progress { height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.progress span { display: block; height: 100%; background: var(--fg); transition: width 0.25s ease; }
+@media (prefers-reduced-motion: reduce) { .progress span { transition: none; } }
+@media (max-width: 820px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); }
+  nav.rail { position: static; flex-direction: row; overflow-x: auto; gap: 14px; padding-bottom: 4px; }
+  .chapter { flex: 0 0 auto; }
+  .chapter ol { flex-direction: row; }
+  .chapter button { white-space: nowrap; }
+  .chapter button .t { display: none; }
+  .ctrl .hint { display: none; }
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>Ourogen Coworker Walkthrough</h1>
+  <p>20 screens from the demo workspace, recorded on develop. Click the screen or use ← → to move.</p>
+</header>
+
+<div class="wrap">
+  <nav class="rail" id="rail" aria-label="Steps"></nav>
+  <main>
+    <div class="progress" aria-hidden="true"><span id="bar"></span></div>
+    <div class="frame">
+      <div class="chrome" aria-hidden="true"><i></i><i></i><i></i><span class="url" id="url"></span></div>
+      <img class="shot" id="shot" tabindex="0" alt="">
+    </div>
+    <div class="caption" aria-live="polite">
+      <span class="eyebrow" id="eyebrow"></span>
+      <h3 id="title"></h3>
+      <p id="body"></p>
+      <p class="note" id="note"></p>
+    </div>
+    <div class="ctrl">
+      <button id="prev" type="button">← Back</button>
+      <button id="next" type="button" class="primary">Next →</button>
+      <span class="hint">Keyboard: ← →</span>
+    </div>
+  </main>
+</div>
+
+<script>
+const STEPS = [
+  { ch: "Get started", img: "01-sign-in", url: "/login", t: "Sign in",
+    b: "Continue with Google or Microsoft, or use an email and password.",
+    n: "The first verified Google or Microsoft sign-in to an address takes it over from anyone who registered it with a password first." },
+  { ch: "Get started", img: "02-onboarding", url: "/app/onboarding", t: "Connect your work",
+    b: "Onboarding asks for read access to email, calendar and Slack. Nothing is sent without asking, and disconnecting deletes what was synced.",
+    n: "This server has no Google or Microsoft app configured, so only the demo workspace is offered." },
+  { ch: "Get started", img: "03-home", url: "/app", t: "Hand off work in chat",
+    b: "The home screen is a chat. Suggestions come from what's in your inbox and calendar, and anything it sends waits for your approval." },
+  { ch: "Hand off work", img: "04-delegate-replies", url: "/app/chat/4", t: "“Reply to my unanswered emails”",
+    b: "It drafts one reply per waiting thread in your voice. Each draft is a card with the recipient, the text, why it wrote it, and the autonomy rule that applies.",
+    n: "The investor update leaves revenue as a placeholder for you instead of inventing a number." },
+  { ch: "Hand off work", img: "05-approvals", url: "/app/coworker/approvals", t: "Approvals",
+    b: "Every draft also lands here. Approve & send, edit, or reject.",
+    n: "The reply to Dana mentions pricing, so it's flagged and always waits for you, whatever your autonomy setting." },
+  { ch: "Hand off work", img: "06-after-approve", url: "/app/coworker/approvals", t: "Approve one",
+    b: "Approving the investor update sends it and moves it to the day's log. The rest keep waiting." },
+  { ch: "Hand off work", img: "07-ask-acme", url: "/app/chat/5", t: "Ask about an account",
+    b: "“What is going on with Acme?” searches email, Slack, meetings and docs and cites each source with who said it and when.",
+    n: "This recording ran with no AI key, so it shows the offline planner. With Claude, or a free local model through Ollama, it writes a real answer from the same sources." },
+  { ch: "Ongoing work", img: "08-schedule-task", url: "/app/chat/6", t: "Schedule recurring work",
+    b: "“Every Monday at 9am, send me a summary of my pipeline” becomes a scheduled task proposal with its own autonomy and escalation rules." },
+  { ch: "Ongoing work", img: "09-task-confirmed", url: "/app/chat/6", t: "Confirm it",
+    b: "New responsibilities always need your confirmation. Each run gets its own chat, so you can see what it did every time." },
+  { ch: "Ongoing work", img: "10-responsibilities", url: "/app/coworker/responsibilities", t: "Responsibilities",
+    b: "Standing jobs it suggests from your inbox, calendar and Slack, like answering inbound leads or prepping every meeting. Below them, the jobs it already has, with the next run in your time zone." },
+  { ch: "Calls", img: "12-calls", url: "/app/coworker/calls", t: "Calls",
+    b: "Watch a scripted demo call, practice by talking to it in the browser, or send it into a real Zoom, Meet or Teams meeting.",
+    n: "Joining real meetings needs a Recall.ai key. The demo and practice calls are free." },
+  { ch: "Calls", img: "13-demo-call", url: "/app/coworker/calls", t: "A demo call",
+    b: "It says it's an AI, asks for consent to take notes, runs discovery, and escalates the 30% discount request to you instead of agreeing to it.",
+    n: "Afterwards: a summary, a lead score, a follow-up email and a CRM update, both waiting for approval." },
+  { ch: "Know what it did", img: "14-today", url: "/app/coworker/today", t: "Today",
+    b: "Everything from today in one list: what's done, the call, and what needs you." },
+  { ch: "Know what it did", img: "16-activity", url: "/app/coworker/activity", t: "Activity",
+    b: "The full audit trail with a 30-day track record: time saved, share approved without edits, actions and calls. Export it as CSV." },
+  { ch: "Know what it did", img: "15-memory", url: "/app/coworker/memory", t: "Memory",
+    b: "Search everything it knows, and correct the people it has met. Edits stick, and forgotten people stay forgotten." },
+  { ch: "Set up", img: "17-twin", url: "/app/coworker/twin", t: "Twin",
+    b: "Optionally give it your voice and face for calls. Nothing is cloned until you record a consent statement, and it always says it's an AI." },
+  { ch: "Set up", img: "18-team", url: "/app/coworker/team", t: "Team",
+    b: "Create an organization and set rules every member's coworker follows: autonomy ceilings, blocked domains, recording consent, allowed AI models, SSO and SCIM." },
+  { ch: "Set up", img: "19-settings", url: "/app/coworker/settings", t: "Settings",
+    b: "Connections for Google, Microsoft 365, Slack and CRMs. The demo workspace is replaced as soon as you connect a real account." },
+  { ch: "Set up", img: "20-settings-telegram", url: "/app/coworker/settings", t: "Telegram, notifications and more",
+    b: "Message your coworker on Telegram, a free alternative to SMS, and approve with a tap. Also here: approval emails, the daily digest, recording consent and the AI model." },
+  { ch: "Set up", img: "21-dark-mode", url: "/app/coworker/approvals", t: "Dark mode",
+    b: "Every screen follows your system theme, or the toggle in the header." },
+];
+
+const $ = (id) => document.getElementById(id);
+const rail = $("rail");
+const buttons = [];
+let i = 0;
+
+const chapters = [];
+STEPS.forEach((s, k) => {
+  let ch = chapters.find((c) => c.name === s.ch);
+  if (!ch) { ch = { name: s.ch, items: [] }; chapters.push(ch); }
+  ch.items.push(k);
+});
+chapters.forEach((c) => {
+  const sec = document.createElement("section");
+  sec.className = "chapter";
+  sec.innerHTML = `<h2>${c.name}</h2>`;
+  const ol = document.createElement("ol");
+  c.items.forEach((k) => {
+    const li = document.createElement("li");
+    const b = document.createElement("button");
+    b.type = "button";
+    b.innerHTML = `<span class="n">${String(k + 1).padStart(2, "0")}</span><span class="t"></span>`;
+    b.querySelector(".t").textContent = STEPS[k].t;
+    b.setAttribute("aria-label", `Step ${k + 1}: ${STEPS[k].t}`);
+    b.addEventListener("click", () => go(k));
+    li.appendChild(b);
+    ol.appendChild(li);
+    buttons[k] = b;
+  });
+  sec.appendChild(ol);
+  rail.appendChild(sec);
+});
+
+// Preload neighbours so moving feels instant.
+const cache = {};
+function preload(k) {
+  if (k < 0 || k >= STEPS.length || cache[k]) return;
+  cache[k] = new Image();
+  cache[k].src = `img/${STEPS[k].img}.webp`;
+}
+
+function go(k, fromHash) {
+  i = Math.max(0, Math.min(STEPS.length - 1, k));
+  const s = STEPS[i];
+  $("shot").src = `img/${s.img}.webp`;
+  $("shot").alt = `${s.t}: screenshot of ${s.url}`;
+  $("url").textContent = `localhost:3000${s.url}`;
+  $("eyebrow").textContent = `${s.ch} · ${i + 1} of ${STEPS.length}`;
+  $("title").textContent = s.t;
+  $("body").textContent = s.b;
+  $("note").textContent = s.n || "";
+  $("note").hidden = !s.n;
+  $("prev").disabled = i === 0;
+  $("next").textContent = i === STEPS.length - 1 ? "Start over" : "Next →";
+  $("bar").style.width = `${((i + 1) / STEPS.length) * 100}%`;
+  buttons.forEach((b, k) => (k === i ? b.setAttribute("aria-current", "step") : b.removeAttribute("aria-current")));
+  if (window.matchMedia("(max-width: 820px)").matches) buttons[i].scrollIntoView({ block: "nearest", inline: "center" });
+  if (!fromHash) { try { history.replaceState(null, "", `#step-${i + 1}`); } catch (e) {} }
+  preload(i + 1); preload(i - 1);
+}
+
+$("prev").addEventListener("click", () => go(i - 1));
+$("next").addEventListener("click", () => go(i === STEPS.length - 1 ? 0 : i + 1));
+$("shot").addEventListener("click", () => go(i === STEPS.length - 1 ? 0 : i + 1));
+document.addEventListener("keydown", (e) => {
+  if (e.target.closest && e.target.closest("input, textarea, select")) return;
+  if (e.key === "ArrowRight") go(i + 1);
+  if (e.key === "ArrowLeft") go(i - 1);
+});
+
+const m = /^#step-(\d+)$/.exec(location.hash || "");
+go(m ? parseInt(m[1], 10) - 1 : 0, true);
+</script>
+</body>
+</html>

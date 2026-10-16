@@ -1,21 +1,49 @@
 {
   "expo": {
-    "name": "Anote AI",
-    "slug": "anote-ai",
+    "name": "Ourogen",
+    "slug": "ourogen",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "ai.anote.app"
+      "bundleIdentifier": "ai.ourogen.app",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "remote-notification"
+        ],
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
-      "package": "ai.anote.app"
+      "package": "ai.ourogen.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "permissions": [
+        "POST_NOTIFICATIONS"
+      ]
     },
-    "scheme": "anote"
+    "scheme": "ourogen",
+    "plugins": [
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#111111"
+        }
+      ]
+    ],
+    "extra": {
+      "router": {}
+    }
   }
 }

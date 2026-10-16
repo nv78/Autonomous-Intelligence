@@ -6,17 +6,22 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": { "EXPO_PUBLIC_API_URL": "http://localhost:5000" }
     },
     "preview": {
       "distribution": "internal",
-      "android": { "buildType": "apk" }
+      "android": { "buildType": "apk" },
+      "env": { "EXPO_PUBLIC_API_URL": "https://chat.ourogen.ai" }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": { "EXPO_PUBLIC_API_URL": "https://chat.ourogen.ai" }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "android": { "track": "internal" }
+    }
   }
 }

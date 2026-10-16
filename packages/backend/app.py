@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+from datetime import timedelta
 
 from flask import Flask, Response, jsonify
 from flask_cors import CORS
@@ -9,6 +10,7 @@ from flask_jwt_extended import JWTManager
 
 from api_endpoints.auth.handler import auth_bp, google_oauth_callback
 from api_endpoints.chat.handler import chat_bp
+from api_endpoints.coworker import coworker_bp
 from api_endpoints.documents.handler import documents_bp
 from api_endpoints.folders.handler import folders_bp
 from api_endpoints.payments.handler import payments_bp
@@ -25,7 +27,8 @@ def create_app(config: dict[str, object] | None = None) -> Flask:
     app.config.update(
         SECRET_KEY=os.environ.get("JWT_SECRET_KEY", "dev-secret-change-me"),
         JWT_SECRET_KEY=os.environ.get("JWT_SECRET_KEY", "dev-secret-change-me"),
-        JWT_ACCESS_TOKEN_EXPIRES=False,
+        # Sessions last JWT_ACCESS_TOKEN_DAYS (default 14), and can be ended early (coworker/identity.py).
+        JWT_ACCESS_TOKEN_EXPIRES=timedelta(days=int(os.environ.get("JWT_ACCESS_TOKEN_DAYS", "14") or 14)),
         TESTING=False,
         DB_HOST=os.environ.get("DB_HOST", "localhost"),
         DB_NAME=os.environ.get("DB_NAME", "anote"),
@@ -37,12 +40,32 @@ def create_app(config: dict[str, object] | None = None) -> Flask:
         GEMINI_API_KEY=os.environ.get("GEMINI_API_KEY", ""),
         STRIPE_SECRET_KEY=os.environ.get("STRIPE_SECRET_KEY", ""),
         UPLOAD_FOLDER=os.environ.get("UPLOAD_FOLDER", "/tmp/anote_uploads"),
+        COWORKER_DB_URL=os.environ.get("COWORKER_DB_URL", ""),
+        # The largest legitimate upload is a 60 MB voice/video sample for the twin.
+        MAX_CONTENT_LENGTH=int(os.environ.get("MAX_REQUEST_MB", "64") or 64) * 1024 * 1024,
     )
     if config:
         app.config.update(config)
+    if not app.config.get("TESTING"):
+        from coworker.config import enforce
+
+        enforce()
+        import observability
+
+        observability.init("worker" if os.environ.get("COWORKER_PROCESS") == "worker" else "web")
 
     CORS(app, resources={r"/*": {"origins": "*"}})
-    JWTManager(app)
+    jwt = JWTManager(app)
+
+    @jwt.token_in_blocklist_loader
+    def _revoked(_header: dict, payload: dict) -> bool:
+        try:
+            from coworker import identity
+            from coworker.store import get_store
+
+            return identity.token_revoked(get_store(), payload)
+        except Exception:  # an unreachable store must not lock everyone out
+            return False
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(chat_bp)
@@ -52,12 +75,21 @@ def create_app(config: dict[str, object] | None = None) -> Flask:
     app.register_blueprint(user_bp)
     app.register_blueprint(payments_bp)
     app.register_blueprint(workspaces_bp)
+    app.register_blueprint(coworker_bp)
 
     app.add_url_rule("/callback", "google_oauth_callback", google_oauth_callback, methods=["GET"])
 
     @app.get("/health")
     def health() -> tuple[Response, int]:
-        return jsonify({"status": "ok", **get_build_metadata()}), 200
+        # Always 200 while the web process is up; "worker" tells whether autonomous work is running.
+        try:
+            from coworker import ops
+            from coworker.store import get_store
+
+            worker = ops.worker_status(get_store())["status"]
+        except Exception:
+            worker = "unknown"
+        return jsonify({"status": "ok", "worker": worker, **get_build_metadata()}), 200
 
     @app.get("/version")
     @app.get("/api/version")

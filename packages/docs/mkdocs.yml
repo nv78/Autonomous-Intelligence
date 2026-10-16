@@ -118,6 +118,23 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - Coworker:
+    - Overview: coworker/index.md
+    - User Guide:
+      - Your First 10 Minutes: coworker/guide/getting-started.md
+      - Approvals and Autonomy: coworker/guide/approvals.md
+      - Scheduled Tasks: coworker/guide/scheduled-tasks.md
+      - Ways to Reach Your Coworker: coworker/guide/channels.md
+      - Meetings and Your Voice: coworker/guide/meetings.md
+      - FAQ: coworker/guide/faq.md
+    - Team Admin: coworker/admin/team.md
+    - Free Mode (No API Keys): coworker/free-mode.md
+    - Operations:
+      - Set Up: coworker/setup.md
+      - Operator Runbook: coworker/operations/runbook.md
+    - Trust & Safety: coworker/trust.md
+    - API: coworker/api.md
+    - Roadmap: coworker/roadmap.md
   - Getting Started:
     - Installation: getting-started/installation.md
     - Quick Start: getting-started/quickstart.md

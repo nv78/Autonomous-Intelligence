@@ -8,13 +8,15 @@ export default function OAuthCallbackPage() {
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    const token = searchParams.get("token");
+    // The token arrives in the URL fragment (never sent to servers); older links used the query.
+    const fragment = new URLSearchParams(window.location.hash.slice(1));
+    const token = fragment.get("token") || searchParams.get("token");
+    const isNew = (fragment.get("isNewUser") || searchParams.get("isNewUser")) === "1";
     if (token) {
       setToken(token);
-      if (searchParams.get("isNewUser") === "1") {
-        localStorage.setItem("ourogen_show_onboarding", "1");
-      }
-      nav("/app", { replace: true });
+      window.history.replaceState(null, "", window.location.pathname);
+      // New accounts go straight into coworker onboarding.
+      nav(isNew ? "/app/onboarding" : "/app", { replace: true });
     } else {
       nav("/login?error=missing_code", { replace: true });
     }

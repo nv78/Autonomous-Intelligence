@@ -1,0 +1,14 @@
+# Staging: run the image CI built for this develop commit instead of building on the host.
+#   BACKEND_IMAGE=<ecr uri> docker compose -f docker-compose.yml -f deploy/staging/compose.override.yml \
+#     --env-file .env.staging up -d --remove-orphans
+# The web app is served from S3/CloudFront, so the local `web` service doesn't start here.
+services:
+  backend:
+    image: ${BACKEND_IMAGE:?set BACKEND_IMAGE}
+    pull_policy: always
+    restart: unless-stopped
+  coworker-worker:
+    image: ${BACKEND_IMAGE:?set BACKEND_IMAGE}
+    pull_policy: always
+  web:
+    profiles: ["local-only"]

@@ -5,6 +5,7 @@ import { useColorScheme } from "react-native";
 import { lightTheme, darkTheme, Theme } from "../src/theme";
 import { getToken, setToken as storeToken, clearToken } from "../src/storage";
 import { setAuthToken } from "../src/api";
+import { listenForResponses, registerForPush } from "../src/push";
 
 export const ThemeContext = createContext<{ theme: Theme; dark: boolean; toggle: () => void }>({
   theme: lightTheme,
@@ -35,6 +36,13 @@ export default function RootLayout() {
       if (t) { setTokenState(t); setAuthToken(t); }
     });
   }, []);
+
+  // Once signed in: register for coworker push notifications and handle taps / Approve / Reject.
+  useEffect(() => {
+    if (!token) return undefined;
+    registerForPush().catch(() => {});
+    return listenForResponses();
+  }, [token]);
 
   const toggle = () => setDark((d) => !d);
   const theme = dark ? darkTheme : lightTheme;

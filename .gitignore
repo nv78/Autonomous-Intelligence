@@ -57,3 +57,5 @@ chroma_db/
 .env.local
 .env.production
 .claude/worktrees/
+packages/backend/coworker/evals/report.html
+scripts/demo/video/

@@ -7,6 +7,11 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import OAuthCallbackPage from "./pages/OAuthCallbackPage";
 import CheckoutResultPage from "./pages/CheckoutResultPage";
+import CoworkerPage from "./pages/CoworkerPage";
+import OnboardingPage from "./pages/OnboardingPage";
+import JoinTeamPage from "./pages/JoinTeamPage";
+import ConnectFinishPage from "./pages/ConnectFinishPage";
+import { CoworkerProvider } from "./coworker/CoworkerContext";
 import { DEFAULT_MODEL, MODELS } from "./constants/models";
 import { API_BASE_URL } from "./constants/constants";
 
@@ -146,6 +151,7 @@ export default function App() {
       <AuthContext.Provider
         value={{ token, setToken, user, refreshUser, avatarVersion, bumpAvatarVersion }}
       >
+        <CoworkerProvider>
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Navigate to="/app" replace />} />
@@ -153,11 +159,17 @@ export default function App() {
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
             <Route path="/app/checkout" element={<RequireAuth><CheckoutResultPage /></RequireAuth>} />
+            <Route path="/app/onboarding" element={<RequireAuth><OnboardingPage /></RequireAuth>} />
+            <Route path="/app/join/:token" element={<RequireAuth><JoinTeamPage /></RequireAuth>} />
+            <Route path="/app/connect/finish" element={<RequireAuth><ConnectFinishPage /></RequireAuth>} />
+            <Route path="/app/coworker" element={<RequireAuth><CoworkerPage /></RequireAuth>} />
+            <Route path="/app/coworker/:tab" element={<RequireAuth><CoworkerPage /></RequireAuth>} />
             <Route path="/app" element={<RequireAuth><ChatPage /></RequireAuth>} />
             <Route path="/app/chat/:id" element={<RequireAuth><ChatPage /></RequireAuth>} />
             <Route path="/documents" element={<RequireAuth><DocumentsPage /></RequireAuth>} />
           </Routes>
         </BrowserRouter>
+        </CoworkerProvider>
       </AuthContext.Provider>
       </ModelContext.Provider>
     </ThemeContext.Provider>

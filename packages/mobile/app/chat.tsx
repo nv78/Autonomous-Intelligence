@@ -4,10 +4,12 @@ import {
   StyleSheet, SafeAreaView, KeyboardAvoidingView, Platform,
   ActivityIndicator, Alert
 } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useAppTheme, useAppAuth } from "./_layout";
 import OurogenLogo from "../src/components/OurogenLogo";
-import { getSessions, getSession, deleteSession, Session, Message } from "../src/api";
+import { getSessions, getSession, deleteSession, getCoworkerStatus, Session, Message } from "../src/api";
+import CoworkerContent from "../src/components/CoworkerContent";
+import { marker } from "../src/markers";
 import { API_BASE, MODELS } from "../src/constants";
 
 export default function ChatScreen() {
@@ -33,6 +35,17 @@ export default function ChatScreen() {
   }, []);
 
   useEffect(() => { loadSessions(); }, [loadSessions]);
+  // Opened from a notification (e.g. "Joining Northwind intro at 2pm"): go straight to that chat.
+  const { session } = useLocalSearchParams<{ session?: string }>();
+  useEffect(() => {
+    if (session) {
+      setActiveSession(String(session));
+      loadMessages(String(session));
+    }
+  }, [session, loadMessages]);
+  // With a coworker set up, this chat talks to it: delegate, approve, and see what it did.
+  const [coworkerMode, setCoworkerMode] = useState(false);
+  useEffect(() => { getCoworkerStatus().then((s) => setCoworkerMode(!!s.exists)).catch(() => {}); }, []);
 
   const openSession = async (id: string) => {
     setActiveSession(id);
@@ -71,13 +84,13 @@ export default function ChatScreen() {
     setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
     try {
-      const res = await fetch(`${API_BASE}/api/chat/stream`, {
+      const res = await fetch(`${API_BASE}${coworkerMode ? "/api/coworker/chat/stream" : "/api/chat/stream"}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ message: text, session_id: activeSession, model }),
+        body: JSON.stringify(coworkerMode ? { message: text, session_id: activeSession } : { message: text, session_id: activeSession, model }),
       });
 
       if (!res.ok || !res.body) throw new Error("Stream error");
@@ -97,8 +110,11 @@ export default function ChatScreen() {
           if (data === "[DONE]") break;
           try {
             const parsed = JSON.parse(data);
-            if (parsed.type === "text") {
-              assistantContent += parsed.text ?? "";
+            if (parsed.type === "tool") assistantContent += marker({ t: "tool", summary: parsed.summary });
+            if (parsed.type === "card" && parsed.card === "action" && parsed.action) assistantContent += marker({ t: "action", id: parsed.action.id });
+            if (parsed.type === "card" && parsed.card === "meeting") assistantContent += marker({ t: "meeting", id: parsed.id });
+            if (parsed.type === "text" || parsed.type === "tool" || parsed.type === "card") {
+              assistantContent += parsed.type === "text" ? parsed.text ?? "" : "";
               const content = assistantContent;
               setMessages((prev) => {
                 const updated = [...prev];
@@ -143,10 +159,14 @@ export default function ChatScreen() {
           ? [styles.userBubble, { backgroundColor: theme.userBubble }]
           : styles.assistantBubble
       ]}>
-        <Text style={[styles.messageText, { color: theme.text }]}>
-          {item.content}
-          {streaming && index === messages.length - 1 && item.role === "assistant" && item.content === "" ? "▋" : ""}
-        </Text>
+        {item.role === "assistant" && item.content.includes(":::cw ") ? (
+          <CoworkerContent content={item.content} theme={theme} />
+        ) : (
+          <Text style={[styles.messageText, { color: theme.text }]}>
+            {item.content}
+            {streaming && index === messages.length - 1 && item.role === "assistant" && item.content === "" ? "▋" : ""}
+          </Text>
+        )}
       </View>
     </View>
   );
@@ -159,8 +179,11 @@ export default function ChatScreen() {
           <Text style={{ fontSize: 20, color: theme.text }}>{"☰"}</Text>
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]} numberOfLines={1}>
-          {MODELS.find((m) => m === model)?.split("-").slice(0, 2).join("-") ?? "Ourogen"}
+          {coworkerMode ? "Your AI coworker" : MODELS.find((m) => m === model)?.split("-").slice(0, 2).join("-") ?? "Ourogen"}
         </Text>
+        <TouchableOpacity onPress={() => router.push("/coworker")} style={styles.headerBtn} accessibilityLabel="Coworker approvals">
+          <Text style={{ fontSize: 20 }}>{"🤖"}</Text>
+        </TouchableOpacity>
         <TouchableOpacity onPress={toggle} style={styles.headerBtn}>
           <Text style={{ fontSize: 20 }}>{dark ? "☀️" : "🌙"}</Text>
         </TouchableOpacity>
@@ -220,7 +243,14 @@ export default function ChatScreen() {
       {messages.length === 0 ? (
         <View style={styles.emptyState}>
           <OurogenLogo size={64} dark={dark} />
-          <Text style={[styles.emptyText, { color: theme.textMuted }]}>How can I help you today?</Text>
+          <Text style={[styles.emptyText, { color: theme.textMuted }]}>
+            {coworkerMode ? "What should I take off your plate?" : "How can I help you today?"}
+          </Text>
+          {coworkerMode && ["Reply to my unanswered emails", "Join my next meeting and send me the summary", "What did you do today?"].map((p) => (
+            <TouchableOpacity key={p} onPress={() => setInput(p)} style={[styles.chip, { borderColor: theme.border }]}>
+              <Text style={{ color: theme.text, fontSize: 13 }}>{p}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
       ) : (
         <FlatList
@@ -239,7 +269,7 @@ export default function ChatScreen() {
           <View style={[styles.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
             <TextInput
               style={[styles.textInput, { color: theme.text }]}
-              placeholder="Message Ourogen..."
+              placeholder={coworkerMode ? "Delegate: “reply to Dana”, “join my 2pm”…" : "Message Ourogen..."}
               placeholderTextColor={theme.textMuted}
               value={input}
               onChangeText={setInput}
@@ -278,6 +308,7 @@ const styles = StyleSheet.create({
   logoutBtn: { padding: 16, alignItems: "center" },
   emptyState: { flex: 1, justifyContent: "center", alignItems: "center", gap: 16 },
   emptyText: { fontSize: 16 },
+  chip: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 8 },
   messageList: { paddingVertical: 16, paddingHorizontal: 12 },
   messageRow: { flexDirection: "row", marginBottom: 16, alignItems: "flex-start" },
   userRow: { justifyContent: "flex-end" },
