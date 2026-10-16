@@ -58,6 +58,11 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://localhost:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
+      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
+      COWORKER_PLUS_TAG: ${COWORKER_PLUS_TAG:-}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       STRIPE_PRICE_BASIC: ${STRIPE_PRICE_BASIC:-}
@@ -180,7 +185,17 @@ services:
     depends_on:
       - backend
 
+  # Free local model (no API key): docker compose --profile free up, with OLLAMA_BASE_URL=http://ollama:11434,
+  # then once: docker compose exec ollama ollama pull llama3.1
+  ollama:
+    image: ollama/ollama:0.12.6
+    profiles: ["free"]
+    restart: unless-stopped
+    volumes:
+      - ollama_models:/root/.ollama
+
 volumes:
+  ollama_models:
   mysql_data:
   backend_uploads:
   twin_data:

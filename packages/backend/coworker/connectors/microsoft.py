@@ -154,6 +154,7 @@ def parse_message(msg: dict[str, Any], account_email: str, sent_folder: str = ""
             "message_id": msg.get("internetMessageId", ""),
             "list_unsubscribe": bool(headers.get("list-unsubscribe")),
             "labels": ["SENT"] if outbound else ["INBOX"],
+            "sent": bool(sent_folder and msg.get("parentFolderId") == sent_folder),  # really sent from this mailbox
         },
     }
 

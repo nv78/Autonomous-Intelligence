@@ -32,6 +32,12 @@ def run_once() -> int:
     except Exception as exc:  # pragma: no cover - keep the loop alive
         print(f"[coworker] sync jobs failed: {exc}")
         observability.capture(exc, where="worker.sync_jobs")
+    try:
+        from coworker import telegram
+
+        telegram.poll_once(store)  # Telegram without a public URL: the worker fetches messages each pass
+    except Exception as exc:  # pragma: no cover - keep the loop alive
+        observability.capture(exc, where="worker.telegram")
     if time.monotonic() - _last_purge > PURGE_EVERY_SECONDS or not _last_purge:
         try:
             result = retention.purge(store)

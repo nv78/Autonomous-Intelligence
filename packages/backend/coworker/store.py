@@ -310,6 +310,17 @@ TABLES: dict[str, str] = {
         prefs {text},
         created_at VARCHAR(40) NOT NULL
     """,
+    "cw_telegram": """
+        id {pk},
+        user_id INT NOT NULL UNIQUE,
+        chat_id VARCHAR(40) NOT NULL DEFAULT '',
+        username VARCHAR(255) NOT NULL DEFAULT '',
+        link_hash VARCHAR(64) NOT NULL DEFAULT '',
+        link_expires VARCHAR(40),
+        linked_at VARCHAR(40),
+        prefs {text},
+        created_at VARCHAR(40) NOT NULL
+    """,
     "cw_inbound_addresses": """
         id {pk},
         user_id INT NOT NULL UNIQUE,
@@ -395,6 +406,8 @@ INDEXES: list[tuple[str, str, str]] = [
     ("idx_cw_turns_meeting", "cw_turns", "meeting_id, status"),
     ("idx_cw_org_members_user", "cw_org_members", "user_id, status"),
     ("idx_cw_phones_number", "cw_phones", "number, verified"),
+    ("idx_cw_telegram_chat", "cw_telegram", "chat_id"),
+    ("idx_cw_telegram_link", "cw_telegram", "link_hash"),
     ("idx_cw_verified_user", "cw_verified_identities", "user_id"),
 ]
 

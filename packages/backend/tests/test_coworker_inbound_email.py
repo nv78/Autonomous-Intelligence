@@ -132,7 +132,8 @@ def test_endpoints(client, auth_headers, app, _env, monkeypatch):
     assert client.post("/api/coworker/email/inbound?token=sekrit", data=form).status_code == 200
     assert _env["mail"].call_args.args[2] == "Re: Hello"
     monkeypatch.delenv("COWORKER_INBOUND_DOMAIN")
-    assert client.get("/api/coworker/inbound-address", headers=auth_headers).get_json() == {"configured": False, "address": ""}
+    assert client.get("/api/coworker/inbound-address", headers=auth_headers).get_json() == \
+        {"configured": False, "address": "", "mailbox": False}
 
 
 def test_forged_from_needs_aligned_authentication():

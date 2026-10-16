@@ -4,6 +4,7 @@ import { coworkerApi, errorMessage, timeAgo } from '../api';
 import { useCoworker } from '../CoworkerContext';
 import { Card, Pill, Section, dangerBtn, ghostBtn, inputCls, primaryBtn } from '../ui';
 import TextMessagesCard from '../TextMessagesCard';
+import TelegramCard from '../TelegramCard';
 import EmailAddressCard from '../EmailAddressCard';
 
 const LEVEL_HELP: Record<string, string> = {
@@ -390,6 +391,7 @@ export default function SettingsTab() {
       </Section>
 
       <TextMessagesCard />
+      <TelegramCard />
 
       <EmailAddressCard />
 

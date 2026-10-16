@@ -194,6 +194,7 @@ def parse_message(msg: dict[str, Any], account_email: str) -> dict[str, Any]:
         "occurred_at": iso(datetime.fromtimestamp(ts, UTC)),
         "meta": {
             "labels": labels,
+            "sent": "SENT" in labels,  # Gmail's own label: really sent from this account, not just a matching From
             "message_id": headers.get("message-id", ""),
             "references": headers.get("references", ""),
             "list_unsubscribe": bool(headers.get("list-unsubscribe")),

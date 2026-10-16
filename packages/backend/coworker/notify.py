@@ -165,6 +165,10 @@ def maybe_notify_approvals(store: Store, user_id: int) -> int:
 
     if sms.notify_approvals(store, user_id, pending):
         channel = f"{channel}+sms" if channel else "sms"
+    from coworker import telegram
+
+    if telegram.notify_approvals(store, user_id, pending):
+        channel = f"{channel}+telegram" if channel else "telegram"
     store.update("cw_notifications", row_id, user_id, {"channel": channel or "none"})
     if channel:
         store.log(user_id, "notification", f"Emailed you about {n} pending approval{'s' if n != 1 else ''}")

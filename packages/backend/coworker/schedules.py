@@ -340,6 +340,9 @@ def execute(store: Store, user_id: int, resp: dict[str, Any]) -> dict[str, Any]:
         from coworker import sms
 
         sms.notify(store, user_id, f"{resp['name']}: {answer['text']}", "tasks")
+        from coworker import telegram
+
+        telegram.notify(store, user_id, f"{resp['name']}: {answer['text']}", "tasks")
     return answer
 
 

@@ -69,6 +69,8 @@ def catalog() -> list[dict[str, str]]:
 
 
 def provider_of(model: str) -> str:
+    if os.environ.get("OLLAMA_BASE_URL") and model == free_model():
+        return "ollama"  # e.g. OLLAMA_MODEL=gpt-oss:20b is still local
     for m in catalog():
         if m["id"] == model:
             return m["provider"]
@@ -97,8 +99,25 @@ def model_name(user_id: int | None = None) -> str:
             pass
     model = chosen or os.environ.get("COWORKER_MODEL", DEFAULT_MODEL)
     if allowed and model not in allowed:
-        return allowed[0]
-    return model
+        model = allowed[0]
+    return usable(model, user_id, allowed)
+
+
+def free_model() -> str:
+    """The local model used when no API key is set (``OLLAMA_MODEL``, default llama3.1)."""
+    return os.environ.get("OLLAMA_MODEL") or "llama3.1"
+
+
+def usable(model: str, user_id: int | None = None, allowed: list[str] | None = None) -> str:
+    """``model`` if its provider has a key; otherwise the free local model when Ollama is set up.
+
+    So the coworker runs with no API keys at all, and switches back to the chosen model on its own
+    once a key is added. An organization that restricts models only falls back to an allowed one.
+    """
+    if key_for(provider_of(model), user_id) or not ollama_up():
+        return model
+    free = free_model()
+    return free if not allowed or free in allowed else model
 
 
 FAST_MODELS = {"anthropic": "claude-haiku-5-5", "openai": "gpt-4o-mini", "google": "gemini-2.5-flash"}
@@ -126,9 +145,32 @@ def call_model(user_id: int | None = None) -> str:
     return FAST_MODELS.get(provider_of(base), base)
 
 
+_ollama_seen: dict[str, Any] = {}
+OLLAMA_CHECK_SECONDS = 60
+
+
+def ollama_up() -> bool:
+    """Whether the Ollama server at ``OLLAMA_BASE_URL`` answers (checked at most once a minute)."""
+    import time
+
+    base = os.environ.get("OLLAMA_BASE_URL", "").rstrip("/")
+    if not base:
+        return False
+    if _ollama_seen.get("base") == base and time.monotonic() - _ollama_seen.get("at", 0) < OLLAMA_CHECK_SECONDS:
+        return bool(_ollama_seen["up"])
+    try:
+        import requests
+
+        up = requests.get(f"{base}/api/tags", timeout=1.5).status_code == 200
+    except Exception:
+        up = False
+    _ollama_seen.update(base=base, at=time.monotonic(), up=up)
+    return up
+
+
 def key_for(provider: str, user_id: int | None = None) -> str:
     if provider == "ollama":
-        return "ollama" if os.environ.get("OLLAMA_BASE_URL") else ""
+        return "ollama" if ollama_up() else ""
     if user_id is not None and provider in PROVIDER_ENV:
         from services.provider_keys import get_user_provider_key
 
@@ -176,7 +218,7 @@ def create_message(
     model: str | None = None,
 ) -> dict[str, Any]:
     """One Messages API call. Returns the response as a JSON dict."""
-    model = model or model_name(user_id)
+    model = usable(model, user_id) if model else model_name(user_id)
     provider = provider_of(model)
     if provider != "anthropic":
         translated = _openai_compatible(provider, model, system=system, messages=messages, tools=tools,
