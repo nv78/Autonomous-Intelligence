@@ -456,18 +456,23 @@ def suggestions(store: Store, user_id: int) -> list[dict[str, Any]]:
             out.append({"template": template, "name": TEMPLATES[template]["name"], "why": why, "count": n,
                         "description": TEMPLATES[template]["description"]})
 
-    add("inbound_leads", f"You have {counts.get('sales_lead', 0)} unanswered sales inquiries.", counts.get("sales_lead", 0))
-    add("stale_deals", f"{len(stale)} deal threads have gone quiet since you last wrote.", len(stale))
-    add("scheduling", f"{counts.get('scheduling', 0)} people are waiting on a time to meet.", counts.get("scheduling", 0))
-    add("meeting_prep", f"You have {len(meetings)} external meetings in the next 3 days.", len(meetings))
-    add("support", f"{counts.get('support', 0)} customers asked product questions.", counts.get("support", 0))
+    def n(count: int, one: str, many: str) -> str:
+        return f"{count} {one if count == 1 else many}"
+
+    leads, waiting, support = counts.get("sales_lead", 0), counts.get("scheduling", 0), counts.get("support", 0)
+    add("inbound_leads", f"You have {n(leads, 'unanswered sales inquiry', 'unanswered sales inquiries')}.", leads)
+    add("stale_deals", f"{n(len(stale), 'deal thread has', 'deal threads have')} gone quiet since you last wrote.", len(stale))
+    add("scheduling", f"{n(waiting, 'person is', 'people are')} waiting on a time to meet.", waiting)
+    add("meeting_prep", f"You have {n(len(meetings), 'external meeting', 'external meetings')} in the next 3 days.", len(meetings))
+    add("support", f"{n(support, 'customer asked a product question', 'customers asked product questions')}.", support)
     from coworker import autojoin
     from coworker.connectors import recall
 
     if recall.is_configured():
         joinable = [e for e in meetings if autojoin.meeting_url(e)]
-        add("auto_join", f"{len(joinable)} external video calls in the next 3 days I could take for you.", len(joinable))
-    add("slack_answers", f"{len(dms)} teammates asked you questions on Slack.", len(dms))
+        add("auto_join", f"{n(len(joinable), 'external video call', 'external video calls')} in the next 3 days I could take for you.",
+            len(joinable))
+    add("slack_answers", f"{n(len(dms), 'teammate asked you a question', 'teammates asked you questions')} on Slack.", len(dms))
     # Lead with jobs that produce a draft to approve: that's the fastest "first win".
     priority = {"inbound_leads": 0, "scheduling": 1, "support": 2, "stale_deals": 3, "slack_answers": 4, "auto_join": 5,
                 "meeting_prep": 6}

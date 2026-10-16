@@ -99,6 +99,7 @@ export interface Responsibility {
 export interface TaskSchedule {
   description: string;
   nextRun: string | null;
+  nextRunLabel?: string; // in the coworker's time zone
   deliver: string[];
   chatId: number | null;
   runs: { at: string; status: string; summary: string }[];

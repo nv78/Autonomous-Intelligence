@@ -61,15 +61,18 @@ export default function CallStudio({ meeting: initial, onClose }: { meeting: Mee
     sp.onChange = setSpeaking;
     speaker.current = sp;
     const opener = initial.transcript[0]?.text;
+    let alive = true; // React may mount twice in development; only the live mount drives the call
     api.get(`/meetings/${initial.id}`).then((d) => {
+      if (!alive) return;
       nextLine.current = d.nextProspectLine;
       if (opener && initial.mode !== 'bot') {
         sp.speak(opener).then(() => {
-          if (initial.mode === 'simulated') runProspect();
+          if (alive && initial.mode === 'simulated') runProspect();
         });
       }
     });
     return () => {
+      alive = false;
       sp.stop();
       recognizer.current?.stop();
     };

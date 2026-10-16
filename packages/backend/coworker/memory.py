@@ -204,18 +204,20 @@ def rebuild(store: Store, user_id: int) -> dict[str, int]:
     contacts: dict[str, dict[str, Any]] = {}
     texts: dict[str, list[str]] = defaultdict(list)
     noise_flags: dict[str, bool] = {}
+    now = iso()
 
     def touch(email: str, name: str, when: str) -> None:
         email = email.lower().strip()
         if not email or email == owner:
             return
+        past = when if when <= now else ""  # an upcoming meeting isn't contact yet
         c = contacts.setdefault(email, {"email": email, "name": name or email.split("@")[0], "interactions": 0,
-                                        "last": when, "role": "", "company": ""})
+                                        "last": past, "role": "", "company": ""})
         if name and (not c["name"] or c["name"] == email.split("@")[0]):
             c["name"] = name
         c["interactions"] += 1
-        if when > c["last"]:
-            c["last"] = when
+        if past > c["last"]:
+            c["last"] = past
 
     for it in items:
         if it["kind"] not in ("email", "slack", "event"):
@@ -241,11 +243,11 @@ def rebuild(store: Store, user_id: int) -> dict[str, int]:
         row = existing.get(email)
         values = {
             "name": c["name"], "company": company, "role": c["role"], "relationship": relationship,
-            "interactions": c["interactions"], "last_contact_at": c["last"],
+            "interactions": c["interactions"], "last_contact_at": c["last"] or None,
         }
         if row:
             if row.get("user_edited"):
-                values = {"interactions": c["interactions"], "last_contact_at": c["last"]}
+                values = {"interactions": c["interactions"], "last_contact_at": c["last"] or None}
             store.update("cw_people", row["id"], user_id, values)
         else:
             store.insert("cw_people", {"user_id": user_id, "email": email, "notes": "", **values})

@@ -369,7 +369,7 @@ def respond(store: Store, user_id: int, meeting_id: int, text: str, speaker: str
     kind = "agent"
     if guard:
         reply, kind = guard
-        if kind == "escalation":
+        if kind == "escalation" and text[:200] not in (metrics.get("escalations") or []):
             metrics.setdefault("escalations", []).append(text[:200])
             store.log(user_id, "escalation", f"On the call with {meeting['prospect_name'] or meeting['title']}: “{text[:140]}”",
                       {"meeting_id": meeting_id})

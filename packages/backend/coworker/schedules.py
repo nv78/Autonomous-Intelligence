@@ -235,13 +235,18 @@ def _tz(store: Store, user_id: int) -> ZoneInfo:
 def state(store: Store, user_id: int, resp: dict[str, Any]) -> dict[str, Any]:
     """For the UI: the schedule in words, the next run, and recent runs."""
     spec = resp.get("trigger_spec") or {}
+    tz = _tz(store, user_id)
     try:
-        nxt = next_run(spec, _tz(store, user_id)) if resp.get("enabled") else None
+        nxt = next_run(spec, tz) if resp.get("enabled") else None
     except (KeyError, ValueError):
         return {"description": "Invalid schedule", "nextRun": None, "runs": []}
     runs = store.query("SELECT trigger_key, status, summary, created_at FROM cw_runs WHERE responsibility_id = %s "
                        "AND user_id = %s ORDER BY id DESC LIMIT 5", (resp["id"], user_id))
-    return {"description": describe(spec), "nextRun": iso(nxt) if nxt else None, "deliver": spec.get("deliver") or ["chat"],
+    from coworker import scheduling
+
+    return {"description": describe(spec), "nextRun": iso(nxt) if nxt else None,
+            "nextRunLabel": scheduling.label(nxt, tz) if nxt else "",  # in the coworker's time zone, like the schedule
+            "deliver": spec.get("deliver") or ["chat"],
             "chatId": spec.get("chat_id"), "runs": [{"at": r["created_at"], "status": r["status"], "summary": r.get("summary") or ""}
                                                     for r in runs], "usage": usage(store, user_id, int(resp["id"]))}
 
