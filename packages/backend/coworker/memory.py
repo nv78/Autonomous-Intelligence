@@ -399,6 +399,27 @@ def _snippet(body: str, query: str, size: int = 280) -> str:
     return ("…" if best else "") + text + ("…" if best + size < len(body) else "")
 
 
+SHAREABLE_TYPES = ("decision", "doc")
+
+
+def shareable_recall(store: Store, user_id: int, query: str, k: int = 6) -> list[dict[str, Any]]:
+    """What a teammate may hear without the owner reviewing it: decisions and docs, never private email or DMs."""
+    return [h for h in recall(store, user_id, query, k=k * 3) if h["type"] in SHAREABLE_TYPES][:k]
+
+
+def recall_with(store: Store, user_id: int, query: str, email: str, k: int = 4) -> list[dict[str, Any]]:
+    """Docs plus what this one contact (or their company) wrote: what a live call with them may draw on."""
+    email = (email or "").lower()
+    domain = domain_of(email)
+    company = domain if domain and domain not in PUBLIC_DOMAINS else ""
+
+    def theirs(h: dict[str, Any]) -> bool:
+        sender = str(h.get("from_email") or "").lower()
+        return bool(sender) and (sender == email or (bool(company) and domain_of(sender) == company))
+
+    return [h for h in recall(store, user_id, query, k=k * 4) if h["type"] == "doc" or theirs(h)][:k]
+
+
 def cite(meta: dict[str, Any], score: float = 0.0, query: str = "") -> dict[str, Any]:
     if meta.get("type") == "decision":
         return {

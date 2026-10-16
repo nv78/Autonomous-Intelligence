@@ -315,7 +315,7 @@ def _llm_reply(store: Store, user_id: int, meeting: dict[str, Any], text: str, a
     pb = playbook(store, user_id)
     coworker = store.get_coworker(user_id) or {}
     first = (coworker.get("owner_name") or "the team").split(" ")[0]
-    facts = memory.recall(store, user_id, text, k=4)
+    facts = memory.recall_with(store, user_id, text, str((meeting.get("answers") or {}).get("prospect_email") or ""), k=4)
     transcript = "\n".join(f"{'You' if t['speaker'] == 'coworker' else meeting.get('prospect_name') or 'Prospect'}: {t['text']}"
                            for t in (meeting.get("transcript") or [])[-16:])
     missing = [f for f in QUALIFICATION_FIELDS if not answers.get(f)]
