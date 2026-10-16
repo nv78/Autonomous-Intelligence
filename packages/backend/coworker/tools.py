@@ -6,6 +6,7 @@ which applies autonomy levels, hard floors, and risk checks.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import Any
@@ -30,6 +31,42 @@ class ToolContext:
     chat_id: int | None = None
     cards: list[dict[str, Any]] = field(default_factory=list)
     responsibility: dict[str, Any] | None = None  # set during a scheduled task's run
+    owner_message: str = ""  # what the owner typed this turn
+    read_untrusted: bool = False  # a tool brought email, Slack, or calendar text into this turn
+
+
+# Tools whose results carry text other people wrote. After one runs, a write in the same turn may have been
+# steered by that text, so it no longer counts as something the owner asked for directly.
+READS_UNTRUSTED = {"search_memory", "who_is", "account_status", "list_needs_reply", "read_thread", "calendar",
+                   "reply_to_emails", "my_day", "draft_reply", "meeting_brief", "join_meeting"}
+
+
+def _requested(ctx: ToolContext) -> bool:
+    """True only for a write the owner asked for in this chat, with nobody else's text in the turn."""
+    return ctx.responsibility is None and not ctx.read_untrusted
+
+
+def _mentioned(target: str, text: str) -> bool:
+    """Whether the owner's message names this address, channel, or person (by any part of the address)."""
+    target, low = target.lower().strip().lstrip("#"), text.lower()
+    if not target:
+        return True
+    if target in low:
+        return True
+    parts = [p for p in re.split(r"[._+\-]", target.split("@")[0]) if len(p) >= 3]
+    return any(re.search(rf"\b{re.escape(p)}\b", low) for p in parts)
+
+
+def _unrequested(ctx: ToolContext, targets: list[str]) -> list[dict[str, str]]:
+    """A risk when the owner chatted, the turn read other people's text, and a recipient wasn't in the owner's words."""
+    if ctx.responsibility is not None or not ctx.read_untrusted:
+        return []
+    owner_email = str((ctx.store.get_coworker(ctx.user_id) or {}).get("owner_email") or "").lower()
+    extra = [t for t in targets if t and t.lower() != owner_email and not _mentioned(t, ctx.owner_message)]
+    if not extra:
+        return []
+    return [{"code": "recipient_not_requested",
+             "message": f"You didn't name {', '.join(extra)}; the recipient came from content I read."}]
 
 
 def _obj(props: dict[str, Any], required: list[str]) -> dict[str, Any]:
@@ -108,6 +145,14 @@ def _action_result(action: dict[str, Any]) -> dict[str, Any]:
 
 def run(name: str, args: dict[str, Any], ctx: ToolContext) -> tuple[Any, str]:
     """Execute a tool. Returns (result for the model, one-line summary for the UI)."""
+    try:
+        return _run(name, args, ctx)
+    finally:
+        if name in READS_UNTRUSTED:
+            ctx.read_untrusted = True
+
+
+def _run(name: str, args: dict[str, Any], ctx: ToolContext) -> tuple[Any, str]:
     s, uid = ctx.store, ctx.user_id
     if name == "search_memory":
         hits = memory.recall(s, uid, args.get("query", ""), k=6)
@@ -210,14 +255,16 @@ def run(name: str, args: dict[str, Any], ctx: ToolContext) -> tuple[Any, str]:
             source = next((t["id"] for t in reversed(thread) if t["direction"] == "inbound"), None)
         action = executor.propose(s, uid, "email.send", payload, title=f"Email {', '.join(payload['to'])}: {payload['subject']}",
                                   reasoning=args.get("reasoning", "You asked for this in chat."), source_item_id=source,
-                                  chat_id=ctx.chat_id, requested_in_chat=True, responsibility=ctx.responsibility)
+                                  chat_id=ctx.chat_id, requested_in_chat=_requested(ctx), responsibility=ctx.responsibility,
+                                  extra_risks=_unrequested(ctx, list(payload.get("to") or []) + list(payload.get("cc") or [])))
         _card(ctx, action)
         return _action_result(action), f"Prepared an email to {', '.join(payload['to'])}"
     if name == "post_slack":
         channel = str(args.get("channel", "")).lstrip("#")
         action = executor.propose(s, uid, "slack.post", {"channel": channel, "text": args.get("text", "")},
                                   title=f"Slack #{channel}", reasoning="You asked for this in chat.", chat_id=ctx.chat_id,
-                                  requested_in_chat=True, responsibility=ctx.responsibility)
+                                  requested_in_chat=_requested(ctx), responsibility=ctx.responsibility,
+                                  extra_risks=_unrequested(ctx, [channel]))
         _card(ctx, action)
         return _action_result(action), f"Prepared a Slack message to #{channel}"
     if name == "schedule_meeting":
@@ -230,7 +277,8 @@ def run(name: str, args: dict[str, Any], ctx: ToolContext) -> tuple[Any, str]:
         tz = scheduling.tz_for(s.get_coworker(uid) or {})
         action = executor.propose(s, uid, "calendar.create", payload,
                                   title=f"Invite {', '.join(payload['attendees'])}: {payload['title']} ({scheduling.label(start, tz)})",
-                                  reasoning="You asked for this in chat.", chat_id=ctx.chat_id, requested_in_chat=True, responsibility=ctx.responsibility)
+                                  reasoning="You asked for this in chat.", chat_id=ctx.chat_id, requested_in_chat=_requested(ctx),
+                                  responsibility=ctx.responsibility, extra_risks=_unrequested(ctx, list(payload["attendees"])))
         _card(ctx, action)
         return _action_result(action), "Prepared a calendar invite"
     if name == "meeting_brief":
@@ -245,7 +293,8 @@ def run(name: str, args: dict[str, Any], ctx: ToolContext) -> tuple[Any, str]:
             return {"error": "A scheduled run can't create responsibilities."}, "Skipped creating a responsibility"
         spec = responsibilities.proposal_payload(args.get("request", ""))
         action = executor.propose(s, uid, "responsibility.create", spec, title=f"New responsibility: {spec['name']}",
-                                  reasoning=spec["description"], chat_id=ctx.chat_id, requested_in_chat=True, responsibility=ctx.responsibility)
+                                  reasoning=spec["description"], chat_id=ctx.chat_id, requested_in_chat=_requested(ctx),
+                                  responsibility=ctx.responsibility)
         _card(ctx, action)
         return {**_action_result(action), "spec": spec}, f"Proposed a responsibility: {spec['name']}"
     if name == "list_responsibilities":

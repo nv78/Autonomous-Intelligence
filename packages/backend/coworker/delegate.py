@@ -139,7 +139,7 @@ def reply_to_emails(store: Store, user_id: int, *, chat_id: int | None, category
             store, user_id, "email.send",
             {"to": draft["to"], "subject": draft["subject"], "body": draft["body"], "thread_id": draft["thread_id"]},
             title=f"Reply to {r.get('from') or draft['to'][0]}: {draft['subject']}"[:200], reasoning=draft["reasoning"],
-            source_item_id=r["id"], chat_id=chat_id, requested_in_chat=True, responsibility=responsibility,
+            source_item_id=r["id"], chat_id=chat_id, responsibility=responsibility,  # drafted from their email: full checks
         ))
     return actions
 

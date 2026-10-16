@@ -185,13 +185,14 @@ def _llm_reply(store: Store, user_id: int, thread_items: list[dict[str, Any]], c
 
 def slack_answer(store: Store, user_id: int, question: str) -> dict[str, Any]:
     """Answer a teammate's question from memory and docs, or say it needs the user."""
-    decisions = [r for r in memory.recall(store, user_id, question, k=4) if r["type"] == "decision"]
+    # Teammates only ever hear decisions and docs: private email and DMs stay with the owner.
+    facts = memory.shareable_recall(store, user_id, question, k=6)
+    decisions = [r for r in facts if r["type"] == "decision"]
     doc = doc_answer(store, user_id, question)
     coworker = store.get_coworker(user_id) or {}
     owner = first_name(coworker.get("owner_name", ""))
     if llm.available(user_id):
         try:
-            facts = memory.recall(store, user_id, question, k=6)
             text = llm.complete_text(
                 f"A teammate asked on Slack:\n{security.wrap_untrusted(question, 'slack')}\n\nFacts:\n"
                 + "\n".join(f"- {f.get('title')}: {f.get('detail') or f.get('snippet') or ''}" for f in facts)

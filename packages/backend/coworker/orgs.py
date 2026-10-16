@@ -82,8 +82,15 @@ def cap_level(store: Store, user_id: int, action_type: str, level: str) -> str:
 
 
 def blocked_recipients(store: Store, user_id: int, recipients: list[str]) -> list[str]:
-    blocked = {d.lower().lstrip("@") for d in policies(store, user_id).get("blocked_domains") or []}
-    return [r for r in recipients if r.split("@")[-1].lower() in blocked]
+    from email.utils import parseaddr
+
+    blocked = {str(d).strip().lower().lstrip("@").rstrip(".") for d in policies(store, user_id).get("blocked_domains") or []} - {""}
+    out = []
+    for r in recipients:
+        domain = parseaddr(str(r))[1].rsplit("@", 1)[-1].strip().lower().rstrip(".")
+        if any(domain == b or domain.endswith("." + b) for b in blocked):  # mail.competitor.com is competitor.com
+            out.append(r)
+    return out
 
 
 def forces_all_party_consent(store: Store, user_id: int) -> bool:

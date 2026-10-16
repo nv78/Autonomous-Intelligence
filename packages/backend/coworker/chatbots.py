@@ -84,18 +84,18 @@ def command(store: Store, user_id: int, platform: str, conversation_key: str, te
 
 def teammate(store: Store, user_id: int, asker: str, text: str, external: bool = False) -> dict[str, Any]:
     """{"text": reply in the conversation, "owner_note": DM to the owner or ""}."""
-    from coworker import drafting, orgs, policy, security
+    from coworker import drafting, governance, orgs, policy, security
 
     coworker = store.get_coworker(user_id) or {}
     owner = drafting.first_name(coworker.get("owner_name", "")) or "my owner"
-    if coworker.get("status") != "active":
+    if coworker.get("status") != "active" or governance.org_disabled(coworker.get("owner_email") or ""):
         return {"text": f"I'm {owner}'s AI coworker, and I'm paused right now.", "owner_note": ""}
     if security.is_suspicious(text):
         store.log(user_id, "security", f"Didn't answer a suspicious chat message from {asker}.", {"text": text[:300]})
         return {"text": f"I'll pass this to {owner}.", "owner_note": ""}
     answer = drafting.slack_answer(store, user_id, text)
     level = orgs.cap_level(store, user_id, "slack.post", policy.level_for(coworker, "slack.post"))
-    if answer["confident"] and level in ("notify", "silent") and not external:
+    if answer["confident"] and level in ("notify", "silent") and not external and not governance.needs_employer_ok(store, user_id):
         store.log(user_id, "executed", f"Answered {asker} in chat: {text[:120]}", {"answer": answer["text"]})
         return {"text": f"{answer['text']}\n\n_({owner}'s AI coworker)_", "owner_note": ""}
     store.log(user_id, "escalation", f"{asker} asked in chat: {text[:200]}",

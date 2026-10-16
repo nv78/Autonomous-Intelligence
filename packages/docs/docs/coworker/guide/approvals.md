@@ -17,9 +17,13 @@ Some cases always wait for you, whatever the level:
 
 - the message looks like phishing or a prompt-injection attempt;
 - a recipient is new or outside the thread;
+- in chat, a recipient you didn't name: once the coworker has read your email or Slack in that turn, it only sends without asking to people or channels you mentioned yourself;
+- it includes details from a different conversation (always checked for scheduled tasks and replies drafted from email);
 - an attachment would go out;
 - it would create or change a responsibility;
-- your organization caps the level or blocks the domain (see [Team admin](../admin/team.md)).
+- your organization caps the level or blocks the domain, including its subdomains (see [Team admin](../admin/team.md)).
+
+When teammates ask your coworker something on Slack, Teams or Google Chat, it answers only from decisions and documents, never from your private email or DMs. On a live call, it draws only on documents and what that contact or their company sent you.
 
 ## Approve from anywhere
 
