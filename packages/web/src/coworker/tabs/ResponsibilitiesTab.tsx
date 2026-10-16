@@ -49,7 +49,7 @@ export default function ResponsibilitiesTab() {
     try {
       const d = await api.post('/responsibilities', body);
       setMsg(d.results?.length ? `Started: ${d.results.join('; ')}. Check Approvals.`
-        : d.responsibility?.schedule ? `Scheduled: ${d.responsibility.schedule.description}. First run ${when(d.responsibility.schedule.nextRun)}.`
+        : d.responsibility?.schedule ? `Scheduled: ${d.responsibility.schedule.description}. First run ${d.responsibility.schedule.nextRunLabel || when(d.responsibility.schedule.nextRun)}.`
           : 'Added. I’ll act when something matches.');
       setCustom('');
       load();
@@ -113,7 +113,7 @@ export default function ResponsibilitiesTab() {
                     {r.schedule ? (
                       <div className="mt-1.5 space-y-1">
                         <p className="text-xs text-gray-600 dark:text-gray-300">
-                          ⏰ {r.schedule.description}{r.enabled && r.schedule.nextRun ? ` · next ${when(r.schedule.nextRun)}` : ''}
+                          ⏰ {r.schedule.description}{r.enabled && r.schedule.nextRun ? ` · next ${r.schedule.nextRunLabel || when(r.schedule.nextRun)}` : ''}
                           {r.schedule.deliver.filter((d) => d !== 'chat').length > 0 && ` · also by ${r.schedule.deliver.filter((d) => d !== 'chat').join(' and ')}`}
                         </p>
                         {r.schedule.usage && r.schedule.usage.runs > 0 && (
