@@ -1,6 +1,6 @@
 # Autonomous Intelligence
 
-> **New: Ourogen Coworker**, an AI version of you that handles email, Slack, scheduling, and calls with your approval. [Try it in 10 minutes →](COWORKER.md)
+> **New: Ourogen Coworker**, an AI version of you that handles email, Slack, scheduling, and calls with your approval. [Try it in 10 minutes →](COWORKER.md) · [See the walkthrough →](walkthrough/README.md)
 
 
 Autonomous Intelligence is an open-source research project by [Anote](https://anote.ai/) that enables collaborative multi-agent AI systems. The framework provides the infrastructure to create, deploy, and coordinate specialized AI agents that can operate both independently and together in dynamic environments. Agents communicate through defined pathways while an orchestrator manages task distribution, ensuring efficient execution and seamless collaboration. This architecture allows the system to adapt to changing conditions, automatically selecting the best agents, tools, and workflows to tackle complex problems. To learn more, see the video demo below:
