@@ -19,6 +19,7 @@ import hmac
 import json
 import logging
 import os
+import re
 import secrets
 import time
 from datetime import UTC, datetime, timedelta
@@ -89,8 +90,9 @@ def verify_gmail(headers: Any, args: Any) -> bool:
             claims = id_token.verify_oauth2_token(auth[7:], google_requests.Request(), audience=audience)
         except Exception:
             return False
+        # Any Google service account can mint a token for any audience, so the sender must be pinned.
         sender = os.environ.get("GMAIL_PUSH_SERVICE_ACCOUNT", "")
-        return not sender or claims.get("email") == sender
+        return bool(sender) and claims.get("email") == sender and bool(claims.get("email_verified"))
     token = os.environ.get("GMAIL_PUSH_TOKEN", "")
     return bool(token) and hmac.compare_digest(str(args.get("token", "")), token)
 
@@ -159,13 +161,21 @@ def ensure_graph_subscription(connector: Any) -> None:
     connector.cursor["graph_sub"] = {"id": created.get("id", ""), "expires": iso(new_expiry), "client_state": client_state}
 
 
+GUID_RE = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
+MAX_GRAPH_NOTIFICATIONS = 100
+
+
 def users_for_graph(store: Store, notifications: list[dict[str, Any]]) -> list[int]:
     """Users whose subscription id and clientState both match a notification."""
     found: list[int] = []
-    for n in notifications:
-        sub_id, state = str(n.get("subscriptionId") or ""), str(n.get("clientState") or "")
-        if not sub_id or not state:
+    seen: set[str] = set()
+    for n in notifications[:MAX_GRAPH_NOTIFICATIONS]:
+        if not isinstance(n, dict):
             continue
+        sub_id, state = str(n.get("subscriptionId") or ""), str(n.get("clientState") or "")
+        if not state or not GUID_RE.fullmatch(sub_id) or sub_id in seen:
+            continue  # Graph subscription ids are GUIDs; anything else (e.g. "%") never reaches the query
+        seen.add(sub_id)
         for row in store.query("SELECT user_id, sync_cursor FROM cw_connections WHERE provider = 'microsoft' "
                                "AND status IN ('connected', 'syncing') AND sync_cursor LIKE %s", (f"%{sub_id}%",)):
             try:

@@ -25,6 +25,7 @@ posts every message to ``/api/coworker/email/inbound?token=<COWORKER_INBOUND_TOK
 from __future__ import annotations
 
 import hmac
+import json
 import logging
 import os
 import re
@@ -39,7 +40,7 @@ log = logging.getLogger("coworker.inbound_email")
 
 _QUOTE_START = re.compile(
     r"^(?:-{2,}\s*Forwarded message\s*-{2,}|Begin forwarded message:|-{2,}\s*Original Message\s*-{2,}|"
-    r"On .{5,200} wrote:\s*$|From: .+\nSent: )", re.I | re.M)
+    r"On [^\n]{3,300}(?:\n[^\n]{0,200})?wrote:\s*$|From: [^\n]+\n(?:Sent|Date|To): |>)", re.I | re.M)
 
 
 @dataclass
@@ -121,21 +122,59 @@ def _emails(value: str | list[Any] | None) -> list[str]:
     return [a.lower() for _, a in getaddresses([value or ""]) if "@" in a]
 
 
-def _auth_from_header(results: str) -> bool | None:
+def _aligned(domain: str, from_domain: str) -> bool:
+    """DMARC relaxed alignment: the authenticated domain is the From domain or its parent/child."""
+    domain, from_domain = domain.lower().strip(". "), from_domain.lower().strip(". ")
+    return bool(domain and from_domain) and (domain == from_domain or from_domain.endswith("." + domain)
+                                              or domain.endswith("." + from_domain))
+
+
+def _auth_from_header(results: str, from_domain: str) -> bool | None:
+    """Did the receiving server authenticate *the From domain*? A pass for some other domain proves nothing.
+
+    Accepts dmarc=pass for header.from, dkim=pass with an aligned header.d, or spf=pass with an aligned
+    smtp.mailfrom. None when the header is missing.
+    """
     low = results.lower()
     if not low:
         return None
-    return "dkim=pass" in low or "spf=pass" in low
+    for clause in re.split(r";", low):
+        clause = clause.strip()
+        m = re.match(r"(dmarc|dkim|spf)=(\w+)", clause)
+        if not m or m.group(2) != "pass":
+            continue
+        kind = m.group(1)
+        if kind == "dmarc":
+            d = re.search(r"header\.from=([^\s;]+)", clause)
+        elif kind == "dkim":
+            d = re.search(r"header\.(?:d|i)=@?([^\s;]+)", clause)
+        else:
+            d = re.search(r"smtp\.mailfrom=(?:[^\s;@]*@)?([^\s;]+)", clause)
+        if d and _aligned(d.group(1).split("@")[-1], from_domain):
+            return True
+    return False
+
+
+def _first_headers(pairs: list[tuple[str, str]]) -> dict[str, str]:
+    """Header name → its FIRST value. Receiving servers prepend their results, so the first copy is theirs;
+    later copies may have been written by the sender."""
+    out: dict[str, str] = {}
+    for name, value in pairs:
+        out.setdefault(name.lower(), value)
+    return out
 
 
 def parse_postmark(data: dict[str, Any]) -> Inbound:
-    headers = {str(h.get("Name", "")).lower(): str(h.get("Value", "")) for h in data.get("Headers") or []}
-    spf = headers.get("received-spf", "").lower()
-    auth = _auth_from_header(headers.get("authentication-results", ""))
-    if auth is None and spf:
-        auth = spf.startswith("pass")
+    headers = _first_headers([(str(h.get("Name", "")), str(h.get("Value", ""))) for h in data.get("Headers") or []])
+    sender = str((data.get("FromFull") or {}).get("Email") or parseaddr(data.get("From", ""))[1]).lower()
+    from_domain = sender.split("@")[-1]
+    auth = _auth_from_header(headers.get("authentication-results", ""), from_domain)
+    if auth is None and headers.get("received-spf"):
+        spf = headers["received-spf"].lower()
+        envelope = re.search(r"envelope-from=<?[^\s@>]*@([^\s;>]+)", spf)
+        auth = spf.startswith("pass") and bool(envelope) and _aligned(envelope.group(1), from_domain)  # type: ignore[union-attr]
     return Inbound(
-        sender=str((data.get("FromFull") or {}).get("Email") or parseaddr(data.get("From", ""))[1]).lower(),
+        sender=sender,
         sender_name=str((data.get("FromFull") or {}).get("Name") or ""),
         to=_emails(data.get("ToFull")) or _emails(data.get("To")), cc=_emails(data.get("CcFull")) or _emails(data.get("Cc")),
         subject=str(data.get("Subject") or ""), text=str(data.get("TextBody") or data.get("StrippedTextReply") or ""),
@@ -153,8 +192,14 @@ def parse_sendgrid(form: dict[str, str]) -> Inbound:
     spf = form.get("SPF", "").lower()
     auth: bool | None = None
     if dkim or spf:
-        domain_part = sender.split("@")[-1].lower()
-        auth = (f"@{domain_part} : pass" in dkim) or spf == "pass"
+        from_domain = sender.split("@")[-1].lower()
+        signed = [d for d, verdict in re.findall(r"@([^\s:{},]+)\s*:\s*(\w+)", dkim) if verdict == "pass"]
+        try:
+            envelope = str((json.loads(form.get("envelope") or "{}") or {}).get("from") or "")
+        except ValueError:
+            envelope = ""
+        auth = any(_aligned(d, from_domain) for d in signed) or (
+            spf == "pass" and _aligned(envelope.split("@")[-1], from_domain))
     return Inbound(sender=sender.lower(), sender_name=name, to=_emails(form.get("to")), cc=_emails(form.get("cc")),
                    subject=form.get("subject", ""), text=form.get("text", ""), message_id=headers.get("message-id", ""),
                    auth=auth, headers=headers)
@@ -209,6 +254,12 @@ def handle(store: Store, msg: Inbound) -> str:
                        "Resume it in Ourogen and send it again.")
         return "paused"
     others = [a for a in msg.to + msg.cc if a != address and a not in owner_addresses(store, user_id)]
+    from coworker import security
+
+    if security.is_suspicious(split_note(msg.text)[0]):
+        store.log(user_id, "security", f"Didn't act on an email to your coworker address: it reads like a prompt-injection "
+                  f"attempt ({msg.subject[:120]}).", {"from": msg.sender})
+        return "refused: suspicious"
     answer = _run(store, user_id, msg, others)
     lines = [answer["text"], ""]
     if any(a["status"] == "proposed" for a in answer["actions"]):

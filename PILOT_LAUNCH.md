@@ -91,7 +91,7 @@ Without this step, the worker checks mail every minute. With it, a new email get
      - `GMAIL_PUBSUB_TOPIC=projects/<project-id>/topics/gmail-push`
      - `GMAIL_PUSH_TOKEN=<that same string>`
 
-     To use signed OIDC tokens instead of the `token` in the URL, turn on authentication on the subscription and set `GMAIL_PUSH_AUDIENCE` (and optionally `GMAIL_PUSH_SERVICE_ACCOUNT`).
+     To use signed OIDC tokens instead of the `token` in the URL, turn on authentication on the subscription and set `GMAIL_PUSH_AUDIENCE` and `GMAIL_PUSH_SERVICE_ACCOUNT` (the subscription's service account; both are required, since any Google account can mint a token for an audience).
   4. Each Gmail connection starts its watch on the next sync and renews it before the 7-day expiry.
 
 If a watch or subscription can't be created, the coworker keeps polling and retries an hour later.

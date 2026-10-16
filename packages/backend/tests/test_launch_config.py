@@ -147,3 +147,9 @@ def test_provider_keys_decrypt_after_setting_dedicated_key(monkeypatch):
     monkeypatch.delenv("PROVIDER_KEY_ENCRYPTION_KEY")
     with pytest.raises(Exception):
         provider_keys._fernet().decrypt(new_token)  # new values use the dedicated key
+
+
+def test_config_gmail_push_needs_pinned_service_account():
+    errors, _ = config.check({**SAFE, "GMAIL_PUSH_AUDIENCE": "https://x/push"})
+    assert any("GMAIL_PUSH_SERVICE_ACCOUNT" in e for e in errors)
+    assert config.check({**SAFE, "GMAIL_PUSH_AUDIENCE": "https://x/push", "GMAIL_PUSH_SERVICE_ACCOUNT": "p@x.iam"}) == ([], [])
