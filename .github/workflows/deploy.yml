@@ -129,19 +129,20 @@ jobs:
           echo "Deploying image: $IMAGE_URI"
 
           COMMAND_ID=$(aws ssm send-command \
-            --instance-ids "$INSTANCE_ID" \
-            --document-name "AWS-RunShellScript" \
-            --comment "Deploy ${GITHUB_SHA::12} via GitHub Actions" \
-            --parameters commands="[
-              'cd $APP_DIR',
-              'aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY',
-              'docker pull $IMAGE_URI',
-              'docker compose down',
-              'docker compose up -d',
-              'docker system prune -a'
-            ]" \
-            --query "Command.CommandId" \
-            --output text)
+          --instance-ids "$INSTANCE_ID" \
+          --document-name "AWS-RunShellScript" \
+          --parameters commands="[
+            'aws secretsmanager get-secret-value --secret-id panacea/prod --region us-east-1 --query SecretString --output text | python3 -c \"import sys,json; d=json.load(sys.stdin); [print(f\\\"{k}={v}\\\") for k,v in d.items()]\" > /home/ssm-user/app/.env',
+            'aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 548848854899.dkr.ecr.us-east-1.amazonaws.com',
+            'docker pull $IMAGE_URI',
+            'cd /home/ssm-user/app',
+            'docker compose down --remove-orphans',
+            'IMAGE_URI=$IMAGE_URI docker compose up -d',
+            'docker image prune -f'
+          ]" \
+          --region us-east-1 \
+          --query "Command.CommandId" \
+          --output text)
 
           echo "SSM Command ID: $COMMAND_ID"
 
