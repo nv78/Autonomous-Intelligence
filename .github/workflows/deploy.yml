@@ -145,11 +145,12 @@ jobs:
             --command-id "$COMMAND_ID" \
             --instance-id "$INSTANCE_ID" || true
 
+  # Frontend is independent of the backend: no `needs`, so it starts immediately
+  # and runs in parallel with the backend build/deploy.
   deploy-frontend:
     name: Deploy Frontend to S3/CloudFront
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment || 'production' }}
-    needs: deploy-to-ec2
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -184,8 +185,17 @@ jobs:
         run: |
           aws cloudfront create-invalidation \
             --distribution-id $CLOUDFRONT_DISTRIBUTION_ID --paths "/*"
+
+  # Release verification checks both the frontend and the API (SHA + payments),
+  # so it runs after both deploys finish. It does not gate either deploy.
+  verify-release:
+    name: Verify Production Release
+    runs-on: ubuntu-latest
+    needs: [deploy-to-ec2, deploy-frontend]
+    if: ${{ github.event_name == 'push' || github.event.inputs.environment == 'production' }}
+    steps:
+      - uses: actions/checkout@v4
       - name: Verify production release
-        if: ${{ github.event_name == 'push' || github.event.inputs.environment == 'production' }}
         env:
           EXPECTED_SHA: ${{ github.sha }}
         run: |
@@ -204,7 +214,7 @@ jobs:
   notify:
     name: Notify on Failure
     runs-on: ubuntu-latest
-    needs: [deploy-to-ec2, deploy-frontend]
+    needs: [deploy-to-ec2, deploy-frontend, verify-release]
     if: failure()
     steps:
       - uses: slackapi/slack-github-action@v1
